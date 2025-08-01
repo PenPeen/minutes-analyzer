@@ -27,14 +27,10 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 git clone https://github.com/your-username/minutes-analyzer.git
 cd minutes-analyzer
 
-# 初期セットアップ
 make setup
 
-# 環境変数ファイルをコピーして設定
-cp env.sample .env.local
-# .env.localを編集してGEMINI_API_KEYを設定
+cp env.local.sample .env.local
 
-# 開発環境の起動
 make dev-setup
 ```
 
@@ -89,7 +85,7 @@ minutes-analyzer/
 - [アーキテクチャ設計](docs/architecture.md)
 - [API仕様](docs/api-spec.yaml)
 - [実装詳細](docs/implementation.md)
-- [プロジェクト構成](project-structure.md)
+
 
 ## 🧪 テスト
 
