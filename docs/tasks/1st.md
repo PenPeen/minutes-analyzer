@@ -3,10 +3,11 @@
 ### **Phase 1: MVP基盤整備 (1-2日)**
 
 #### 1.1 プロジェクト初期設定
-- [ ] `make setup` 実行で初期セットアップ完了
-- [ ] 環境変数ファイル（.env.local）作成・設定
+- [x] `make setup` 実行で初期セットアップ完了
+- [ ] 環境変数ファイル（.env.local）作成・設定 **※要実行**
 - [ ] LocalStack起動確認（`make setup-local`）
 - [ ] Docker環境動作確認
+- [x] 開発環境停止手順整備（`make stop`）
 
 #### 1.2 Lambda関数MVP実装
 - [ ] Ruby Lambda基本構造実装（`lambda_function.rb`）

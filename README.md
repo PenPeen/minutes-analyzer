@@ -16,26 +16,49 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 ## 🚀 クイックスタート
 
 ### 前提条件
-- Docker & Docker Compose
-- Terraform ≥ 1.0
-- Ruby ≥ 3.3
-- AWS CLI（本番環境用）
+
+#### macOS (Homebrew)
+```bash
+# 必要な依存関係をインストール
+brew install docker terraform awscli jq ruby
+```
+
 - Google Workspace アカウント
 
 ### 開発環境セットアップ
 
+#### 1. リポジトリクローン
 ```bash
 git clone https://github.com/your-username/minutes-analyzer.git
 cd minutes-analyzer
-
-make setup
-
-cp env.local.sample .env.local
-
-make dev-setup
 ```
 
-### 本番環境デプロイ
+#### 2. 初期セットアップ
+```bash
+make setup
+```
+
+#### 3. 環境変数ファイル作成
+```bash
+cp env.local.sample .env.local
+```
+
+`.env.local`で以下の設定を必ず変更してください：
+- `GEMINI_API_KEY`: Gemini API キーを設定
+
+### 開発環境の起動
+
+#### 日常開発フロー
+```bash
+make start        # 環境起動・ビルド・ローカル自動デプロイ
+make test         # テスト実行
+make stop         # 環境停止
+```
+
+#### 本番デプロイ
+```bash
+make deploy       # 本番環境への手動デプロイ
+```
 
 詳細な本番環境デプロイ手順については [docs/deployment.md](docs/deployment.md) を参照してください。
 

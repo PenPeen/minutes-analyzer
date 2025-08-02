@@ -60,9 +60,28 @@ check_prerequisites() {
         local cmd="${dep_info%:*}"
         local name="${dep_info#*:}"
 
-        if ! command -v "$cmd" &> /dev/null; then
-            missing_deps+=("$name")
-            log_error "$name が見つかりません"
+        # Docker Composeの特別なチェック（新しい形式に対応）
+        if [ "$cmd" = "docker-compose" ]; then
+            if ! docker compose version &> /dev/null; then
+                missing_deps+=("$name")
+                log_error "$name が見つかりません"
+            else
+                local version="$(docker compose version 2>/dev/null)"
+                log_success "$name: $version"
+            fi
+        elif ! command -v "$cmd" &> /dev/null; then
+            if [ "$cmd" = "jq" ] && [ "$(uname -s)" = "Darwin" ]; then
+                log_warning "jqが見つかりません。Homebrewでインストールします..."
+                if brew install jq; then
+                    log_success "jqをインストールしました"
+                else
+                    log_error "jqのインストールに失敗しました。手動でインストールしてください。"
+                    missing_deps+=("$name")
+                fi
+            else
+                missing_deps+=("$name")
+                log_error "$name が見つかりません"
+            fi
         else
             local version=""
             case "$cmd" in
@@ -122,6 +141,14 @@ setup_environment_files() {
     if [ ! -f ".env.local" ]; then
         if [ -f "env.local.sample" ]; then
             cp env.local.sample .env.local
+
+            # ダミーのGEMINI_API_KEYを設定（開発用）
+            if grep -q "GEMINI_API_KEY=your_gemini_api_key_here" .env.local; then
+                sed -i.bak 's/GEMINI_API_KEY=your_gemini_api_key_here/GEMINI_API_KEY=dummy-key-for-local-development/' .env.local
+                rm -f .env.local.bak
+                log_success "開発用ダミーGEMINI_API_KEYを設定しました"
+            fi
+
             log_success ".env.local ファイルを作成しました"
         else
             log_error "env.local.sample ファイルが見つかりません"
@@ -129,6 +156,13 @@ setup_environment_files() {
         fi
     else
         log_warning ".env.local ファイルは既に存在します"
+
+        # 既存ファイルでもダミーキーを確認・設定
+        if grep -q "GEMINI_API_KEY=your_gemini_api_key_here" .env.local; then
+            sed -i.bak 's/GEMINI_API_KEY=your_gemini_api_key_here/GEMINI_API_KEY=dummy-key-for-local-development/' .env.local
+            rm -f .env.local.bak
+            log_success "開発用ダミーGEMINI_API_KEYを設定しました"
+        fi
     fi
 
     # .gitignore の確認
@@ -137,6 +171,27 @@ setup_environment_files() {
     else
         log_warning ".gitignore ファイルが見つかりません"
     fi
+}
+
+# Terraform初期化
+setup_terraform() {
+    log_info "Terraform環境を初期化中..."
+
+    cd "$PROJECT_ROOT/infrastructure/environments/local"
+
+    if [ ! -f ".terraform.lock.hcl" ]; then
+        log_info "Terraformを初期化中..."
+        if terraform init; then
+            log_success "Terraformの初期化が完了しました"
+        else
+            log_error "Terraformの初期化に失敗しました"
+            exit 1
+        fi
+    else
+        log_warning "Terraformは既に初期化されています"
+    fi
+
+    cd "$PROJECT_ROOT"
 }
 
 # Ruby依存関係の確認
@@ -185,11 +240,12 @@ verify_project_structure() {
     done
 
     if [ ${#missing_dirs[@]} -ne 0 ]; then
-        log_error "以下のディレクトリが見つかりません:"
+        log_info "以下のディレクトリを作成します:"
         for dir in "${missing_dirs[@]}"; do
             echo "  • $dir"
+            mkdir -p "$PROJECT_ROOT/$dir"
         done
-        exit 1
+        log_success "必要なディレクトリを作成しました"
     fi
 
     log_success "プロジェクト構造が確認されました"
@@ -212,20 +268,6 @@ show_next_steps() {
     echo "   • Slack Webhook URLを取得"
     echo "   • .env.local の SLACK_ERROR_WEBHOOK_URL を設定"
     echo ""
-    echo "📋 次のステップ:"
-    echo ""
-    echo "  # 1. 環境変数を設定"
-    echo "  vim .env.local"
-    echo ""
-    echo "  # 2. 開発環境を起動"
-    echo "  make dev-setup"
-    echo ""
-    echo "  # 3. APIテストを実行"
-    echo "  make test-api"
-    echo ""
-    echo "  # 4. ヘルプを表示"
-    echo "  make help"
-    echo ""
     log_info "詳細なドキュメントは README.md を参照してください"
 }
 
@@ -234,6 +276,7 @@ main() {
     check_prerequisites
     verify_project_structure
     setup_environment_files
+    setup_terraform
     check_ruby_dependencies
     show_next_steps
 }
