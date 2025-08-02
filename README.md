@@ -19,9 +19,10 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 - Docker & Docker Compose
 - Terraform ≥ 1.0
 - Ruby ≥ 3.3
-- AWS CLI
+- AWS CLI（本番環境用）
+- Google Workspace アカウント
 
-### セットアップ
+### 開発環境セットアップ
 
 ```bash
 git clone https://github.com/your-username/minutes-analyzer.git
@@ -34,6 +35,10 @@ cp env.local.sample .env.local
 make dev-setup
 ```
 
+### 本番環境デプロイ
+
+詳細な本番環境デプロイ手順については [docs/deployment.md](docs/deployment.md) を参照してください。
+
 ## 📋 使用可能なコマンド
 
 ```bash
@@ -41,6 +46,7 @@ make help                    # 利用可能なコマンドを表示
 make setup                   # 初期セットアップ
 make dev-setup              # 開発環境完全セットアップ
 make deploy-local           # LocalStack環境にデプロイ
+make deploy-production      # 本番環境にデプロイ
 make test-api               # APIエンドポイントをテスト
 make logs                   # CloudWatchログを確認
 make clean                  # ローカル環境をクリーンアップ
@@ -49,6 +55,15 @@ make clean                  # ローカル環境をクリーンアップ
 ## 🏗️ アーキテクチャ
 
 このプロジェクトは**Google Apps Script + AWS Lambda ハイブリッド型**のアーキテクチャを採用しています：
+
+### 管理方針
+
+| コンポーネント | 管理方法 | 理由 |
+|---|---|---|
+| **AWS Lambda, API Gateway, IAM** | 🔵 **Terraform** | Infrastructure as Code、バージョン管理、自動化 |
+| **Google Apps Script, Google Drive** | 🟡 **手動設定** | OAuth複雑性、トークン管理、設定頻度の低さ |
+
+### システム構成
 
 - **Google Apps Script**: Google Driveの監視・前処理・Slack配信
 - **AWS Lambda (Ruby)**: Gemini 1.5 Flash APIを使用した議事録分析
@@ -63,6 +78,8 @@ make clean                  # ローカル環境をクリーンアップ
 minutes-analyzer/
 ├── 📁 infrastructure/        # Terraform + LocalStack
 │   ├── 📁 environments/      # 環境別設定
+│   │   ├── 📁 local/         # LocalStack設定
+│   │   └── 📁 production/    # 本番環境設定
 │   ├── 📁 modules/           # 再利用可能なTerraformモジュール
 │   └── 📁 scripts/           # デプロイスクリプト
 ├── 📁 lambda/               # Ruby Lambda関数
@@ -71,7 +88,7 @@ minutes-analyzer/
 └── 📁 tests/                # 統合テスト
 ```
 
-## �� 環境変数
+## 🔐 環境変数
 
 ### 必須設定
 - `GEMINI_API_KEY`: Gemini 1.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
@@ -85,7 +102,7 @@ minutes-analyzer/
 - [アーキテクチャ設計](docs/architecture.md)
 - [API仕様](docs/api-spec.yaml)
 - [実装詳細](docs/implementation.md)
-
+- [本番環境デプロイメントガイド](docs/deployment.md)
 
 ## 🧪 テスト
 
