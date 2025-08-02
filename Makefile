@@ -78,19 +78,13 @@ tf-init: ## Terraformを初期化
 # Terraformプランの実行
 tf-plan: tf-init ## Terraformプランを実行
 	@echo "📋 Terraformプランを実行中..."
-	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
-	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
-	terraform plan
+	@cd infrastructure/environments/local && terraform plan
 	@echo "✅ Terraformプランが完了しました"
 
 # LocalStack環境にデプロイ
 deploy-local: build-lambda tf-plan ## LocalStack環境にデプロイ
 	@echo "🚀 LocalStack環境にデプロイ中..."
-	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
-	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
-	terraform apply -auto-approve
+	@cd infrastructure/environments/local && terraform apply -auto-approve
 	@echo "✅ デプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/local && terraform output
@@ -98,10 +92,7 @@ deploy-local: build-lambda tf-plan ## LocalStack環境にデプロイ
 # LocalStack環境を破棄
 destroy-local: ## LocalStack環境を破棄
 	@echo "🗑️  LocalStack環境を破棄中..."
-	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
-	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
-	terraform destroy -auto-approve
+	@cd infrastructure/environments/local && terraform destroy -auto-approve
 	@echo "✅ 環境の破棄が完了しました"
 
 # APIのテスト
@@ -116,7 +107,7 @@ test-api: ## APIエンドポイントをテスト
 		-H "x-api-key: $$API_KEY" \
 		-d '{"transcript":"これはテスト用の会議文字起こしです。新機能のリリース日を来月15日に決定します。","metadata":{"participants":["田中","佐藤"],"duration":1800}}' \
 		-w "\n\nHTTP Status: %{http_code}\n" \
-		| jq . || echo "JSON解析に失敗しました"
+	| jq . || echo "JSON解析に失敗しました"
 
 # 簡単なヘルスチェック
 health-check: ## APIヘルスチェック
@@ -131,7 +122,7 @@ clean: ## ローカル環境をクリーンアップ
 	@echo "🧹 ローカル環境をクリーンアップ中..."
 	docker compose -f docker-compose.yml down -v
 	@rm -f infrastructure/modules/lambda/lambda.zip
-	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars
 	@echo "✅ クリーンアップが完了しました"
 
 # 開発環境の完全セットアップ
