@@ -132,11 +132,11 @@ setup_environment_files() {
         if [ -f "env.local.sample" ]; then
             cp env.local.sample .env.local
 
-            # ダミーのGEMINI_API_KEYを設定（開発用）
-            if grep -q "GEMINI_API_KEY=your_gemini_api_key_here" .env.local; then
-                sed -i.bak 's/GEMINI_API_KEY=your_gemini_api_key_here/GEMINI_API_KEY=dummy-key-for-local-development/' .env.local
+            # ダミーのCLAUDE_API_KEY_VALUEを設定（開発用）
+            if grep -q "CLAUDE_API_KEY_VALUE=your_claude_api_key_here" .env.local; then
+                sed -i.bak 's/CLAUDE_API_KEY_VALUE=your_claude_api_key_here/CLAUDE_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
                 rm -f .env.local.bak
-                log_success "開発用ダミーGEMINI_API_KEYを設定しました"
+                log_success "開発用ダミーCLAUDE_API_KEY_VALUEを設定しました"
             fi
 
             log_success ".env.local ファイルを作成しました"
@@ -148,10 +148,10 @@ setup_environment_files() {
         log_warning ".env.local ファイルは既に存在します"
 
         # 既存ファイルでもダミーキーを確認・設定
-        if grep -q "GEMINI_API_KEY=your_gemini_api_key_here" .env.local; then
-            sed -i.bak 's/GEMINI_API_KEY=your_gemini_api_key_here/GEMINI_API_KEY=dummy-key-for-local-development/' .env.local
+        if grep -q "CLAUDE_API_KEY_VALUE=your_claude_api_key_here" .env.local; then
+            sed -i.bak 's/CLAUDE_API_KEY_VALUE=your_claude_api_key_here/CLAUDE_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
             rm -f .env.local.bak
-            log_success "開発用ダミーGEMINI_API_KEYを設定しました"
+            log_success "開発用ダミーCLAUDE_API_KEY_VALUEを設定しました"
         fi
     fi
 
@@ -248,7 +248,7 @@ setup_terraform_vars() {
     if [ -f ".env.local" ]; then
         (
             echo "# .env.localから自動生成されるTerraform変数ファイル"
-            echo "gemini_api_key=\"$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""
+            echo "claude_api_key_value=\"$(grep CLAUDE_API_KEY_VALUE .env.local | cut -d '=' -f2-)\""
             echo "slack_error_webhook_url=\"$(grep SLACK_ERROR_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""
         ) > infrastructure/environments/local/terraform.tfvars
         log_success "✅ infrastructure/environments/local/terraform.tfvars を作成しました"
@@ -263,18 +263,10 @@ show_next_steps() {
     echo "🎉 初期セットアップが完了しました！"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    log_warning "⚠️  次の設定が必要です:"
+    log_info "開発環境を起動・デプロイコマンド"
+    echo "make start"
     echo ""
-    echo "1. 📝 Gemini API キーの設定"
-    echo "   • Google AI Studio でAPIキーを取得: https://makersuite.google.com/app/apikey"
-    echo "   • .env.local ファイルを編集: vim .env.local"
-    echo "   • GEMINI_API_KEY=your_api_key_here を設定"
-    echo ""
-    echo "2. 📢 Slack通知の設定（オプション）"
-    echo "   • Slack Webhook URLを取得"
-    echo "   • .env.local の SLACK_ERROR_WEBHOOK_URL を設定"
-    echo ""
-    log_info "詳細なドキュメントは README.md を参照してください"
+    log_info "その他のコマンドは 'make help' で確認できます。"
 }
 
 # メイン実行

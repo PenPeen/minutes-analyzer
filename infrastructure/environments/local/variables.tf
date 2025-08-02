@@ -40,11 +40,17 @@ variable "log_retention_days" {
   default     = 14
 }
 
-variable "gemini_api_key" {
-  description = "Gemini API key"
+variable "claude_api_key_secret_name" {
+  description = "The name of the secret in AWS Secrets Manager"
+  type        = string
+  default     = "minutes-analyzer/claude-api-key"
+}
+
+variable "claude_api_key_value" {
+  description = "The value of the Claude API key (for local/dev only)"
   type        = string
   sensitive   = true
-  default     = "dummy-key-for-local-development"  # ローカル開発用デフォルト値
+  default     = "dummy-claude-api-key"
 }
 
 variable "slack_error_webhook_url" {
@@ -53,10 +59,28 @@ variable "slack_error_webhook_url" {
   default     = ""
 }
 
+variable "slack_integration_enabled" {
+  description = "Enable Slack integration"
+  type        = string
+  default     = "true"
+}
+
+variable "notion_integration_enabled" {
+  description = "Enable Notion integration"
+  type        = string
+  default     = "true"
+}
+
+variable "log_level" {
+  description = "Log level for the lambda function"
+  type        = string
+  default     = "INFO"
+}
+
 variable "ai_model" {
   description = "AI model to use"
   type        = string
-  default     = "gemini-1.5-flash"
+  default     = "claude-3-5-sonnet-20240620"
 }
 
 variable "common_tags" {

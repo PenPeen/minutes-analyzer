@@ -62,8 +62,7 @@ wait-for-localstack: ## LocalStackの起動を待機
 # Lambda関数のビルド
 build-lambda: ## Lambda関数をビルド
 	@echo "🔨 Lambda関数をビルド中..."
-	@cd lambda && bundle install --deployment --without development test
-	@cd lambda && zip -qr ../infrastructure/modules/lambda/lambda.zip . -x "spec/*" "*.git*" "Makefile"
+	@docker compose run --rm ruby-lambda-builder sh -c "apk add --no-cache zip build-base && gem install bundler && bundle install --deployment --without development test && zip -qr ../infrastructure/modules/lambda/lambda.zip . -x 'spec/*' '*.git*' 'Makefile'"
 	@echo "✅ Lambda関数のビルドが完了しました"
 
 tf-init: ## Terraformを初期化
@@ -82,7 +81,7 @@ tf-plan: tf-init ## Terraformプランを実行
 	@echo "✅ Terraformプランが完了しました"
 
 # LocalStack環境にデプロイ
-deploy-local: build-lambda tf-plan ## LocalStack環境にデプロイ
+deploy-local: tf-plan ## LocalStack環境にデプロイ
 	@echo "🚀 LocalStack環境にデプロイ中..."
 	@cd infrastructure/environments/local && terraform apply -auto-approve
 	@echo "✅ デプロイが完了しました"
@@ -125,8 +124,12 @@ clean: ## ローカル環境をクリーンアップ
 	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars
 	@echo "✅ クリーンアップが完了しました"
 
+# Lambda関数をビルド・デプロイする完全なタスク
+build-and-deploy: build-lambda deploy-local ## Lambda関数をビルドしてデプロイ
+	@echo "🎉 ビルドとデプロイが完了しました！"
+
 # 開発環境の完全セットアップ
-dev-setup: setup-local deploy-local test-api ## 開発環境を完全にセットアップ
+dev-setup: setup-local build-and-deploy test-api ## 開発環境を完全にセットアップ
 	@echo "🎉 開発環境のセットアップが完了しました！"
 	@echo ""
 	@echo "📋 利用可能な情報:"
