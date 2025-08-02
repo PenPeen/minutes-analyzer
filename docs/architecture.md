@@ -27,6 +27,7 @@ graph LR
     B --> C[GAS定期実行]
     C --> D[Gemini API処理]
     D --> E[Slack通知]
+    D --> F[Notion連携]
 ```
 
 **技術スタック:**
@@ -34,6 +35,7 @@ graph LR
 - Google Drive API
 - Gemini API
 - Slack API
+- Notion API
 
 **メリット:**
 - シンプルな構成
@@ -57,28 +59,31 @@ https://developers.google.com/apps-script/guides/services/quotas
 graph LR
     A[Google Meet] --> B[Google Drive文字起こし]
     B --> C[GAS監視・前処理]
-    C --> D[Lambda AI処理]
-    D --> E[GAS配信処理]
-    E --> F[Slack通知]
+    C --> D[Lambda AI処理・配信]
+    D --> E[Slack通知]
+    D --> F[Notion連携]
 ```
 
 **技術スタック:**
-- Google Apps Script（監視・配信）
-- AWS Lambda（AI処理）
+- Google Apps Script（監視・前処理）
+- AWS Lambda（AI処理・配信）
 - API Gateway
-- Gemini/Claude API
+- Claude 3.5 Haiku API
 - Slack API
+- Notion API
 
 **メリット:**
 - Lambdaを使用することで、**実行時間が15分**
+- **シンプルなアーキテクチャ**: Lambda内でAI処理・配信を一括実行
 - CloudWatchを使用することでの充実した監視・ログ機能
 - 高いスケーラビリティ（同時実行数1000以上）
+- **Notion連携のON/OFF切り替え**による柔軟な運用
 
 **デメリット:**
-- 設定がやや複雑
 - AWS学習コストあり
+- 初期設定の複雑さ（GAS + AWS連携）
 
-**コスト試算:** 月$6-12
+**コスト試算:** 月$8-15
 
 ## 決定事項
 
@@ -90,7 +95,7 @@ graph LR
 
 **問題:**
 - 1時間の会議 → 文字起こし20,000文字
-- Gemini API処理時間: 3-5分
+- Claude 3.5 Haiku API処理時間: 3-5分
 - GAS制限: 6分 → **ギリギリでリスクが高い**
 
 ### 2. 監視・運用の充実
@@ -101,3 +106,41 @@ graph LR
 - エラー率・成功率のダッシュボード
 - アラート設定
 ```
+
+## Notion API連携のメリット
+
+### 📚 蓄積・検索価値
+- **全会議の一括管理**: 議事録が散逸せず、時系列で蓄積
+- **横断検索**: プロジェクト間、期間を跨いだ決定事項の追跡が可能
+- **知識ベース化**: 過去の議論内容を組織の資産として活用
+
+### 🔄 ワークフロー統合
+- **既存のプロジェクト管理と連携**: NotionのTask/Projectページと自動リンク
+- **TODO自動変換**: 抽出されたTODOを直接タスクDBに追加
+- **チーム連携強化**: Notionワークスペース内での情報共有促進
+
+### ⚙️ 柔軟な設定管理
+- **環境変数による制御**: `NOTION_ENABLED=true/false`で簡単切り替え
+- **段階的導入**: Slack通知のみから開始し、必要に応じてNotion連携を追加
+- **コスト最適化**: 必要な機能のみを有効化してリソース使用量を調整
+
+## AWS Lambda採用理由
+
+### 1. 実行時間制限
+- **Lambda**: 15分
+- **Google Apps Script**: 6分
+- **Cloud Functions**: 9分（第1世代）/ 60分（第2世代）
+
+### 2. コスト面
+今回のアプリケーション要件では、AWS Lambdaが最もコスト効率が良いと判断
+
+- 実行時間: 5-7分/回
+- メモリ使用量: 1GB程度
+- 実行頻度: 月間100-200回程度
+
+### 3. モニタリング／トレーシング
+- 各サービス間で特に大きな違いはなし
+- いずれもログ管理、メトリクス監視、分散トレーシング機能を提供
+
+### 採用理由
+既存の議事録テキストからのAI分析・構造化処理（5-7分の実行時間を想定）において、コスト効率の観点から、AWS Lambdaが最適解であると判断。
