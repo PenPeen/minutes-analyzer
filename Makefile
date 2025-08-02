@@ -1,4 +1,4 @@
-.PHONY: help setup build-lambda deploy-local destroy-local test-api clean logs
+.PHONY: help setup start build-lambda deploy-local destroy-local test-api clean logs check-localstack-ready stop
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -14,6 +14,17 @@ ENVIRONMENT = local
 setup: ## 初期セットアップを実行
 	@./scripts/setup.sh
 
+# 開発環境起動（ビルド・デプロイ含む）
+start: ## 開発環境を起動・デプロイ
+	@echo "🚀 開発環境を起動中..."
+	@export $$(cat .env.local | grep -v '^#' | xargs) && \
+	cd infrastructure && docker compose up -d
+	@echo "⏳ LocalStackの起動を待機中..."
+	@sleep 15
+	$(MAKE) build-lambda
+	$(MAKE) deploy-local
+	@echo "✅ 開発環境の起動が完了しました"
+
 # LocalStack環境のセットアップ
 setup-local: ## LocalStack環境をセットアップ
 	@echo "🚀 LocalStack環境をセットアップ中..."
@@ -22,7 +33,7 @@ setup-local: ## LocalStack環境をセットアップ
 		exit 1; \
 	fi
 	@export $$(cat .env.local | grep -v '^#' | xargs) && \
-	docker-compose -f infrastructure/docker-compose.yml up -d localstack
+	docker compose -f $(DOCKER_COMPOSE_FILE) --profile dev up -d
 	@echo "⏳ LocalStackの起動を待機中..."
 	@sleep 10
 	@echo "✅ LocalStackが起動しました: $(LOCALSTACK_ENDPOINT)"
@@ -30,27 +41,30 @@ setup-local: ## LocalStack環境をセットアップ
 # LocalStackの状態確認
 check-localstack: ## LocalStackの状態を確認
 	@echo "🔍 LocalStackの状態を確認中..."
-	@curl -s $(LOCALSTACK_ENDPOINT)/health | jq . || echo "❌ LocalStackに接続できません"
+	@curl -sf $(LOCALSTACK_ENDPOINT)/health || (echo "❌ LocalStackに接続できません" && exit 1)
 
 # Lambda関数のビルド
 build-lambda: ## Lambda関数をビルド
 	@echo "🔨 Lambda関数をビルド中..."
 	@cd lambda && bundle install --deployment --without development test
-	@cd lambda && zip -r ../infrastructure/modules/lambda/lambda.zip . -x "spec/*" "*.git*" "Makefile"
+	@cd lambda && zip -qr ../infrastructure/modules/lambda/lambda.zip . -x "spec/*" "*.git*" "Makefile"
 	@echo "✅ Lambda関数のビルドが完了しました"
 
-# Terraformの初期化
 tf-init: ## Terraformを初期化
-	@echo "🏗️  Terraform初期化中..."
-	@cd infrastructure/environments/local && terraform init
-	@echo "✅ Terraformの初期化が完了しました"
+	@echo "Terraform初期化中..."
+	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
+		cd $(TF_DIR) && terraform init; \
+	else \
+		echo "Terraformは既に初期化されています"; \
+	fi
+	@echo "Terraformの初期化が完了しました"
 
 # Terraformプランの実行
 tf-plan: tf-init ## Terraformプランを実行
 	@echo "📋 Terraformプランを実行中..."
 	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$${GEMINI_API_KEY}" && \
-	export TF_VAR_slack_error_webhook_url="$${SLACK_ERROR_WEBHOOK_URL}" && \
+	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
+	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
 	terraform plan
 	@echo "✅ Terraformプランが完了しました"
 
@@ -58,8 +72,8 @@ tf-plan: tf-init ## Terraformプランを実行
 deploy-local: build-lambda tf-plan ## LocalStack環境にデプロイ
 	@echo "🚀 LocalStack環境にデプロイ中..."
 	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$${GEMINI_API_KEY}" && \
-	export TF_VAR_slack_error_webhook_url="$${SLACK_ERROR_WEBHOOK_URL}" && \
+	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
+	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
 	terraform apply -auto-approve
 	@echo "✅ デプロイが完了しました"
 	@echo "📋 デプロイ情報:"
@@ -69,8 +83,8 @@ deploy-local: build-lambda tf-plan ## LocalStack環境にデプロイ
 destroy-local: ## LocalStack環境を破棄
 	@echo "🗑️  LocalStack環境を破棄中..."
 	@cd infrastructure/environments/local && \
-	export TF_VAR_gemini_api_key="$${GEMINI_API_KEY}" && \
-	export TF_VAR_slack_error_webhook_url="$${SLACK_ERROR_WEBHOOK_URL}" && \
+	export TF_VAR_gemini_api_key="$$${{GEMINI_API_KEY}}" && \
+	export TF_VAR_slack_error_webhook_url="$$${{SLACK_ERROR_WEBHOOK_URL}}" && \
 	terraform destroy -auto-approve
 	@echo "✅ 環境の破棄が完了しました"
 
@@ -98,14 +112,12 @@ health-check: ## APIヘルスチェック
 logs: ## CloudWatchログを確認（LocalStack）
 	@echo "📋 ログを確認中..."
 	@LOG_GROUP=$$(cd infrastructure/environments/local && terraform output -raw lambda_log_group_name); \
-	aws --endpoint-url=$(LOCALSTACK_ENDPOINT) logs describe-log-streams \
-		--log-group-name "$$LOG_GROUP" \
-		--region $(AWS_REGION) || echo "ログの取得に失敗しました"
+	docker compose -f docker-compose.yml exec localstack-minutes-analyzer sh -c "aws --endpoint-url=$(LOCALSTACK_ENDPOINT) logs describe-log-streams --log-group-name \"$LOG_GROUP\" --region $(AWS_REGION) | jq -r '.logStreams[0].logStreamName' | xargs -I {} aws --endpoint-url=$(LOCALSTACK_ENDPOINT) logs get-log-events --log-group-name \"$LOG_GROUP\" --log-stream-name {} --region $(AWS_REGION) | jq -r '.events[].message'" || echo "ログの取得に失敗しました"
 
 # ローカル環境のクリーンアップ
 clean: ## ローカル環境をクリーンアップ
 	@echo "🧹 ローカル環境をクリーンアップ中..."
-	docker-compose -f infrastructure/docker-compose.yml down -v
+	docker compose -f docker-compose.yml down -v
 	@rm -f infrastructure/modules/lambda/lambda.zip
 	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
 	@echo "✅ クリーンアップが完了しました"
@@ -114,20 +126,36 @@ clean: ## ローカル環境をクリーンアップ
 dev-setup: setup-local deploy-local test-api ## 開発環境を完全にセットアップ
 	@echo "🎉 開発環境のセットアップが完了しました！"
 	@echo ""
-	@echo "📋 利用可能な情報："
+	@echo "📋 利用可能な情報:"
 	@cd infrastructure/environments/local && \
 	echo "API エンドポイント: $$(terraform output -raw api_endpoint_url 2>/dev/null || echo 'N/A')" && \
 	echo "API キー: $$(terraform output -raw api_key_value 2>/dev/null || echo 'N/A')"
 	@echo ""
-	@echo "📋 次のステップ："
-	@echo "• テスト実行: make test-api"
+	@echo "📋 次のステップ:"
+	@echo "• テスト実行: make test"
 	@echo "• ログ確認: make logs"
-	@echo "• 環境停止: make clean"
+	@echo "• 環境停止: make stop"
+
+# 開発環境停止
+stop: ## 開発環境を停止
+	@echo "開発環境を停止中..."
+	@if [ ! -f .env.local ]; then \
+		echo "WARNING: .env.localファイルが見つかりません。make setup を最初に実行してください。"; \
+		echo "Docker Composeサービスを直接停止します..."; \
+		docker compose -f $(DOCKER_COMPOSE_FILE) down 2>/dev/null || true; \
+	else \
+		export $$(cat .env.local | grep -v '^#' | xargs) && \
+		docker compose -f $(DOCKER_COMPOSE_FILE) down; \
+	fi
+	@echo "開発環境が停止しました"
 
 # 実際のLambda関数のテスト実行
 test-lambda-local: ## Lambda関数をローカルでテスト
 	@echo "🧪 Lambda関数をローカルでテスト中..."
 	@cd lambda && ruby -r './src/lambda_function.rb' -e 'puts lambda_handler(event: {"body": "{\"transcript\":\"テスト会議です\"}"}, context: OpenStruct.new(aws_request_id: "test-123"))'
+
+# 総合テスト
+test: test-api test-lambda-local ## 全てのテストを実行
 
 # AWS本番環境用のコマンド
 deploy-production: ## 本番環境にデプロイ
