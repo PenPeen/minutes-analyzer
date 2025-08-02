@@ -70,10 +70,8 @@ check_prerequisites() {
                 log_success "$name: $version"
             fi
         elif ! command -v "$cmd" &> /dev/null; then
-            else
-                missing_deps+=("$name")
-                log_error "$name が見つかりません"
-            fi
+            missing_deps+=("$name")
+            log_error "$name が見つかりません"
         else
             local version=""
             case "$cmd" in
@@ -243,6 +241,22 @@ verify_project_structure() {
     log_success "プロジェクト構造が確認されました"
 }
 
+# Terraform .tfvarsの作成
+setup_terraform_vars() {
+    log_info "Terraform変数ファイルを作成中..."
+    cd "$PROJECT_ROOT"
+    if [ -f ".env.local" ]; then
+        (
+            echo "# .env.localから自動生成されるTerraform変数ファイル"
+            echo "gemini_api_key=\"$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""
+            echo "slack_error_webhook_url=\"$(grep SLACK_ERROR_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""
+        ) > infrastructure/environments/local/terraform.tfvars
+        log_success "✅ infrastructure/environments/local/terraform.tfvars を作成しました"
+    else
+        log_warning "⚠️ .env.local が見つかりません。terraform.tfvars は作成されませんでした。"
+    fi
+}
+
 # 使用方法の表示
 show_next_steps() {
     echo ""
@@ -270,8 +284,10 @@ main() {
     setup_environment_files
     setup_terraform
     check_ruby_dependencies
+    setup_terraform_vars
     show_next_steps
 }
+
 
 # スクリプト実行
 main "$@"
