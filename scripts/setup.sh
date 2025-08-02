@@ -70,14 +70,6 @@ check_prerequisites() {
                 log_success "$name: $version"
             fi
         elif ! command -v "$cmd" &> /dev/null; then
-            if [ "$cmd" = "jq" ] && [ "$(uname -s)" = "Darwin" ]; then
-                log_warning "jqが見つかりません。Homebrewでインストールします..."
-                if brew install jq; then
-                    log_success "jqをインストールしました"
-                else
-                    log_error "jqのインストールに失敗しました。手動でインストールしてください。"
-                    missing_deps+=("$name")
-                fi
             else
                 missing_deps+=("$name")
                 log_error "$name が見つかりません"
