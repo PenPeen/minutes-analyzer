@@ -1,4 +1,4 @@
-.PHONY: help setup start build-lambda deploy-local destroy-local test-api clean logs check-localstack-ready stop
+.PHONY: help setup start build-lambda deploy-local destroy-local test-api clean check-localstack-ready stop
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -124,11 +124,7 @@ health-check: ## APIヘルスチェック
 	@API_URL=$$(cd infrastructure/environments/local && terraform output -raw api_gateway_url); \
 	curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"
 
-# ログの確認
-logs: ## CloudWatchログを確認（LocalStack）
-	@echo "📋 ログを確認中..."
-	@LOG_GROUP=$$(cd infrastructure/environments/local && terraform output -raw lambda_log_group_name); \
-	docker compose -f docker-compose.yml exec localstack-minutes-analyzer sh -c "aws --endpoint-url=$(LOCALSTACK_ENDPOINT) logs describe-log-streams --log-group-name \"$LOG_GROUP\" --region $(AWS_REGION) | jq -r '.logStreams[0].logStreamName' | xargs -I {} aws --endpoint-url=$(LOCALSTACK_ENDPOINT) logs get-log-events --log-group-name \"$LOG_GROUP\" --log-stream-name {} --region $(AWS_REGION) | jq -r '.events[].message'" || echo "ログの取得に失敗しました"
+
 
 # ローカル環境のクリーンアップ
 clean: ## ローカル環境をクリーンアップ
@@ -149,7 +145,6 @@ dev-setup: setup-local deploy-local test-api ## 開発環境を完全にセッ�
 	@echo ""
 	@echo "📋 次のステップ:"
 	@echo "• テスト実行: make test"
-	@echo "• ログ確認: make logs"
 	@echo "• 環境停止: make stop"
 
 # 開発環境停止
