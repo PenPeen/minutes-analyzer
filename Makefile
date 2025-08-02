@@ -5,7 +5,9 @@ help: ## ヘルプを表示
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # 環境変数
-LOCALSTACK_ENDPOINT = http://localhost:4566
+LOCALSTACK_ENDPOINT ?= http://localhost:4566
+LOCALSTACK_TIMEOUT ?= 60
+LOCALSTACK_CHECK_INTERVAL ?= 3
 AWS_REGION = ap-northeast-1
 PROJECT_NAME = minutes-analyzer
 ENVIRONMENT = local
@@ -17,10 +19,9 @@ setup: ## 初期セットアップを実行
 # 開発環境起動（ビルド・デプロイ含む）
 start: ## 開発環境を起動・デプロイ
 	@echo "🚀 開発環境を起動中..."
-	@export $$(cat .env.local | grep -v '^#' | xargs) && \
+	@export $(cat .env.local | grep -v '^#' | xargs) && \
 	cd infrastructure && docker compose up -d
-	@echo "⏳ LocalStackの起動を待機中..."
-	@sleep 15
+	$(MAKE) wait-for-localstack
 	$(MAKE) build-lambda
 	$(MAKE) deploy-local
 	@echo "✅ 開発環境の起動が完了しました"
@@ -32,16 +33,31 @@ setup-local: ## LocalStack環境をセットアップ
 		echo "❌ .env.localファイルが見つかりません。make setup を最初に実行してください。"; \
 		exit 1; \
 	fi
-	@export $$(cat .env.local | grep -v '^#' | xargs) && \
+	@export $(cat .env.local | grep -v '^#' | xargs) && \
 	docker compose -f $(DOCKER_COMPOSE_FILE) --profile dev up -d
-	@echo "⏳ LocalStackの起動を待機中..."
-	@sleep 10
+	$(MAKE) wait-for-localstack
 	@echo "✅ LocalStackが起動しました: $(LOCALSTACK_ENDPOINT)"
 
 # LocalStackの状態確認
 check-localstack: ## LocalStackの状態を確認
 	@echo "🔍 LocalStackの状態を確認中..."
-	@curl -sf $(LOCALSTACK_ENDPOINT)/health || (echo "❌ LocalStackに接続できません" && exit 1)
+	@curl -sf $(LOCALSTACK_ENDPOINT)/_localstack/health || (echo "❌ LocalStackに接続できません" && exit 1)
+
+## LocalStackの起動を待機
+wait-for-localstack: ## LocalStackの起動を待機
+	@echo "⏳ LocalStackの起動を待機中..."
+	@timeout=60; \
+	while [ $$timeout -gt 0 ]; do \
+		if curl -sf $(LOCALSTACK_ENDPOINT)/_localstack/health > /dev/null 2>&1; then \
+			echo "✅ LocalStackが起動しました"; \
+			exit 0; \
+		fi; \
+		echo "LocalStack起動待機中... (残り $${timeout}秒)"; \
+		sleep 3; \
+		timeout=$$((timeout - 3)); \
+	done; \
+	echo "❌ LocalStackの起動がタイムアウトしました"; \
+	exit 1
 
 # Lambda関数のビルド
 build-lambda: ## Lambda関数をビルド
