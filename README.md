@@ -20,7 +20,7 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 #### macOS (Homebrew)
 ```bash
 # 必要な依存関係をインストール
-brew install docker terraform awscli jq ruby
+brew install docker terraform awscli ruby jq
 ```
 
 - Google Workspace アカウント
