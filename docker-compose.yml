@@ -14,7 +14,7 @@ services:
       - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
 
       # AWS services to enable
-      - SERVICES=lambda,apigateway,logs,iam,sts
+      - SERVICES=lambda,apigateway,logs,iam,sts,secretsmanager
 
       # Data persistence
       - DATA_DIR=/tmp/localstack/data
@@ -65,6 +65,17 @@ services:
     profiles:
       - tools
       - dev  # 開発時のデフォルトプロファイル
+
+  ruby-lambda-builder:
+    container_name: ruby-lambda-builder-${PROJECT_NAME:-minutes-analyzer}
+    image: ruby:3.2-alpine
+    working_dir: /workspace/lambda
+    volumes:
+      - ".:/workspace"
+    profiles:
+      - tools
+      - dev
+    command: ["sh", "-c", "apk add --no-cache zip build-base && gem install bundler && echo 'Ruby Lambda Builder ready'"]
 
 networks:
   localstack-network:

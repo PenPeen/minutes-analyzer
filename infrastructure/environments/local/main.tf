@@ -13,11 +13,12 @@ provider "aws" {
 
   # LocalStack用設定
   endpoints {
-    lambda      = "http://localhost:4566"
-    apigateway  = "http://localhost:4566"
-    iam         = "http://localhost:4566"
-    logs        = "http://localhost:4566"
-    sts         = "http://localhost:4566"
+    lambda         = "http://localhost:4566"
+    apigateway     = "http://localhost:4566"
+    iam            = "http://localhost:4566"
+    logs           = "http://localhost:4566"
+    sts            = "http://localhost:4566"
+    secretsmanager = "http://localhost:4566"
   }
 
   # LocalStack用の認証設定
@@ -28,21 +29,37 @@ provider "aws" {
   skip_requesting_account_id  = true
 }
 
+# Secrets Manager for Claude API Key
+resource "aws_secretsmanager_secret" "claude_api_key" {
+  name = var.claude_api_key_secret_name
+  tags = var.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "claude_api_key" {
+  secret_id     = aws_secretsmanager_secret.claude_api_key.id
+  secret_string = jsonencode({
+    CLAUDE_API_KEY = var.claude_api_key_value
+  })
+}
+
 # Lambda関数
 resource "aws_lambda_function" "minutes_analyzer" {
   filename         = var.lambda_zip_path
   function_name    = "${var.project_name}-${var.environment}"
-  role            = aws_iam_role.lambda_execution_role.arn
-  handler         = "lambda_function.lambda_handler"
-  runtime         = "ruby3.3"
-  timeout         = var.lambda_timeout
-  memory_size     = var.lambda_memory_size
+  role             = aws_iam_role.lambda_execution_role.arn
+  handler          = "lambda_function.lambda_handler"
+  runtime          = "ruby3.3"
+  timeout          = var.lambda_timeout
+  memory_size      = var.lambda_memory_size
 
   environment {
     variables = {
-      ENVIRONMENT             = var.environment
-      GEMINI_API_KEY          = var.gemini_api_key
-      SLACK_ERROR_WEBHOOK_URL = var.slack_error_webhook_url
+      ENVIRONMENT                 = var.environment
+      CLAUDE_API_KEY_SECRET_NAME  = var.claude_api_key_secret_name
+      SLACK_ERROR_WEBHOOK_URL     = var.slack_error_webhook_url
+      SLACK_INTEGRATION           = var.slack_integration_enabled
+      NOTION_INTEGRATION          = var.notion_integration_enabled
+      LOG_LEVEL                   = var.log_level
     }
   }
 
@@ -81,6 +98,23 @@ resource "aws_iam_role" "lambda_execution_role" {
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   role       = aws_iam_role.lambda_execution_role.name
+}
+
+# IAM Policy for Secrets Manager
+resource "aws_iam_role_policy" "lambda_secrets_policy" {
+  name = "${var.project_name}-lambda-secrets-policy-${var.environment}"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect   = "Allow",
+        Action   = "secretsmanager:GetSecretValue",
+        Resource = aws_secretsmanager_secret.claude_api_key.arn
+      }
+    ]
+  })
 }
 
 # API Gateway
