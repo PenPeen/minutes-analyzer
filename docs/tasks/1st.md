@@ -10,11 +10,11 @@
 - [x] 開発環境停止手順整備（`make stop`）
 
 #### 1.2 Lambda関数MVP実装
-- [ ] Ruby Lambda基本構造実装（`lambda_function.rb`）
-- [ ] Claude 3.5 Haiku API基本連携実装
-- [ ] JSON レスポンス基本構造定義
-- [ ] 環境変数読み込み機能（Slack + Notion ON/OFF制御含む）
-- [ ] **エラーハンドリング最小実装**（500エラー回避）
+- [x] Ruby Lambda基本構造実装（`lambda_function.rb`）
+- [x] Claude 3.5 Haiku API基本連携実装
+- [x] JSON レスポンス基本構造定義
+- [x] 環境変数読み込み機能（Slack + Notion ON/OFF制御含む）
+- [x] **エラーハンドリング最小実装**（500エラー回避）
 
 #### 1.3 Terraform最小構成
 - [ ] Lambda関数デプロイ設定

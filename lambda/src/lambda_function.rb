@@ -9,7 +9,7 @@ LOGGER.level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
 
 # Constants
 CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages'.freeze
-CLAUDE_MODEL = 'claude-3-5-sonnet-20240620'.freeze
+CLAUDE_MODEL = 'claude-3-5-haiku-20241022'.freeze
 
 def lambda_handler(event:, context:)
   # In a real Lambda environment, context object is provided. For local testing, we can use a mock.

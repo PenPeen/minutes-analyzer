@@ -80,7 +80,7 @@ variable "log_level" {
 variable "ai_model" {
   description = "AI model to use"
   type        = string
-  default     = "claude-3-5-sonnet-20240620"
+  default     = "claude-3-5-haiku-20241022"
 }
 
 variable "common_tags" {
