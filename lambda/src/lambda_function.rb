@@ -105,6 +105,18 @@ def call_gemini_api(api_key, text)
   response = http.request(request)
   LOGGER.info("Gemini API response status: #{response.code}")
 
+  unless response.is_a?(Net::HTTPSuccess)
+    error_body = JSON.parse(response.body) rescue { error: { message: response.body } }
+    error_message = error_body.dig("error", "message") || "Unknown API error"
+    LOGGER.error("Gemini API request failed with status #{response.code}: #{error_message}")
+    case response.code.to_i
+    when 401, 403
+      raise "Authentication failed with Gemini API. Please check your API key. Details: #{error_message}"
+    else
+      raise "Gemini API request failed. Status: #{response.code}, Details: #{error_message}"
+    end
+  end
+
   JSON.parse(response.body)
 end
 
@@ -118,25 +130,30 @@ if __FILE__ == $0
     'body' => JSON.generate({ text: 'Hello, this is a test transcript for summarization.' })
   }
 
-  # --- Test Case 1: Success (with mocked API call) ---
-  LOGGER.info("--- Running local test (Success with Mock) ---")
-  # To prevent real API call with a dummy key, we can mock the API call itself for this local test
-  # In a real test environment, you might use a library like WebMock.
-  self.class.send(:define_method, :call_gemini_api) do |api_key, text|
-    LOGGER.info("--- MOCKING call_gemini_api ---")
-    { "candidates" => [{ "content" => { "parts" => [{ "text" => "This is a mock summary." }] } }] }
+  # Store the original API key to restore it after tests
+  original_api_key = ENV['GEMINI_API_KEY']
+
+  # --- Test Case 1: Success (with real API call if key is present) ---
+  LOGGER.info("--- Running local test (Success Case) ---")
+  if original_api_key && !original_api_key.empty?
+    LOGGER.info("GEMINI_API_KEY is set. Calling the actual Gemini API.")
+    ENV['SLACK_INTEGRATION'] = 'true'
+    result = lambda_handler(event: mock_event, context: mock_context)
+    LOGGER.info("Result:\n#{JSON.pretty_generate(result)}")
+  else
+    LOGGER.warn("GEMINI_API_KEY is not set. Skipping the success case test with a real API call.")
+    LOGGER.warn("To run the full local test, please set the GEMINI_API_KEY environment variable.")
   end
-  ENV['GEMINI_API_KEY'] = 'dummy-key'
-  ENV['SLACK_INTEGRATION'] = 'true'
-  result = lambda_handler(event: mock_event, context: mock_context)
-  LOGGER.info("Result:\n#{JSON.pretty_generate(result)}")
   LOGGER.info("---------------------------------------------")
 
 
   # --- Test Case 2: Missing API Key ---
   LOGGER.info("--- Running error test (Missing API key) ---")
-  ENV['GEMINI_API_KEY'] = nil
+  ENV['GEMINI_API_KEY'] = nil # Temporarily unset the key for this test
   result = lambda_handler(event: mock_event, context: mock_context)
   LOGGER.info("Result:\n#{JSON.pretty_generate(result)}")
   LOGGER.info("------------------------------------------")
+
+  # Restore the original API key if it existed
+  ENV['GEMINI_API_KEY'] = original_api_key if original_api_key
 end

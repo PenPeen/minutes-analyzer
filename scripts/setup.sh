@@ -131,27 +131,10 @@ setup_environment_files() {
     if [ ! -f ".env.local" ]; then
         if [ -f "env.local.sample" ]; then
             cp env.local.sample .env.local
-
-            # ダミーのGEMINI_API_KEY_VALUEを設定（開発用）
-            if grep -q "GEMINI_API_KEY_VALUE=your_gemini_api_key_here" .env.local; then
-                sed -i.bak 's/GEMINI_API_KEY_VALUE=your_gemini_api_key_here/GEMINI_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
-                rm -f .env.local.bak
-                log_success "開発用ダミーGEMINI_API_KEY_VALUEを設定しました"
-            fi
-
             log_success ".env.local ファイルを作成しました"
         else
             log_error "env.local.sample ファイルが見つかりません"
             exit 1
-        fi
-    else
-        log_warning ".env.local ファイルは既に存在します"
-
-        # 既存ファイルでもダミーキーを確認・設定
-        if grep -q "GEMINI_API_KEY_VALUE=your_gemini_api_key_here" .env.local; then
-            sed -i.bak 's/GEMINI_API_KEY_VALUE=your_gemini_api_key_here/GEMINI_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
-            rm -f .env.local.bak
-            log_success "開発用ダミーGEMINI_API_KEY_VALUEを設定しました"
         fi
     fi
 
