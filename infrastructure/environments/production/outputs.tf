@@ -30,6 +30,6 @@ output "cloudwatch_log_group" {
 }
 
 output "secret_name" {
-  description = "Secret name for Gemini API key"
-  value       = aws_secretsmanager_secret.gemini_api_key.name
+  description = "Secret name for application secrets"
+  value       = aws_secretsmanager_secret.app_secrets.name
 }

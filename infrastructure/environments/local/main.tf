@@ -29,16 +29,18 @@ provider "aws" {
   skip_requesting_account_id  = true
 }
 
-# Secrets Manager for Gemini API Key
-resource "aws_secretsmanager_secret" "gemini_api_key" {
-  name = var.gemini_api_key_secret_name
+# Secrets Manager for Application Secrets
+resource "aws_secretsmanager_secret" "app_secrets" {
+  name = "${var.project_name}-secrets-${var.environment}"
   tags = var.common_tags
 }
 
-resource "aws_secretsmanager_secret_version" "gemini_api_key" {
-  secret_id     = aws_secretsmanager_secret.gemini_api_key.id
+resource "aws_secretsmanager_secret_version" "app_secrets" {
+  secret_id     = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    GEMINI_API_KEY = var.gemini_api_key_value
+    GEMINI_API_KEY             = var.gemini_api_key_value
+    SLACK_ERROR_WEBHOOK_URL    = var.slack_error_webhook_url
+    SLACK_SUCCESS_WEBHOOK_URL  = var.slack_success_webhook_url
   })
 }
 
@@ -55,8 +57,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
   environment {
     variables = {
       ENVIRONMENT                 = var.environment
-      GEMINI_API_KEY_SECRET_NAME  = var.gemini_api_key_secret_name
-      SLACK_ERROR_WEBHOOK_URL     = var.slack_error_webhook_url
+      APP_SECRETS_NAME            = aws_secretsmanager_secret.app_secrets.name
       SLACK_INTEGRATION           = var.slack_integration_enabled
       NOTION_INTEGRATION          = var.notion_integration_enabled
       LOG_LEVEL                   = var.log_level
@@ -111,7 +112,7 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
       {
         Effect   = "Allow",
         Action   = "secretsmanager:GetSecretValue",
-        Resource = aws_secretsmanager_secret.gemini_api_key.arn
+        Resource = aws_secretsmanager_secret.app_secrets.arn
       }
     ]
   })
