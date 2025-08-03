@@ -28,13 +28,24 @@ jobs:
         id: test
         run: |
           echo "🧪 Lambda関数のテストを実行中..."
-          if make test-lambda 2>&1 | tee test_output.log; then
+
+          # テスト実行（出力をファイルに保存し、終了コードも保持）
+          set +e  # 一時的にエラーで停止しないように設定
+          make test-lambda > test_output.log 2>&1
+          TEST_EXIT_CODE=$?
+          set -e  # エラーで停止する設定を復元
+
+          # 結果を表示
+          cat test_output.log
+
+          # 終了コードに基づいて結果を設定
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
             echo "test_result=success" >> $GITHUB_OUTPUT
             echo "✅ テストが完了しました"
           else
             echo "test_result=failure" >> $GITHUB_OUTPUT
-            echo "❌ テストが失敗しました"
-            exit 1
+            echo "❌ テストが失敗しました (終了コード: $TEST_EXIT_CODE)"
+            exit $TEST_EXIT_CODE
           fi
 
       - name: 💬 テスト失敗時のPRコメント
@@ -52,6 +63,16 @@ jobs:
               testOutput = 'テスト出力の取得に失敗しました。';
             }
 
+            // 失敗したテストを抽出
+            const failureMatch = testOutput.match(/Failures:(.*?)(?=Finished in|$)/s);
+            const failureDetails = failureMatch ? failureMatch[1].trim() : '';
+
+            const failedExamplesMatch = testOutput.match(/Failed examples:(.*?)(?=make:|$)/s);
+            const failedExamples = failedExamplesMatch ? failedExamplesMatch[1].trim() : '';
+
+            const summaryMatch = testOutput.match(/(\d+) examples?, (\d+) failures?/);
+            const testSummary = summaryMatch ? summaryMatch[0] : '';
+
             // 既存のボットコメントを検索
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
@@ -68,10 +89,22 @@ jobs:
 
             ❌ **テストが失敗しました**
 
-            ### 📊 テスト結果
+            ### 📊 テスト結果サマリー
+            ${testSummary}
+
+            ### 💥 失敗したテスト
+            ${failedExamples ? `\`\`\`\n${failedExamples}\n\`\`\`` : '詳細な失敗情報が取得できませんでした。'}
+
+            ### 🔍 失敗の詳細
+            ${failureDetails ? `\`\`\`\n${failureDetails.slice(0, 2000)}\n\`\`\`` : ''}
+
+            <details>
+            <summary>📋 完全なテスト出力を表示</summary>
+
             \`\`\`
-            ${testOutput.slice(-3000)} // 最後の3000文字を表示（GitHub制限対応）
+            ${testOutput.slice(-4000)}
             \`\`\`
+            </details>
 
             ### 🔧 対応方法
             1. ローカルで \`make test-lambda\` を実行してテストを確認
@@ -82,7 +115,6 @@ jobs:
             *このコメントは自動生成されました - ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}*`;
 
             if (botComment) {
-              // 既存コメントを更新
               await github.rest.issues.updateComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -90,7 +122,6 @@ jobs:
                 body: commentBody
               });
             } else {
-              // 新規コメント作成
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -104,7 +135,6 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            // 既存の失敗コメントがあれば成功に更新
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -142,5 +172,4 @@ jobs:
           name: test-results
           path: |
             test_output.log
-            spec/reports/
           retention-days: 7
