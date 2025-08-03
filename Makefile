@@ -60,10 +60,10 @@ wait-for-localstack: ## LocalStackの起動を待機
 	echo "❌ LocalStackの起動がタイムアウトしました"; \
 	exit 1
 
-# Lambda関数のビルド
 build-lambda: ## Lambda関数をビルド
 	@echo "🔨 Lambda関数をビルド中..."
-	@docker compose run --rm ruby-lambda-builder sh -c "apk add --no-cache zip build-base && gem install bundler && bundle install --deployment --without development test && zip -qr ../infrastructure/modules/lambda/lambda.zip . -x 'spec/*' '*.git*' 'Makefile'"
+	@mkdir -p infrastructure/modules/lambda
+	@docker compose run --rm ruby-lambda-builder
 	@echo "✅ Lambda関数のビルドが完了しました"
 
 tf-init: ## Terraformを初期化
@@ -110,7 +110,7 @@ health-check: ## APIヘルスチェック
 
 
 # ローカル環境のクリーンアップ
-clean: ## ローカル環境をクリーンアップ
+clean:
 	@echo "🧹 ローカル環境をクリーンアップ中..."
 	docker compose -f docker-compose.yml down -v
 	@rm -f infrastructure/modules/lambda/lambda.zip
