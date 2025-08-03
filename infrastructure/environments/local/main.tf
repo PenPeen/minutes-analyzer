@@ -38,7 +38,7 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id     = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    GEMINI_API_KEY             = var.gemini_api_key_value
+    GEMINI_API_KEY             = var.gemini_api_key
     SLACK_ERROR_WEBHOOK_URL    = var.slack_error_webhook_url
     SLACK_SUCCESS_WEBHOOK_URL  = var.slack_success_webhook_url
   })

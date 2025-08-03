@@ -1,3 +1,4 @@
+MAKEFLAGS += --silent
 .PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop
 
 # デフォルトターゲット
@@ -19,11 +20,11 @@ setup: ## 初期セットアップを実行
 # 開発環境起動（ビルド・デプロイ含む）
 start: ## 開発環境を起動・デプロイ
 	@echo "🚀 開発環境を起動中..."
-	@export $(cat .env.local | grep -v '^#' | xargs) && \
+	@export $$(cat .env.local | grep -v '^#' | xargs) && \
 	cd infrastructure && docker compose up -d
-	$(MAKE) wait-for-localstack
-	$(MAKE) build-lambda
-	$(MAKE) deploy-local
+	@$(MAKE) wait-for-localstack
+	@$(MAKE) build-lambda
+	@$(MAKE) deploy-local
 	@echo "✅ 開発環境の起動が完了しました"
 
 # LocalStack環境のセットアップ

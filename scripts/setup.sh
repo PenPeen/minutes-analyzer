@@ -231,7 +231,7 @@ setup_terraform_vars() {
     if [ -f ".env.local" ]; then
         (
             echo "# .env.localから自動生成されるTerraform変数ファイル"
-            echo "gemini_api_key_value=\"$(grep GEMINI_API_KEY_VALUE .env.local | cut -d '=' -f2-)\""
+            echo "GEMINI_API_KEY=\"$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""
             echo "slack_error_webhook_url=\"$(grep SLACK_ERROR_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""
         ) > infrastructure/environments/local/terraform.tfvars
         log_success "✅ infrastructure/environments/local/terraform.tfvars を作成しました"
