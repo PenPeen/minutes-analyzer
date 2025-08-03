@@ -1,0 +1,175 @@
+name: Lambda Function Tests
+
+on:
+  pull_request:
+    paths:
+      - 'lambda/**'
+      - '.github/workflows/lambda-test.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'lambda/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: 🔄 チェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐳 Docker Composeでテスト実行
+        id: test
+        run: |
+          echo "🧪 Lambda関数のテストを実行中..."
+
+          # テスト実行（出力をファイルに保存し、終了コードも保持）
+          set +e  # 一時的にエラーで停止しないように設定
+          make test-lambda > test_output.log 2>&1
+          TEST_EXIT_CODE=$?
+          set -e  # エラーで停止する設定を復元
+
+          # 結果を表示
+          cat test_output.log
+
+          # 終了コードに基づいて結果を設定
+          if [ $TEST_EXIT_CODE -eq 0 ]; then
+            echo "test_result=success" >> $GITHUB_OUTPUT
+            echo "✅ テストが完了しました"
+          else
+            echo "test_result=failure" >> $GITHUB_OUTPUT
+            echo "❌ テストが失敗しました (終了コード: $TEST_EXIT_CODE)"
+            exit $TEST_EXIT_CODE
+          fi
+
+      - name: 💬 テスト失敗時のPRコメント
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // テスト出力を読み込み
+            let testOutput = '';
+            try {
+              testOutput = fs.readFileSync('test_output.log', 'utf8');
+            } catch (error) {
+              testOutput = 'テスト出力の取得に失敗しました。';
+            }
+
+            // 失敗したテストを抽出
+            const failureMatch = testOutput.match(/Failures:(.*?)(?=Finished in|$)/s);
+            const failureDetails = failureMatch ? failureMatch[1].trim() : '';
+
+            const failedExamplesMatch = testOutput.match(/Failed examples:(.*?)(?=make:|$)/s);
+            const failedExamples = failedExamplesMatch ? failedExamplesMatch[1].trim() : '';
+
+            const summaryMatch = testOutput.match(/(\d+) examples?, (\d+) failures?/);
+            const testSummary = summaryMatch ? summaryMatch[0] : '';
+
+            // 既存のボットコメントを検索
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🧪 Lambda Function Tests')
+            );
+
+            const commentBody = `## 🧪 Lambda Function Tests
+
+            ❌ **テストが失敗しました**
+
+            ### 📊 テスト結果サマリー
+            ${testSummary}
+
+            ### 💥 失敗したテスト
+            ${failedExamples ? `\`\`\`\n${failedExamples}\n\`\`\`` : '詳細な失敗情報が取得できませんでした。'}
+
+            ### 🔍 失敗の詳細
+            ${failureDetails ? `\`\`\`\n${failureDetails.slice(0, 2000)}\n\`\`\`` : ''}
+
+            <details>
+            <summary>📋 完全なテスト出力を表示</summary>
+
+            \`\`\`
+            ${testOutput.slice(-4000)}
+            \`\`\`
+            </details>
+
+            ### 🔧 対応方法
+            1. ローカルで \`make test-lambda\` を実行してテストを確認
+            2. 失敗したテストケースを修正
+            3. 再度プッシュしてテストを実行
+
+            ---
+            *このコメントは自動生成されました - ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}*`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+      - name: 💬 テスト成功時のPRコメント更新
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🧪 Lambda Function Tests')
+            );
+
+            if (botComment) {
+              const successBody = `## 🧪 Lambda Function Tests
+
+              ✅ **すべてのテストが成功しました！**
+
+              ### 📊 テスト結果
+              Lambda関数のテストがすべて正常に完了しました。
+
+              ---
+              *このコメントは自動生成されました - ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}*`;
+
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: successBody
+              });
+            }
+
+      - name: 📊 テスト結果のアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test_output.log
+          retention-days: 7
