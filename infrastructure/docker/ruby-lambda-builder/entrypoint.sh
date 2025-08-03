@@ -12,7 +12,7 @@ fi
 # 依存関係のインストール
 if [ ! -f .bundle/config ] || [ Gemfile -nt .bundle/config ] || [ Gemfile.lock -nt .bundle/config ]; then
     echo "📦 依存関係をインストール中..."
-    bundle install --deployment --without development test
+    bundle install
     touch .bundle/config
 else
     echo "✅ 依存関係は最新です"

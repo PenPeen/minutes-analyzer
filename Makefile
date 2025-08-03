@@ -107,15 +107,33 @@ health-check: ## APIヘルスチェック
 	@API_URL=$$(cd infrastructure/environments/local && terraform output -raw api_gateway_url); \
 	curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"
 
-
-
 # ローカル環境のクリーンアップ
 clean:
 	@echo "🧹 ローカル環境をクリーンアップ中..."
-	docker compose -f docker-compose.yml down -v
+	@$(MAKE) clean-docker
+	@$(MAKE) clean-build-artifacts
+	@$(MAKE) clean-terraform
+	@$(MAKE) clean-config
+	@echo "✅ 完全クリーンアップが完了しました"
+
+clean-docker:
+	@echo "🐳 Docker環境をクリーンアップ中..."
+	@docker compose -f docker-compose.yml down -v --rmi local
+	@docker system prune -f
+
+clean-build-artifacts:
+	@echo "🗂️  ビルド成果物を削除中..."
 	@rm -f infrastructure/modules/lambda/lambda.zip
-	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars
-	@echo "✅ クリーンアップが完了しました"
+	@rm -f lambda/Gemfile.lock
+	@rm -rf logs/ tmp/
+
+clean-terraform:
+	@echo "🏗️  Terraform状態を削除中..."
+	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars .env.tfvars
+
+clean-config:
+	@echo "⚙️  設定ファイルを削除中..."
+	@rm -f .env.local .env.production
 
 # Lambda関数をビルド・デプロイする完全なタスク
 build-and-deploy: build-lambda deploy-local ## Lambda関数をビルドしてデプロイ
@@ -145,8 +163,6 @@ stop: ## 開発環境を停止
 		docker compose -f $(DOCKER_COMPOSE_FILE) down; \
 	fi
 	@echo "開発環境が停止しました"
-
-
 
 # AWS本番環境用のコマンド
 deploy-production: ## 本番環境にデプロイ
