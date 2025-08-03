@@ -1,0 +1,146 @@
+name: Lambda Function Tests
+
+on:
+  pull_request:
+    paths:
+      - 'lambda/**'
+      - '.github/workflows/lambda-test.yml'
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'lambda/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      pull-requests: write
+
+    steps:
+      - name: 🔄 チェックアウト
+        uses: actions/checkout@v4
+
+      - name: 🐳 Docker Composeでテスト実行
+        id: test
+        run: |
+          echo "🧪 Lambda関数のテストを実行中..."
+          if make test-lambda 2>&1 | tee test_output.log; then
+            echo "test_result=success" >> $GITHUB_OUTPUT
+            echo "✅ テストが完了しました"
+          else
+            echo "test_result=failure" >> $GITHUB_OUTPUT
+            echo "❌ テストが失敗しました"
+            exit 1
+          fi
+
+      - name: 💬 テスト失敗時のPRコメント
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            // テスト出力を読み込み
+            let testOutput = '';
+            try {
+              testOutput = fs.readFileSync('test_output.log', 'utf8');
+            } catch (error) {
+              testOutput = 'テスト出力の取得に失敗しました。';
+            }
+
+            // 既存のボットコメントを検索
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🧪 Lambda Function Tests')
+            );
+
+            const commentBody = `## 🧪 Lambda Function Tests
+
+            ❌ **テストが失敗しました**
+
+            ### 📊 テスト結果
+            \`\`\`
+            ${testOutput.slice(-3000)} // 最後の3000文字を表示（GitHub制限対応）
+            \`\`\`
+
+            ### 🔧 対応方法
+            1. ローカルで \`make test-lambda\` を実行してテストを確認
+            2. 失敗したテストケースを修正
+            3. 再度プッシュしてテストを実行
+
+            ---
+            *このコメントは自動生成されました - ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}*`;
+
+            if (botComment) {
+              // 既存コメントを更新
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              // 新規コメント作成
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }
+
+      - name: 💬 テスト成功時のPRコメント更新
+        if: success() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // 既存の失敗コメントがあれば成功に更新
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('🧪 Lambda Function Tests')
+            );
+
+            if (botComment) {
+              const successBody = `## 🧪 Lambda Function Tests
+
+              ✅ **すべてのテストが成功しました！**
+
+              ### 📊 テスト結果
+              Lambda関数のテストがすべて正常に完了しました。
+
+              ---
+              *このコメントは自動生成されました - ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}*`;
+
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: successBody
+              });
+            }
+
+      - name: 📊 テスト結果のアップロード
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            test_output.log
+            spec/reports/
+          retention-days: 7
