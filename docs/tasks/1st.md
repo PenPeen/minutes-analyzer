@@ -24,9 +24,9 @@
 - [x] **本番AWS用設定準備**
 
 #### 1.4 動作確認
-- [ ] `make deploy-local` でLocalStack展開成功
+- [x] **手動テスト用サンプルデータ準備**
+- [ ] `make deploy-local` でLocalStack展開
 - [ ] `make test-api` で基本レスポンス確認
-- [ ] **手動テスト用サンプルデータ準備**
 
 ### **Phase 2: コア機能実装 (2-3日)**
 
