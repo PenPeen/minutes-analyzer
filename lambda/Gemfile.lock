@@ -19,11 +19,11 @@ GEM
     base64 (0.3.0)
     bigdecimal (3.2.2)
     jmespath (1.6.2)
-    json (2.7.2)
+    json (2.13.2)
     logger (1.7.0)
-    net-http (0.4.1)
+    net-http (0.6.0)
       uri
-    uri (0.13.1)
+    uri (1.0.3)
 
 PLATFORMS
   ruby

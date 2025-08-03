@@ -1,7 +1,8 @@
 services:
   localstack:
     container_name: localstack-${PROJECT_NAME:-minutes-analyzer}
-    image: localstack/localstack:latest
+    image: localstack/localstack:2.3
+    platform: linux/amd64
     ports:
       - "4566:4566"            # LocalStack Gateway
       - "4510-4559:4510-4559"  # External services port range
