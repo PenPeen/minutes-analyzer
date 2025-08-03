@@ -4,3 +4,9 @@ gem 'json'
 gem 'net-http'
 gem 'uri'
 gem 'aws-sdk-secretsmanager'
+
+group :test do
+  gem 'rspec', '~> 3.12'
+  gem 'simplecov', require: false
+  gem 'webmock'
+end
