@@ -1,4 +1,4 @@
-.PHONY: help setup start build-lambda deploy-local destroy-local test-api clean check-localstack-ready stop
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -94,19 +94,7 @@ destroy-local: ## LocalStack環境を破棄
 	@cd infrastructure/environments/local && terraform destroy -auto-approve
 	@echo "✅ 環境の破棄が完了しました"
 
-# APIのテスト
-test-api: ## APIエンドポイントをテスト
-	@echo "🧪 APIをテスト中..."
-	@API_URL=$$(cd infrastructure/environments/local && terraform output -raw api_endpoint_url); \
-	API_KEY=$$(cd infrastructure/environments/local && terraform output -raw api_key_value); \
-	echo "API URL: $$API_URL"; \
-	echo "テスト実行中..."; \
-	curl -X POST "$$API_URL" \
-		-H "Content-Type: application/json" \
-		-H "x-api-key: $$API_KEY" \
-		-d '{"transcript":"これはテスト用の会議文字起こしです。新機能のリリース日を来月15日に決定します。","metadata":{"participants":["田中","佐藤"],"duration":1800}}' \
-		-w "\n\nHTTP Status: %{http_code}\n" \
-	| jq . || echo "JSON解析に失敗しました"
+
 
 # 簡単なヘルスチェック
 health-check: ## APIヘルスチェック
@@ -129,7 +117,7 @@ build-and-deploy: build-lambda deploy-local ## Lambda関数をビルドしてデ
 	@echo "🎉 ビルドとデプロイが完了しました！"
 
 # 開発環境の完全セットアップ
-dev-setup: setup-local build-and-deploy test-api ## 開発環境を完全にセットアップ
+dev-setup: setup-local build-and-deploy ## 開発環境を完全にセットアップ
 	@echo "🎉 開発環境のセットアップが完了しました！"
 	@echo ""
 	@echo "📋 利用可能な情報:"
@@ -138,7 +126,6 @@ dev-setup: setup-local build-and-deploy test-api ## 開発環境を完全にセ�
 	echo "API キー: $$(terraform output -raw api_key_value 2>/dev/null || echo 'N/A')"
 	@echo ""
 	@echo "📋 次のステップ:"
-	@echo "• テスト実行: make test"
 	@echo "• 環境停止: make stop"
 
 # 開発環境停止
@@ -154,13 +141,7 @@ stop: ## 開発環境を停止
 	fi
 	@echo "開発環境が停止しました"
 
-# 実際のLambda関数のテスト実行
-test-lambda-local: ## Lambda関数をローカルでテスト
-	@echo "🧪 Lambda関数をローカルでテスト中..."
-	@cd lambda && ruby -r './src/lambda_function.rb' -e 'puts lambda_handler(event: {"body": "{\"transcript\":\"テスト会議です\"}"}, context: OpenStruct.new(aws_request_id: "test-123"))'
 
-# 総合テスト
-test: test-api test-lambda-local ## 全てのテストを実行
 
 # AWS本番環境用のコマンド
 deploy-production: ## 本番環境にデプロイ
