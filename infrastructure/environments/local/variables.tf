@@ -40,17 +40,17 @@ variable "log_retention_days" {
   default     = 14
 }
 
-variable "claude_api_key_secret_name" {
+variable "gemini_api_key_secret_name" {
   description = "The name of the secret in AWS Secrets Manager"
   type        = string
-  default     = "minutes-analyzer/claude-api-key"
+  default     = "minutes-analyzer/gemini-api-key"
 }
 
-variable "claude_api_key_value" {
-  description = "The value of the Claude API key (for local/dev only)"
+variable "gemini_api_key_value" {
+  description = "The value of the Gemini API key (for local/dev only)"
   type        = string
   sensitive   = true
-  default     = "dummy-claude-api-key"
+  default     = "dummy-gemini-api-key"
 }
 
 variable "slack_error_webhook_url" {
@@ -80,7 +80,7 @@ variable "log_level" {
 variable "ai_model" {
   description = "AI model to use"
   type        = string
-  default     = "claude-3-5-haiku-20241022"
+  default     = "gemini-2.5-flash"
 }
 
 variable "common_tags" {

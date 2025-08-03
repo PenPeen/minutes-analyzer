@@ -132,11 +132,11 @@ setup_environment_files() {
         if [ -f "env.local.sample" ]; then
             cp env.local.sample .env.local
 
-            # ダミーのCLAUDE_API_KEY_VALUEを設定（開発用）
-            if grep -q "CLAUDE_API_KEY_VALUE=your_claude_api_key_here" .env.local; then
-                sed -i.bak 's/CLAUDE_API_KEY_VALUE=your_claude_api_key_here/CLAUDE_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
+            # ダミーのGEMINI_API_KEY_VALUEを設定（開発用）
+            if grep -q "GEMINI_API_KEY_VALUE=your_gemini_api_key_here" .env.local; then
+                sed -i.bak 's/GEMINI_API_KEY_VALUE=your_gemini_api_key_here/GEMINI_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
                 rm -f .env.local.bak
-                log_success "開発用ダミーCLAUDE_API_KEY_VALUEを設定しました"
+                log_success "開発用ダミーGEMINI_API_KEY_VALUEを設定しました"
             fi
 
             log_success ".env.local ファイルを作成しました"
@@ -148,10 +148,10 @@ setup_environment_files() {
         log_warning ".env.local ファイルは既に存在します"
 
         # 既存ファイルでもダミーキーを確認・設定
-        if grep -q "CLAUDE_API_KEY_VALUE=your_claude_api_key_here" .env.local; then
-            sed -i.bak 's/CLAUDE_API_KEY_VALUE=your_claude_api_key_here/CLAUDE_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
+        if grep -q "GEMINI_API_KEY_VALUE=your_gemini_api_key_here" .env.local; then
+            sed -i.bak 's/GEMINI_API_KEY_VALUE=your_gemini_api_key_here/GEMINI_API_KEY_VALUE=dummy-key-for-local-development/' .env.local
             rm -f .env.local.bak
-            log_success "開発用ダミーCLAUDE_API_KEY_VALUEを設定しました"
+            log_success "開発用ダミーGEMINI_API_KEY_VALUEを設定しました"
         fi
     fi
 
@@ -248,7 +248,7 @@ setup_terraform_vars() {
     if [ -f ".env.local" ]; then
         (
             echo "# .env.localから自動生成されるTerraform変数ファイル"
-            echo "claude_api_key_value=\"$(grep CLAUDE_API_KEY_VALUE .env.local | cut -d '=' -f2-)\""
+            echo "gemini_api_key_value=\"$(grep GEMINI_API_KEY_VALUE .env.local | cut -d '=' -f2-)\""
             echo "slack_error_webhook_url=\"$(grep SLACK_ERROR_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""
         ) > infrastructure/environments/local/terraform.tfvars
         log_success "✅ infrastructure/environments/local/terraform.tfvars を作成しました"

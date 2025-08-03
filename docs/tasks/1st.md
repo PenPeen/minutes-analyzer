@@ -11,7 +11,7 @@
 
 #### 1.2 Lambda関数MVP実装
 - [x] Ruby Lambda基本構造実装（`lambda_function.rb`）
-- [x] Claude 3.5 Haiku API基本連携実装
+- [x] Gemini 2.5 Flash API基本連携実装
 - [x] JSON レスポンス基本構造定義
 - [x] 環境変数読み込み機能（Slack + Notion ON/OFF制御含む）
 - [x] **エラーハンドリング最小実装**（500エラー回避）
@@ -31,7 +31,7 @@
 ### **Phase 2: コア機能実装 (2-3日)**
 
 #### 2.1 議事録分析機能実装
-- [ ] Claude 3.5 Haiku APIプロンプト設計・実装
+- [ ] Gemini 2.5 Flash APIプロンプト設計・実装
 - [ ] 分析結果構造化（決定事項・TODO・要注意点）
 - [ ] **デモ用サンプル分析結果準備**
 - [ ] **日本語処理対応確認**

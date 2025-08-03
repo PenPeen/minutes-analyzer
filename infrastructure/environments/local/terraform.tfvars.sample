@@ -1,9 +1,9 @@
 # このファイルは.gitignoreで管理されており、ローカルでの開発にのみ使用されます。
 #
-# Claude APIキー
-# claude_api_key_value = "your_claude_api_key_here"
+# Gemini APIキー
+# gemini_api_key_value = "your_gemini_api_key_here"
 #
-# claude_api_key_secret_name = "minutes-analyzer/claude-api-key"
+# gemini_api_key_secret_name = "minutes-analyzer/gemini-api-key"
 #
 # Slack Webhook URL (オプション)
 # slack_error_webhook_url = "your_slack_webhook_url_here"

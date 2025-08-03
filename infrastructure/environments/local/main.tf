@@ -29,16 +29,16 @@ provider "aws" {
   skip_requesting_account_id  = true
 }
 
-# Secrets Manager for Claude API Key
-resource "aws_secretsmanager_secret" "claude_api_key" {
-  name = var.claude_api_key_secret_name
+# Secrets Manager for Gemini API Key
+resource "aws_secretsmanager_secret" "gemini_api_key" {
+  name = var.gemini_api_key_secret_name
   tags = var.common_tags
 }
 
-resource "aws_secretsmanager_secret_version" "claude_api_key" {
-  secret_id     = aws_secretsmanager_secret.claude_api_key.id
+resource "aws_secretsmanager_secret_version" "gemini_api_key" {
+  secret_id     = aws_secretsmanager_secret.gemini_api_key.id
   secret_string = jsonencode({
-    CLAUDE_API_KEY = var.claude_api_key_value
+    GEMINI_API_KEY = var.gemini_api_key_value
   })
 }
 
@@ -55,7 +55,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
   environment {
     variables = {
       ENVIRONMENT                 = var.environment
-      CLAUDE_API_KEY_SECRET_NAME  = var.claude_api_key_secret_name
+      GEMINI_API_KEY_SECRET_NAME  = var.gemini_api_key_secret_name
       SLACK_ERROR_WEBHOOK_URL     = var.slack_error_webhook_url
       SLACK_INTEGRATION           = var.slack_integration_enabled
       NOTION_INTEGRATION          = var.notion_integration_enabled
@@ -111,7 +111,7 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
       {
         Effect   = "Allow",
         Action   = "secretsmanager:GetSecretValue",
-        Resource = aws_secretsmanager_secret.claude_api_key.arn
+        Resource = aws_secretsmanager_secret.gemini_api_key.arn
       }
     ]
   })
