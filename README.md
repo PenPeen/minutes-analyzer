@@ -8,7 +8,7 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 
 ## ✨ Features
 
-- 🤖 **AI分析**: Gemini 1.5 Flash APIによる議事録分析
+- 🤖 **AI分析**: Gemini 2.5 Flash APIによる議事録分析
 - 📋 **自動抽出**: 決定事項・アクション項目・懸念事項を自動識別
 - 📢 **Slack連携**: 分析結果のSlack通知
 - 💰 **コスト効率**: 月間$2-4の低コスト運用（100回/日実行時）
@@ -51,7 +51,6 @@ cp env.local.sample .env.local
 #### 日常開発フロー
 ```bash
 make start        # 環境起動・ビルド・ローカル自動デプロイ
-make test         # テスト実行
 make stop         # 環境停止
 ```
 
@@ -60,7 +59,6 @@ make stop         # 環境停止
 make deploy       # 本番環境への手動デプロイ
 ```
 
-詳細な本番環境デプロイ手順については [docs/deployment.md](docs/deployment.md) を参照してください。
 
 ## 📋 使用可能なコマンド
 
@@ -70,7 +68,6 @@ make setup                   # 初期セットアップ
 make dev-setup              # 開発環境完全セットアップ
 make deploy-local           # LocalStack環境にデプロイ
 make deploy-production      # 本番環境にデプロイ
-make test-api               # APIエンドポイントをテスト
 make logs                   # CloudWatchログを確認
 make clean                  # ローカル環境をクリーンアップ
 ```
@@ -89,7 +86,7 @@ make clean                  # ローカル環境をクリーンアップ
 ### システム構成
 
 - **Google Apps Script**: Google Driveの監視・前処理・Slack配信
-- **AWS Lambda (Ruby)**: Gemini 1.5 Flash APIを使用した議事録分析
+- **AWS Lambda (Ruby)**: Gemini 2.5 Flash APIを使用した議事録分析
 - **API Gateway**: RESTful API エンドポイント
 - **LocalStack**: ローカル開発環境でのAWSサービスエミュレート
 
@@ -114,7 +111,7 @@ minutes-analyzer/
 ## 🔐 環境変数
 
 ### 必須設定
-- `GEMINI_API_KEY`: Gemini 1.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
+- `GEMINI_API_KEY`: Gemini 2.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
 
 ### 任意設定
 - `SLACK_ERROR_WEBHOOK_URL`: エラー通知用Slack Webhook URL
@@ -123,16 +120,10 @@ minutes-analyzer/
 ## 📖 ドキュメント
 
 - [アーキテクチャ設計](docs/architecture.md)
-- [API仕様](docs/api-spec.yaml)
-- [実装詳細](docs/implementation.md)
-- [本番環境デプロイメントガイド](docs/deployment.md)
 
-## 🧪 テスト
+## 🧪 ヘルスチェック
 
 ```bash
-# 基本的なAPIテスト
-make test-api
-
 # ヘルスチェック
 make health-check
 ```

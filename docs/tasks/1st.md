@@ -16,12 +16,12 @@
 - [x] 環境変数読み込み機能（Slack + Notion ON/OFF制御含む）
 - [x] **エラーハンドリング最小実装**（500エラー回避）
 
-#### 1.3 Terraform最小構成
-- [ ] Lambda関数デプロイ設定
-- [ ] API Gateway基本設定
-- [ ] IAMロール基本設定
-- [ ] LocalStack対応確認
-- [ ] **本番AWS用設定準備**
+#### 1.3 Terraform構成
+- [x] Lambda関数デプロイ設定
+- [x] API Gateway基本設定
+- [x] IAMロール基本設定
+- [x] LocalStack対応確認
+- [x] **本番AWS用設定準備**
 
 #### 1.4 動作確認
 - [ ] `make deploy-local` でLocalStack展開成功
