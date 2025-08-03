@@ -6,7 +6,7 @@ terraform {
       version = "~> 5.0"
     }
   }
-  
+
   backend "s3" {
     bucket         = "minutes-analyzer-terraform-state"
     key            = "production/terraform.tfstate"
@@ -22,9 +22,9 @@ provider "aws" {
 # Secrets Manager for Application Secrets
 resource "aws_secretsmanager_secret" "app_secrets" {
   name = "${var.project_name}-secrets-${var.environment}"
-  
+
   recovery_window_in_days = 7
-  
+
   tags = var.common_tags
 }
 
@@ -37,7 +37,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
   runtime          = "ruby3.3"
   timeout          = var.lambda_timeout
   memory_size      = var.lambda_memory_size
-  
+
   source_code_hash = filebase64sha256(var.lambda_zip_path)
 
   environment {
@@ -109,7 +109,7 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
 resource "aws_api_gateway_rest_api" "minutes_analyzer_api" {
   name        = "${var.project_name}-api-${var.environment}"
   description = "Minutes Analyzer API"
-  
+
   endpoint_configuration {
     types = ["REGIONAL"]
   }
@@ -147,10 +147,20 @@ resource "aws_api_gateway_deployment" "minutes_analyzer" {
   ]
 
   rest_api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  stage_name  = var.environment
 
   lifecycle {
     create_before_destroy = true
+  }
+}
+
+resource "aws_api_gateway_stage" "minutes_analyzer" {
+  deployment_id = aws_api_gateway_deployment.minutes_analyzer.id
+  rest_api_id   = aws_api_gateway_rest_api.minutes_analyzer_api.id
+  stage_name    = var.environment
+
+  tags = {
+    Name        = "${var.project_name}-api-stage-${var.environment}"
+    Environment = var.environment
   }
 }
 
@@ -177,7 +187,7 @@ resource "aws_api_gateway_usage_plan" "minutes_analyzer_plan" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-    stage  = aws_api_gateway_deployment.minutes_analyzer.stage_name
+    stage  = aws_api_gateway_stage.minutes_analyzer.stage_name
   }
 
   quota_settings {

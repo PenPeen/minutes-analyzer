@@ -156,7 +156,17 @@ resource "aws_api_gateway_deployment" "minutes_analyzer" {
   ]
 
   rest_api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  stage_name  = var.environment
+}
+
+resource "aws_api_gateway_stage" "minutes_analyzer" {
+  deployment_id = aws_api_gateway_deployment.minutes_analyzer.id
+  rest_api_id   = aws_api_gateway_rest_api.minutes_analyzer_api.id
+  stage_name    = var.environment
+
+  tags = {
+    Name        = "${var.project_name}-api-stage-${var.environment}"
+    Environment = var.environment
+  }
 }
 
 resource "aws_lambda_permission" "api_gw" {
@@ -182,7 +192,7 @@ resource "aws_api_gateway_usage_plan" "minutes_analyzer_plan" {
 
   api_stages {
     api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-    stage  = aws_api_gateway_deployment.minutes_analyzer.stage_name
+    stage  = aws_api_gateway_stage.minutes_analyzer.stage_name
   }
 
   quota_settings {
