@@ -46,7 +46,7 @@ variable "gemini_api_key_secret_name" {
   default     = "minutes-analyzer/gemini-api-key"
 }
 
-variable "gemini_api_key_value" {
+variable "gemini_api_key" {
   description = "The value of the Gemini API key (for local/dev only)"
   type        = string
   sensitive   = true
