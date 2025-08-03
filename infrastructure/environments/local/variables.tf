@@ -100,3 +100,9 @@ variable "common_tags" {
     ManagedBy   = "terraform"
   }
 }
+
+variable "GEMINI_API_KEY" {
+  description = "Gemini API key for AI processing"
+  type        = string
+  sensitive   = true
+}
