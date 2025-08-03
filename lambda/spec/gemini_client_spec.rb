@@ -41,7 +41,7 @@ RSpec.describe GeminiClient do
 
       it 'returns the summary text' do
         result = gemini_client.summarize(test_text)
-        expect(result).not_to eq('This is a summary of the meeting.')
+        expect(result).to eq('This is a summary of the meeting.')
       end
 
       it 'logs API call and response status' do
