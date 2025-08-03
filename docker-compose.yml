@@ -68,21 +68,23 @@ services:
       - dev  # 開発時のデフォルトプロファイル
 
   ruby-lambda-builder:
-    container_name: ruby-lambda-builder-${PROJECT_NAME:-minutes-analyzer}
-    image: ruby:3.2-alpine
-    working_dir: /workspace/lambda
+    build:
+      context: ./infrastructure/docker/ruby-lambda-builder
+      dockerfile: Dockerfile
     volumes:
-      - ".:/workspace"
-    profiles:
-      - tools
-      - dev
-    command: ["sh", "-c", "apk add --no-cache zip build-base && gem install bundler && echo 'Ruby Lambda Builder ready'"]
+      - ./lambda:/app
+      - ./infrastructure/modules/lambda:/output
+      - ./infrastructure/modules/lambda:/workspace
+      - bundle_cache:/app/.bundle
+    working_dir: /app
 
 networks:
   localstack-network:
     driver: bridge
 
 volumes:
+  bundle_cache:
+    driver: local
   localstack-data:
     driver: local
     driver_opts:

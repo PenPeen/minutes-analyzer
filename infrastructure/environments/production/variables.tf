@@ -19,7 +19,7 @@ variable "project_name" {
 variable "lambda_zip_path" {
   description = "Path to the Lambda deployment package"
   type        = string
-  default     = "../../../infrastructure/modules/lambda/lambda.zip"
+  default     = "../../modules/lambda/lambda.zip"
 }
 
 variable "lambda_timeout" {
