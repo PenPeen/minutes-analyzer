@@ -19,9 +19,9 @@ provider "aws" {
   region = var.aws_region
 }
 
-# Secrets Manager for Gemini API Key
-resource "aws_secretsmanager_secret" "gemini_api_key" {
-  name = "${var.project_name}-gemini-api-key-${var.environment}"
+# Secrets Manager for Application Secrets
+resource "aws_secretsmanager_secret" "app_secrets" {
+  name = "${var.project_name}-secrets-${var.environment}"
   
   recovery_window_in_days = 7
   
@@ -43,8 +43,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
   environment {
     variables = {
       ENVIRONMENT                 = var.environment
-      GEMINI_API_KEY_SECRET_NAME  = aws_secretsmanager_secret.gemini_api_key.name
-      SLACK_ERROR_WEBHOOK_URL     = var.slack_error_webhook_url
+      APP_SECRETS_NAME            = aws_secretsmanager_secret.app_secrets.name
       SLACK_INTEGRATION           = var.slack_integration_enabled
       NOTION_INTEGRATION          = var.notion_integration_enabled
       LOG_LEVEL                   = var.log_level
@@ -100,7 +99,7 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
       {
         Effect   = "Allow",
         Action   = "secretsmanager:GetSecretValue",
-        Resource = aws_secretsmanager_secret.gemini_api_key.arn
+        Resource = aws_secretsmanager_secret.app_secrets.arn
       }
     ]
   })

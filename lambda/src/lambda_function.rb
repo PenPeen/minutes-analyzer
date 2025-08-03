@@ -2,6 +2,7 @@ require 'json'
 require 'net/http'
 require 'uri'
 require 'logger'
+require 'aws-sdk-secretsmanager'
 
 # Initialize logger
 LOGGER = Logger.new($stdout)
@@ -11,15 +12,19 @@ LOGGER.level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
 GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'.freeze
 GEMINI_MODEL = 'gemini-2.5-flash'.freeze
 
+# Secrets cache to avoid repeated API calls
+@secrets_cache = nil
+
 def lambda_handler(event:, context:)
-  # In a real Lambda environment, context object is provided. For local testing, we can use a mock.
   request_id = context.respond_to?(:aws_request_id) ? context.aws_request_id : "local_test_#{Time.now.to_i}"
   LOGGER.info("Lambda function started. Request ID: #{request_id}")
 
   begin
-    api_key = ENV['GEMINI_API_KEY']
+    secrets = get_secrets
+    api_key = secrets['GEMINI_API_KEY']
+    
     unless api_key && !api_key.empty?
-      LOGGER.error('GEMINI_API_KEY is not set or is empty.')
+      LOGGER.error('GEMINI_API_KEY is not available in secrets.')
       return {
         statusCode: 500,
         body: JSON.generate({ error: 'Server configuration error: API key is missing.' })
@@ -80,6 +85,44 @@ def lambda_handler(event:, context:)
   response
 end
 
+def get_secrets
+  return @secrets_cache if @secrets_cache
+
+  secret_name = ENV['APP_SECRETS_NAME']
+  unless secret_name
+    LOGGER.error('APP_SECRETS_NAME environment variable is not set')
+    raise 'APP_SECRETS_NAME not configured'
+  end
+
+  begin
+    # AWS Secrets Manager client configuration
+    client_options = {}
+    if ENV['AWS_ENDPOINT_URL'] # LocalStack support
+      client_options[:endpoint] = ENV['AWS_ENDPOINT_URL']
+      client_options[:region] = ENV['AWS_REGION'] || 'ap-northeast-1'
+    end
+    
+    client = Aws::SecretsManager::Client.new(client_options)
+    response = client.get_secret_value(secret_id: secret_name)
+    
+    @secrets_cache = JSON.parse(response.secret_string)
+    LOGGER.info("Successfully retrieved secrets from: #{secret_name}")
+    @secrets_cache
+  rescue Aws::SecretsManager::Errors::ResourceNotFoundException
+    LOGGER.error("Secret '#{secret_name}' not found")
+    raise "Secret not found: #{secret_name}"
+  rescue Aws::SecretsManager::Errors::ServiceError => e
+    LOGGER.error("AWS Secrets Manager error: #{e.message}")
+    raise "Failed to retrieve secrets: #{e.message}"
+  rescue JSON::ParserError => e
+    LOGGER.error("Failed to parse secret JSON: #{e.message}")
+    raise "Invalid secret format: #{e.message}"
+  rescue StandardError => e
+    LOGGER.error("Unexpected error retrieving secrets: #{e.message}")
+    raise "Secret retrieval failed: #{e.message}"
+  end
+end
+
 def call_gemini_api(api_key, text)
   uri = URI.parse("#{GEMINI_API_URL}?key=#{api_key}")
   http = Net::HTTP.new(uri.host, uri.port)
@@ -120,40 +163,3 @@ def call_gemini_api(api_key, text)
   JSON.parse(response.body)
 end
 
-# Example of how to test this function locally
-if __FILE__ == $0
-  # Mock context object for local testing
-  MockContext = Struct.new(:aws_request_id)
-  mock_context = MockContext.new("local_test_#{Time.now.to_i}")
-
-  mock_event = {
-    'body' => JSON.generate({ text: 'Hello, this is a test transcript for summarization.' })
-  }
-
-  # Store the original API key to restore it after tests
-  original_api_key = ENV['GEMINI_API_KEY']
-
-  # --- Test Case 1: Success (with real API call if key is present) ---
-  LOGGER.info("--- Running local test (Success Case) ---")
-  if original_api_key && !original_api_key.empty?
-    LOGGER.info("GEMINI_API_KEY is set. Calling the actual Gemini API.")
-    ENV['SLACK_INTEGRATION'] = 'true'
-    result = lambda_handler(event: mock_event, context: mock_context)
-    LOGGER.info("Result:\n#{JSON.pretty_generate(result)}")
-  else
-    LOGGER.warn("GEMINI_API_KEY is not set. Skipping the success case test with a real API call.")
-    LOGGER.warn("To run the full local test, please set the GEMINI_API_KEY environment variable.")
-  end
-  LOGGER.info("---------------------------------------------")
-
-
-  # --- Test Case 2: Missing API Key ---
-  LOGGER.info("--- Running error test (Missing API key) ---")
-  ENV['GEMINI_API_KEY'] = nil # Temporarily unset the key for this test
-  result = lambda_handler(event: mock_event, context: mock_context)
-  LOGGER.info("Result:\n#{JSON.pretty_generate(result)}")
-  LOGGER.info("------------------------------------------")
-
-  # Restore the original API key if it existed
-  ENV['GEMINI_API_KEY'] = original_api_key if original_api_key
-end

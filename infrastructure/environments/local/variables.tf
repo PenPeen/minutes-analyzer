@@ -57,6 +57,14 @@ variable "slack_error_webhook_url" {
   description = "Slack webhook URL for error notifications"
   type        = string
   default     = ""
+  sensitive   = true
+}
+
+variable "slack_success_webhook_url" {
+  description = "Slack webhook URL for success notifications"
+  type        = string
+  default     = ""
+  sensitive   = true
 }
 
 variable "slack_integration_enabled" {
