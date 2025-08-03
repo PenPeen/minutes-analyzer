@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -99,7 +99,13 @@ destroy-local: ## LocalStack環境を破棄
 	@cd infrastructure/environments/local && terraform destroy -auto-approve
 	@echo "✅ 環境の破棄が完了しました"
 
+# テスト実行
+test: test-lambda
 
+test-lambda:
+	@echo "🧪 Lambda関数のテストを実行中..."
+	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /app && bundle install --quiet && bundle exec rspec spec/ --format documentation"
+	@echo "✅ テストが完了しました"
 
 # 簡単なヘルスチェック
 health-check: ## APIヘルスチェック
