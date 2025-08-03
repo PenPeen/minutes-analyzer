@@ -25,7 +25,7 @@
 
 #### 1.4 動作確認
 - [x] **手動テスト用サンプルデータ準備**
-- [ ] `make deploy-local` でLocalStack展開
+- [x] `make deploy-local` でLocalStack展開
 - [ ] `make test-api` で基本レスポンス確認
 
 ### **Phase 2: コア機能実装 (2-3日)**
