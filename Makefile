@@ -52,7 +52,7 @@ wait-for-localstack: ## LocalStackの起動を待機
 			echo "✅ LocalStackが起動しました"; \
 			exit 0; \
 		fi; \
-		echo "LocalStack起動待機中... (残り $${timeout}秒)"; \
+		printf "."; \
 		sleep 3; \
 		timeout=$$((timeout - 3)); \
 	done; \

@@ -50,7 +50,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
   function_name    = "${var.project_name}-${var.environment}"
   role             = aws_iam_role.lambda_execution_role.arn
   handler          = "lambda_function.lambda_handler"
-  runtime          = "ruby3.3"
+  runtime          = "ruby3.2"
   timeout          = var.lambda_timeout
   memory_size      = var.lambda_memory_size
 
@@ -61,6 +61,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
       SLACK_INTEGRATION           = var.slack_integration_enabled
       NOTION_INTEGRATION          = var.notion_integration_enabled
       LOG_LEVEL                   = var.log_level
+      AWS_ENDPOINT_URL            = "http://host.docker.internal:4566"  # LocalStack endpoint
     }
   }
 
