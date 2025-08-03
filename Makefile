@@ -83,7 +83,11 @@ tf-plan: tf-init ## Terraformプランを実行
 # LocalStack環境にデプロイ
 deploy-local: tf-plan ## LocalStack環境にデプロイ
 	@echo "🚀 LocalStack環境にデプロイ中..."
-	@cd infrastructure/environments/local && terraform apply -auto-approve
+	@if [ -f infrastructure/environments/local/.env.tfvars ]; then \
+		cd infrastructure/environments/local && terraform apply -var-file=".env.tfvars" -auto-approve; \
+	else \
+		cd infrastructure/environments/local && terraform apply -auto-approve; \
+	fi
 	@echo "✅ デプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/local && terraform output
@@ -146,5 +150,24 @@ stop: ## 開発環境を停止
 # AWS本番環境用のコマンド
 deploy-production: ## 本番環境にデプロイ
 	@echo "🚀 本番環境にデプロイ中..."
-	@echo "⚠️  本番環境のデプロイは infrastructure/environments/production/ で設定してください"
-	@echo "📖 詳細は docs/architecture.md を参照してください"
+	@if [ ! -f infrastructure/environments/production/terraform.tfvars ]; then \
+		echo "❌ Error: Please create terraform.tfvars from terraform.tfvars.sample"; \
+		echo "  cp infrastructure/environments/production/terraform.tfvars.sample infrastructure/environments/production/terraform.tfvars"; \
+		echo "  Then edit the file with your production values"; \
+		exit 1; \
+	fi
+	@if [ ! -f infrastructure/environments/production/.env.tfvars ]; then \
+		echo "❌ Error: Please create .env.tfvars from .env.tfvars.sample"; \
+		echo "  cp infrastructure/environments/production/.env.tfvars.sample infrastructure/environments/production/.env.tfvars"; \
+		echo "  Then edit the file with your sensitive values (Slack webhook URL, etc.)"; \
+		exit 1; \
+	fi
+	@cd infrastructure/environments/production && \
+		terraform init && \
+		terraform plan -var-file=".env.tfvars" && \
+		echo "⚠️  Review the plan above. Press Enter to continue or Ctrl+C to cancel..." && \
+		read && \
+		terraform apply -var-file=".env.tfvars"
+	@echo "✅ 本番環境へのデプロイが完了しました"
+	@echo "📋 デプロイ情報:"
+	@cd infrastructure/environments/production && terraform output
