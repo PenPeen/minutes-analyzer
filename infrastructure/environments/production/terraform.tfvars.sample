@@ -1,0 +1,31 @@
+# Non-sensitive configuration values
+# This file can be safely committed to version control
+
+# AWS Region
+aws_region = "ap-northeast-1"
+
+# Environment
+environment = "production"
+
+# Project name
+project_name = "minutes-analyzer"
+
+# Lambda configuration
+lambda_timeout     = 900  # 15 minutes
+lambda_memory_size = 512
+
+# Log retention
+log_retention_days = 30
+
+# Feature flags
+slack_integration_enabled  = "true"
+notion_integration_enabled = "true"
+
+# Log level
+log_level = "INFO"
+
+# AI Model
+ai_model = "gemini-2.5-flash"
+
+# NOTE: Sensitive variables should be set in .env.tfvars
+# See .env.tfvars.sample for required sensitive variables

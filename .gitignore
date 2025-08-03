@@ -8,7 +8,10 @@
 *.tfstate
 *.tfstate.*
 *.tfvars
+!*.tfvars.sample
 !*.tfvars.example
+.env.tfvars
+!.env.tfvars.sample
 .terraform/
 .terraform.lock.hcl
 terraform.tfplan
