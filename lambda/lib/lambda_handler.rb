@@ -1,5 +1,6 @@
 require_relative 'secrets_manager'
 require_relative 'gemini_client'
+require_relative 'slack_client'
 require 'json'
 require 'logger'
 
@@ -38,7 +39,18 @@ class LambdaHandler
 
       @logger.info("Successfully received summary from Gemini API.")
 
-      success_response(summary)
+      # Slack通知の送信処理
+      # Webhook URLが設定されている場合のみ通知を送信
+      slack_notification_result = nil
+      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
+      if slack_webhook_url && !slack_webhook_url.empty?
+        slack_client = SlackClient.new(slack_webhook_url, @logger)
+        slack_notification_result = slack_client.send_notification(summary)
+      else
+        @logger.warn("Slack webhook URL is not configured")
+      end
+
+      success_response(summary, slack_notification_result)
 
     rescue JSON::ParserError => e
       @logger.error("Invalid JSON in request body: #{e.message}")
@@ -63,18 +75,25 @@ class LambdaHandler
     }
   end
 
-  def success_response(summary)
+  def success_response(summary, slack_result = nil)
+    response_body = {
+      message: "Analysis complete.",
+      summary: summary,
+      integrations: {
+        slack: slack_result && slack_result[:success] ? 'sent' : 'not_sent',
+        notion: 'enabled'
+      }
+    }
+
+    # Add Slack notification result if available
+    if slack_result
+      response_body[:slack_notification] = slack_result
+    end
+
     {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.generate({
-        message: "Analysis complete.",
-        summary: summary,
-        integrations: {
-          slack: ENV['SLACK_INTEGRATION'] == 'true' ? 'enabled' : 'disabled',
-          notion: ENV['NOTION_INTEGRATION'] == 'true' ? 'enabled' : 'disabled'
-        }
-      })
+      body: JSON.generate(response_body)
     }
   end
 end

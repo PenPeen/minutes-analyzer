@@ -38,9 +38,8 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id     = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    GEMINI_API_KEY             = var.gemini_api_key
-    SLACK_ERROR_WEBHOOK_URL    = var.slack_error_webhook_url
-    SLACK_SUCCESS_WEBHOOK_URL  = var.slack_success_webhook_url
+    GEMINI_API_KEY      = var.gemini_api_key
+    SLACK_WEBHOOK_URL   = var.slack_webhook_url
   })
 }
 
@@ -58,8 +57,6 @@ resource "aws_lambda_function" "minutes_analyzer" {
     variables = {
       ENVIRONMENT                 = var.environment
       APP_SECRETS_NAME            = aws_secretsmanager_secret.app_secrets.name
-      SLACK_INTEGRATION           = var.slack_integration_enabled
-      NOTION_INTEGRATION          = var.notion_integration_enabled
       LOG_LEVEL                   = var.log_level
       AWS_ENDPOINT_URL            = "http://host.docker.internal:4566"  # LocalStack endpoint
     }

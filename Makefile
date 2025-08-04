@@ -23,9 +23,25 @@ start: ## 開発環境を起動・デプロイ
 	@export $$(cat .env.local | grep -v '^#' | xargs) && \
 	cd infrastructure && docker compose up -d
 	@$(MAKE) wait-for-localstack
+	@$(MAKE) generate-tfvars
 	@$(MAKE) build-lambda
 	@$(MAKE) deploy-local
 	@echo "✅ 開発環境の起動が完了しました"
+
+# terraform.tfvarsの生成
+generate-tfvars: ## terraform.tfvarsを.env.localから生成
+	@echo "📝 terraform.tfvarsを生成中..."
+	@if [ -f .env.local ]; then \
+		( \
+			echo "# .env.localから自動生成されるTerraform変数ファイル"; \
+			echo "GEMINI_API_KEY=\"$$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""; \
+			echo "slack_webhook_url=\"$$(grep SLACK_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""; \
+		) > infrastructure/environments/local/terraform.tfvars; \
+		echo "✅ terraform.tfvarsを生成しました"; \
+	else \
+		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \
+		exit 1; \
+	fi
 
 # LocalStack環境のセットアップ
 setup-local: ## LocalStack環境をセットアップ
@@ -84,8 +100,8 @@ tf-plan: tf-init ## Terraformプランを実行
 # LocalStack環境にデプロイ
 deploy-local: tf-plan ## LocalStack環境にデプロイ
 	@echo "🚀 LocalStack環境にデプロイ中..."
-	@if [ -f infrastructure/environments/local/.env.tfvars ]; then \
-		cd infrastructure/environments/local && terraform apply -var-file=".env.tfvars" -auto-approve; \
+	@if [ -f infrastructure/environments/local/terraform.tfvars ]; then \
+		cd infrastructure/environments/local && terraform apply -var-file="terraform.tfvars" -auto-approve; \
 	else \
 		cd infrastructure/environments/local && terraform apply -auto-approve; \
 	fi
