@@ -1,44 +1,78 @@
 require 'net/http'
 require 'uri'
 require 'json'
+require_relative 's3_client'
 
 class GeminiClient
   GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent'.freeze
 
-  def initialize(api_key, logger)
+  def initialize(api_key, logger, s3_client = nil, environment = 'local')
     @api_key = api_key
     @logger = logger
+    @s3_client = s3_client || S3Client.new(@logger, environment)
+    @environment = environment
   end
 
-  def summarize(text)
+  def analyze_meeting(transcript_data)
     uri = URI.parse("#{GEMINI_API_URL}?key=#{@api_key}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
+    http.read_timeout = 30
+    http.open_timeout = 10
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['content-type'] = 'application/json'
-    request.body = build_request_body(text)
+    request.body = build_analysis_request_body(transcript_data)
 
-    @logger.info("Calling Gemini API...")
+    @logger.info("Calling Gemini API for meeting analysis...")
     response = http.request(request)
     @logger.info("Gemini API response status: #{response.code}")
 
     handle_response(response)
   end
 
+  def summarize(text)
+    # Legacy method for backward compatibility
+    transcript_data = {
+      "transcript" => {
+        "date" => Time.now.strftime('%Y-%m-%d'),
+        "title" => "Meeting",
+        "participants" => [],
+        "summary" => "",
+        "details" => "",
+        "full_text" => text
+      },
+      "metadata" => {
+        "file_id" => "",
+        "scheduled_duration" => "",
+        "actual_duration" => ""
+      }
+    }
+    analyze_meeting(transcript_data)
+  end
+
   private
 
-  def build_request_body(text)
+  def build_analysis_request_body(transcript_data)
+    prompt = @s3_client.get_prompt
+    schema = @s3_client.get_output_schema
+    
+    # Construct the full prompt with the transcript data
+    full_prompt = "#{prompt}\n\n# 入力データ:\n#{JSON.pretty_generate(transcript_data)}"
+    
     {
       contents: [
         {
           parts: [
-            { text: "Please summarize the following meeting transcript:\n\n#{text}" }
+            { text: full_prompt }
           ]
         }
       ],
       generationConfig: {
-        maxOutputTokens: 1024
+        response_mime_type: "application/json",
+        response_schema: schema,
+        maxOutputTokens: 8192,
+        temperature: 0.1
       }
     }.to_json
   end
@@ -49,14 +83,24 @@ class GeminiClient
     end
 
     parsed_response = JSON.parse(response.body)
-    summary = parsed_response.dig("candidates", 0, "content", "parts", 0, "text")
+    content = parsed_response.dig("candidates", 0, "content", "parts", 0, "text")
 
-    unless summary
-      @logger.error("Failed to extract summary from Gemini response: #{parsed_response}")
-      raise "Summary could not be generated from API response."
+    unless content
+      @logger.error("Failed to extract content from Gemini response: #{parsed_response}")
+      raise "Content could not be generated from API response."
     end
 
-    summary
+    # Parse the JSON response from Gemini
+    begin
+      analysis_result = JSON.parse(content)
+      @logger.info("Successfully parsed structured response from Gemini")
+      analysis_result
+    rescue JSON::ParserError => e
+      @logger.error("Failed to parse Gemini response as JSON: #{e.message}")
+      @logger.error("Raw content: #{content}")
+      # Fallback to returning raw content if not valid JSON
+      content
+    end
   end
 
   def handle_error_response(response)
