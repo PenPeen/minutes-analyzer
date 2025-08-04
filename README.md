@@ -99,6 +99,24 @@ make clean                  # ローカル環境をクリーンアップ
 
 詳細な設計については [docs/architecture.md](docs/architecture.md) を参照してください。
 
+## 📥 Lambda関数の入力形式
+
+Lambda関数はGoogle DriveのファイルIDを受け取り、ファイルを直接読み取ります：
+
+```json
+{
+  "file_id": "1234567890abcdef",
+  "file_name": "2025年1月15日_新機能リリース進捗確認ミーティング.txt",
+}
+```
+
+この設計により：
+- ファイルサイズの制限なし
+- セキュアなファイル転送
+- 効率的な処理フロー
+
+Lambda関数内でGoogle Drive APIを使用してファイルを取得し、Gemini APIで分析します。
+
 ## 📁 プロジェクト構成
 
 ```
