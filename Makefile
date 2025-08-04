@@ -15,11 +15,19 @@ ENVIRONMENT = local
 
 # 初期セットアップ（OSS公開用）
 setup: ## 初期セットアップを実行
-	@./scripts/setup.sh
+	@if [ -f .env.local ]; then \
+		echo "📋 .env.localは既に存在するため、スキップします"; \
+	else \
+		./scripts/setup.sh; \
+	fi
 
 # 開発環境起動（ビルド・デプロイ含む）
 start: ## 開発環境を起動・デプロイ
 	@echo "🚀 開発環境を起動中..."
+	@if [ ! -f .env.local ]; then \
+		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \
+		exit 1; \
+	fi
 	@export $$(cat .env.local | grep -v '^#' | xargs) && \
 	cd infrastructure && docker compose up -d
 	@$(MAKE) wait-for-localstack
