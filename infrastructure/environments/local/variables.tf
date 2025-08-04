@@ -25,13 +25,13 @@ variable "lambda_zip_path" {
 variable "lambda_timeout" {
   description = "Lambda function timeout"
   type        = number
-  default     = 30
+  default     = 900
 }
 
 variable "lambda_memory_size" {
   description = "Lambda function memory size"
   type        = number
-  default     = 128
+  default     = 512
 }
 
 variable "log_retention_days" {
@@ -84,11 +84,6 @@ variable "common_tags" {
   }
 }
 
-variable "gemini_api_key" {
-  description = "Gemini API key for AI processing"
-  type        = string
-  sensitive   = true
-}
 
 variable "notion_api_key" {
   description = "Notion API key for integration"

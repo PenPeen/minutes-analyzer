@@ -46,30 +46,13 @@ variable "gemini_api_key_secret_name" {
   default     = "minutes-analyzer-gemini-api-key-production"
 }
 
-variable "slack_error_webhook_url" {
-  description = "Slack webhook URL for error notifications"
-  type        = string
-  sensitive   = true
-}
-
-variable "slack_success_webhook_url" {
-  description = "Slack webhook URL for success notifications"
+variable "slack_webhook_url" {
+  description = "Slack webhook URL for notifications"
   type        = string
   default     = ""
   sensitive   = true
 }
 
-variable "slack_integration_enabled" {
-  description = "Enable Slack integration"
-  type        = string
-  default     = "true"
-}
-
-variable "notion_integration_enabled" {
-  description = "Enable Notion integration"
-  type        = string
-  default     = "true"
-}
 
 variable "log_level" {
   description = "Log level for the lambda function"
@@ -93,8 +76,27 @@ variable "common_tags" {
   }
 }
 
-variable "GEMINI_API_KEY" {
+variable "gemini_api_key" {
   description = "Gemini API key for AI processing"
   type        = string
   sensitive   = true
+}
+
+variable "notion_api_key" {
+  description = "Notion API key for integration"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "notion_database_id" {
+  description = "Notion database ID for meeting minutes"
+  type        = string
+  default     = ""
+}
+
+variable "notion_task_database_id" {
+  description = "Notion database ID for tasks"
+  type        = string
+  default     = ""
 }
