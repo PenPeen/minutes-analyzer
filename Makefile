@@ -13,6 +13,10 @@ AWS_REGION = ap-northeast-1
 PROJECT_NAME = minutes-analyzer
 ENVIRONMENT = local
 
+# LocalStack AWS設定
+AWS_ENDPOINT_FLAG = --endpoint-url=$(LOCALSTACK_ENDPOINT)
+AWS_LOCAL_CREDENTIALS = AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
+
 # 初期セットアップ（OSS公開用）
 setup: ## 初期セットアップを実行
 	@if [ -f .env.local ]; then \
@@ -119,6 +123,13 @@ deploy-local: tf-plan ## LocalStack環境にデプロイ
 	@echo "✅ デプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/local && terraform output
+	@$(MAKE) upload-prompts-local
+
+# プロンプトをS3にアップロード
+upload-prompts-local: ## プロンプトファイルをLocalStackのS3にアップロード
+	@echo "📤 プロンプトファイルをS3にアップロード中..."
+	@$(AWS_LOCAL_CREDENTIALS) ./scripts/upload_prompts_to_s3.sh local
+	@echo "✅ プロンプトのアップロードが完了しました"
 
 # LocalStack環境を破棄
 destroy-local: ## LocalStack環境を破棄
