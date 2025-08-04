@@ -46,10 +46,10 @@ cp env.local.sample .env.local
 
 `.env.local`で以下の設定を必ず変更してください：
 - `GEMINI_API_KEY`: Gemini API キーを設定
-- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定（オプション）
-- `NOTION_API_KEY`: Notion Integration トークンを設定（オプション）
-- `NOTION_DATABASE_ID`: 議事録用データベースIDを設定（オプション）
-- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースIDを設定（オプション）
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定
+- `NOTION_API_KEY`: Notion Integration トークンを設定
+- `NOTION_DATABASE_ID`: 議事録用データベースIDを設定
+- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースIDを設定
 
 ### 開発環境の起動
 
