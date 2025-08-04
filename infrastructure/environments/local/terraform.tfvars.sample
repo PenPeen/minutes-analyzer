@@ -20,9 +20,6 @@ log_retention_days = 14
 # Secrets configuration
 gemini_api_key_secret_name = "minutes-analyzer/gemini-api-key"
 
-# Feature flags
-slack_integration_enabled  = "true"
-notion_integration_enabled = "true"
 
 # Log level
 log_level = "INFO"
