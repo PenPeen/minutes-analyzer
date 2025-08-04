@@ -45,6 +45,7 @@ cp env.local.sample .env.local
 
 `.env.local`で以下の設定を必ず変更してください：
 - `GEMINI_API_KEY`: Gemini API キーを設定
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定
 
 ### 開発環境の起動
 
@@ -112,10 +113,7 @@ minutes-analyzer/
 
 ### 必須設定
 - `GEMINI_API_KEY`: Gemini 2.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
-
-### 任意設定
-- `SLACK_ERROR_WEBHOOK_URL`: エラー通知用Slack Webhook URL
-- `SLACK_SUCCESS_WEBHOOK_URL`: 成功通知用Slack Webhook URL
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL（[Slack App](https://api.slack.com/apps)で取得）
 
 ## 📖 ドキュメント
 
