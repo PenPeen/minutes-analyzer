@@ -1,6 +1,7 @@
 require_relative 'secrets_manager'
 require_relative 'gemini_client'
 require_relative 'slack_client'
+require_relative 'notion_client'
 require 'json'
 require 'logger'
 
@@ -39,18 +40,10 @@ class LambdaHandler
 
       @logger.info("Successfully received summary from Gemini API.")
 
-      # Slack通知の送信処理
-      # Webhook URLが設定されている場合のみ通知を送信
-      slack_notification_result = nil
-      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
-      if slack_webhook_url && !slack_webhook_url.empty?
-        slack_client = SlackClient.new(slack_webhook_url, @logger)
-        slack_notification_result = slack_client.send_notification(summary)
-      else
-        @logger.warn("Slack webhook URL is not configured")
-      end
+      # 外部サービス連携処理
+      integration_results = process_integrations(summary, secrets)
 
-      success_response(summary, slack_notification_result)
+      success_response(summary, integration_results[:slack], integration_results[:notion])
 
     rescue JSON::ParserError => e
       @logger.error("Invalid JSON in request body: #{e.message}")
@@ -66,6 +59,48 @@ class LambdaHandler
 
   private
 
+  def process_integrations(summary, secrets)
+    results = {
+      slack: nil,
+      notion: nil
+    }
+
+    # Slack通知処理
+    begin
+      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
+      if slack_webhook_url && !slack_webhook_url.empty?
+        @logger.info("Sending Slack notification")
+        slack_client = SlackClient.new(slack_webhook_url, @logger)
+        results[:slack] = slack_client.send_notification(summary)
+      else
+        @logger.warn("Slack webhook URL is not configured")
+      end
+    rescue StandardError => e
+      @logger.error("Slack integration failed: #{e.message}")
+      results[:slack] = { success: false, error: e.message }
+    end
+
+    # Notion連携処理
+    begin
+      notion_api_key = secrets['NOTION_API_KEY']
+      notion_database_id = secrets['NOTION_DATABASE_ID']
+      notion_task_database_id = secrets['NOTION_TASK_DATABASE_ID']
+      
+      if notion_api_key && !notion_api_key.empty? && notion_database_id && !notion_database_id.empty?
+        @logger.info("Creating meeting page in Notion")
+        notion_client = NotionClient.new(notion_api_key, notion_database_id, notion_task_database_id, @logger)
+        results[:notion] = notion_client.create_meeting_page(summary)
+      else
+        @logger.warn("Notion API key or database ID is not configured")
+      end
+    rescue StandardError => e
+      @logger.error("Notion integration failed: #{e.message}")
+      results[:notion] = { success: false, error: e.message }
+    end
+
+    results
+  end
+
   def error_response(status_code, error, details = nil)
     body = { error: error }
     body[:details] = details if details
@@ -75,19 +110,24 @@ class LambdaHandler
     }
   end
 
-  def success_response(summary, slack_result = nil)
+  def success_response(summary, slack_result = nil, notion_result = nil)
     response_body = {
       message: "Analysis complete.",
       summary: summary,
       integrations: {
         slack: slack_result && slack_result[:success] ? 'sent' : 'not_sent',
-        notion: 'enabled'
+        notion: notion_result && notion_result[:success] ? 'created' : 'not_created'
       }
     }
 
     # Add Slack notification result if available
     if slack_result
       response_body[:slack_notification] = slack_result
+    end
+
+    # Add Notion result if available
+    if notion_result
+      response_body[:notion_result] = notion_result
     end
 
     {

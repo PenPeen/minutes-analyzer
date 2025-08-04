@@ -84,8 +84,28 @@ variable "common_tags" {
   }
 }
 
-variable "GEMINI_API_KEY" {
+variable "gemini_api_key" {
   description = "Gemini API key for AI processing"
   type        = string
   sensitive   = true
 }
+
+variable "notion_api_key" {
+  description = "Notion API key for integration"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "notion_database_id" {
+  description = "Notion database ID for meeting minutes"
+  type        = string
+  default     = ""
+}
+
+variable "notion_task_database_id" {
+  description = "Notion database ID for tasks"
+  type        = string
+  default     = ""
+}
+

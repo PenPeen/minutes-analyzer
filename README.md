@@ -11,6 +11,7 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 - 🤖 **AI分析**: Gemini 2.5 Flash APIによる議事録分析
 - 📋 **自動抽出**: 決定事項・アクション項目・懸念事項を自動識別
 - 📢 **Slack連携**: 分析結果のSlack通知
+- 📝 **Notion連携**: 議事録とTODOタスクの自動作成
 - 💰 **コスト効率**: 月間$2-4の低コスト運用（100回/日実行時）
 
 ## 🚀 クイックスタート
@@ -45,7 +46,10 @@ cp env.local.sample .env.local
 
 `.env.local`で以下の設定を必ず変更してください：
 - `GEMINI_API_KEY`: Gemini API キーを設定
-- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定（オプション）
+- `NOTION_API_KEY`: Notion Integration トークンを設定（オプション）
+- `NOTION_DATABASE_ID`: 議事録用データベースIDを設定（オプション）
+- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースIDを設定（オプション）
 
 ### 開発環境の起動
 
@@ -86,9 +90,11 @@ make clean                  # ローカル環境をクリーンアップ
 
 ### システム構成
 
-- **Google Apps Script**: Google Driveの監視・前処理・Slack配信
+- **Google Apps Script**: Google Driveの監視・前処理
 - **AWS Lambda (Ruby)**: Gemini 2.5 Flash APIを使用した議事録分析
 - **API Gateway**: RESTful API エンドポイント
+- **Slack Integration**: 分析結果の通知
+- **Notion Integration**: 議事録ページとタスクの自動作成
 - **LocalStack**: ローカル開発環境でのAWSサービスエミュレート
 
 詳細な設計については [docs/architecture.md](docs/architecture.md) を参照してください。
@@ -113,7 +119,18 @@ minutes-analyzer/
 
 ### 必須設定
 - `GEMINI_API_KEY`: Gemini 2.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
+
+### オプション設定
 - `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL（[Slack App](https://api.slack.com/apps)で取得）
+- `NOTION_API_KEY`: Notion Integration トークン（[Notion開発者ポータル](https://www.notion.so/my-integrations)で取得）
+- `NOTION_DATABASE_ID`: 議事録用データベースID
+- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
+
+### Notion設定手順
+1. [Notion開発者ポータル](https://www.notion.so/my-integrations)でインテグレーションを作成
+2. 議事録用とタスク管理用のデータベースを作成
+3. データベースにインテグレーションを招待（編集権限付与）
+4. データベースIDをURLから取得して設定
 
 ## 📖 ドキュメント
 

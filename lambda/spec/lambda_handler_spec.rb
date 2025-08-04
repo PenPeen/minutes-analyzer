@@ -49,7 +49,7 @@ RSpec.describe LambdaHandler do
           expect(JSON.parse(result[:body])['summary']).to eq(summary)
           expect(JSON.parse(result[:body])['message']).to eq('Analysis complete.')
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('not_sent')
-          expect(JSON.parse(result[:body])['integrations']['notion']).to eq('enabled')
+          expect(JSON.parse(result[:body])['integrations']['notion']).to eq('not_created')
         end
 
         it 'Slack webhook URL未設定の警告をログに出力' do

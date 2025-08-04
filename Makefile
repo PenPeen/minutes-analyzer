@@ -34,8 +34,11 @@ generate-tfvars: ## terraform.tfvarsを.env.localから生成
 	@if [ -f .env.local ]; then \
 		( \
 			echo "# .env.localから自動生成されるTerraform変数ファイル"; \
-			echo "GEMINI_API_KEY=\"$$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""; \
+			echo "gemini_api_key=\"$$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""; \
 			echo "slack_webhook_url=\"$$(grep SLACK_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""; \
+			echo "notion_api_key=\"$$(grep NOTION_API_KEY .env.local | cut -d '=' -f2-)\""; \
+			echo "notion_database_id=\"$$(grep NOTION_DATABASE_ID .env.local | cut -d '=' -f2-)\""; \
+			echo "notion_task_database_id=\"$$(grep NOTION_TASK_DATABASE_ID .env.local | cut -d '=' -f2-)\""; \
 		) > infrastructure/environments/local/terraform.tfvars; \
 		echo "✅ terraform.tfvarsを生成しました"; \
 	else \
