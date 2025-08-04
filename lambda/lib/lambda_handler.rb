@@ -65,21 +65,6 @@ class LambdaHandler
       notion: nil
     }
 
-    # Slack通知処理
-    begin
-      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
-      if slack_webhook_url && !slack_webhook_url.empty?
-        @logger.info("Sending Slack notification")
-        slack_client = SlackClient.new(slack_webhook_url, @logger)
-        results[:slack] = slack_client.send_notification(summary)
-      else
-        @logger.warn("Slack webhook URL is not configured")
-      end
-    rescue StandardError => e
-      @logger.error("Slack integration failed: #{e.message}")
-      results[:slack] = { success: false, error: e.message }
-    end
-
     # Notion連携処理
     begin
       notion_api_key = secrets['NOTION_API_KEY']
@@ -96,6 +81,21 @@ class LambdaHandler
     rescue StandardError => e
       @logger.error("Notion integration failed: #{e.message}")
       results[:notion] = { success: false, error: e.message }
+    end
+
+    # Slack通知処理
+    begin
+      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
+      if slack_webhook_url && !slack_webhook_url.empty?
+        @logger.info("Sending Slack notification")
+        slack_client = SlackClient.new(slack_webhook_url, @logger)
+        results[:slack] = slack_client.send_notification(summary)
+      else
+        @logger.warn("Slack webhook URL is not configured")
+      end
+    rescue StandardError => e
+      @logger.error("Slack integration failed: #{e.message}")
+      results[:slack] = { success: false, error: e.message }
     end
 
     results
