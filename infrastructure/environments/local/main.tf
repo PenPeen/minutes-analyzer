@@ -19,6 +19,7 @@ provider "aws" {
     logs           = "http://localhost:4566"
     sts            = "http://localhost:4566"
     secretsmanager = "http://localhost:4566"
+    s3             = "http://localhost:4566"
   }
 
   # LocalStack用の認証設定
@@ -27,6 +28,9 @@ provider "aws" {
   skip_credentials_validation = true
   skip_metadata_api_check     = true
   skip_requesting_account_id  = true
+  
+  # S3用の設定
+  s3_use_path_style = true
 }
 
 # Secrets Manager for Application Secrets
@@ -46,6 +50,60 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
   })
 }
 
+# S3 Bucket for Prompts
+resource "aws_s3_bucket" "prompts" {
+  bucket = "${var.project_name}-prompts-${var.environment}"
+  
+  # LocalStackの場合、force_path_styleを使用
+  force_destroy = true
+  
+  tags = var.common_tags
+}
+
+resource "aws_s3_bucket_versioning" "prompts" {
+  bucket = aws_s3_bucket.prompts.id
+  
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+# S3 Bucket Policy - Allow access only from Lambda
+resource "aws_s3_bucket_policy" "prompts" {
+  bucket = aws_s3_bucket.prompts.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DenyAllExceptLambda"
+        Effect = "Deny"
+        Principal = "*"
+        Action = "s3:*"
+        Resource = [
+          aws_s3_bucket.prompts.arn,
+          "${aws_s3_bucket.prompts.arn}/*"
+        ]
+        Condition = {
+          StringNotEquals = {
+            "aws:PrincipalArn" = aws_iam_role.lambda_execution_role.arn
+          }
+        }
+      }
+    ]
+  })
+}
+
+# Block public access
+resource "aws_s3_bucket_public_access_block" "prompts" {
+  bucket = aws_s3_bucket.prompts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 # Lambda関数
 resource "aws_lambda_function" "minutes_analyzer" {
   filename         = var.lambda_zip_path
@@ -62,6 +120,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
       APP_SECRETS_NAME            = aws_secretsmanager_secret.app_secrets.name
       LOG_LEVEL                   = var.log_level
       AWS_ENDPOINT_URL            = "http://host.docker.internal:4566"  # LocalStack endpoint
+      PROMPTS_BUCKET_NAME         = aws_s3_bucket.prompts.id
     }
   }
 
@@ -114,6 +173,29 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
         Effect   = "Allow",
         Action   = "secretsmanager:GetSecretValue",
         Resource = aws_secretsmanager_secret.app_secrets.arn
+      }
+    ]
+  })
+}
+
+# IAM Policy for S3 Prompts Bucket
+resource "aws_iam_role_policy" "lambda_s3_policy" {
+  name = "${var.project_name}-lambda-s3-policy-${var.environment}"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          aws_s3_bucket.prompts.arn,
+          "${aws_s3_bucket.prompts.arn}/*"
+        ]
       }
     ]
   })

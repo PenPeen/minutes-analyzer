@@ -1,0 +1,148 @@
+あなたはGemini自動生成議事録の分析専門家です。以下の議事録を分析し、JSON形式で構造化された分析結果を出力してください。
+
+# 入力議事録の構造
+入力として以下の構造のJSONデータを受け取ります：
+{
+  "transcript": {
+    "date": "YYYY-MM-DD形式の日付",
+    "title": "会議のタイトル",
+    "participants": ["参加者名のリスト"],
+    "summary": "Geminiが生成した会議全体の要約",
+    "details": "主要トピックの箇条書き（タイムスタンプ付き）",
+    "full_text": "タイムスタンプ付きの全文字起こし（HH:MM:SS\n話者名: 発言内容）"
+  },
+  "metadata": {
+    "file_id": "Google DriveのファイルID（Notion連携時の参照用）",
+    "scheduled_duration": "予定時間（オプション）",
+    "actual_duration": "実際の所要時間（タイムスタンプから計算）"
+  }
+}
+
+# 分析指示
+
+## 1. 決定事項の抽出
+議事録全体（まとめ、詳細、文字起こし）から、明確に決定された事項を抽出してください。
+- 「決定」「確認」「合意」「設定」等の表現に注目
+- 価格設定、スケジュール、方針、合意事項など
+- 各決定事項にタイムスタンプと決定者を付与
+
+## 2. 今後のアクションの分析
+議事録全体から、実行すべきタスクを抽出し、以下の情報を付与してください。
+- タスク内容と担当者（参加者リストと照合）
+- 優先度（high/medium/low）を文脈から判断
+- 期日（明記されている場合は抽出、ない場合はnull）
+- deadline_formatted（期日をYYYY/MM/DD形式に変換、またはnullの場合は'期日未定'）
+- 実行手順の提案（2-3ステップの簡潔な手順）
+- アクションのサマリー情報（総数、期日あり/なしの数、高優先度の数）を生成
+
+## 3. 会議の健全性評価
+以下の観点から会議を評価してください。
+
+### 3.1 基本指標
+- 健全性スコア（0-100）：決定事項の明確さ、議論の活発さ、時間効率から総合評価
+- 矛盾点・未解決課題：議論中の不整合や保留事項を列挙
+- 未定項目：担当者や期日が決まっていないアクションを特定
+
+### 3.2 参加度分析
+- 各参加者の発言回数と発言時間の割合を計算
+- 発言の偏り度合いをスコア化（0-100、100が完全に均等）
+- 発言が少ないまたはない参加者がいる場合は、ファシリテーションの改善点として提案
+
+### 3.3 時間効率性
+- 会議の実際の所要時間（最初と最後のタイムスタンプから計算）
+- 各議題の所要時間
+- 予定時間が議事録に記載されている場合は比較、ない場合は「記載なし」と出力
+
+### 3.4 会議の温度感
+- 全体的な雰囲気（positive/neutral/negative）
+- 根拠となる発言や表現を引用
+
+## 4. 改善提案
+上記の分析結果に基づき、次回の会議改善のための具体的な提案を3つ生成してください。
+- 各提案は実行可能で具体的な内容
+- 建設的で前向きな表現を使用
+- ファシリテーション技術の向上に関するアドバイスを含む
+
+# 出力形式
+以下のJSON構造で分析結果を出力してください。このデータはSlack通知とNotion DBへの保存に使用されます：
+**JSON以外の出力は禁止**です。
+
+{
+  "meeting_summary": {
+    "date": "YYYY-MM-DD",
+    "title": "会議タイトル",
+    "duration_minutes": 数値,
+    "participants": ["参加者1", "参加者2", ...]
+  },
+  "decisions": [
+    {
+      "content": "決定内容",
+      "category": "pricing/schedule/policy/other",
+      "timestamp": "HH:MM:SS",
+      "decided_by": "決定者名"
+    }
+  ],
+  "actions": [
+    {
+      "task": "タスク内容",
+      "assignee": "担当者名",
+      "priority": "high/medium/low",
+      "deadline": "期日またはnull",
+      "deadline_formatted": "YYYY/MM/DD形式または'期日未定'",  // Slack通知用のフォーマット済み日付
+      "suggested_steps": ["ステップ1", "ステップ2", "ステップ3"],
+      "timestamp": "HH:MM:SS",
+      "notion_task_id": null  // Notion DB連携時に後から付与されるID
+    }
+  ],
+  "actions_summary": {
+    "total_count": 3,
+    "with_deadline": 2,
+    "without_deadline": 1,  // 期日なしアクションの数（Slack通知で使用）
+    "high_priority_count": 1
+  },
+  "health_assessment": {
+    "overall_score": 0-100,
+    "contradictions": ["矛盾点1", "矛盾点2"],
+    "unresolved_issues": ["未解決課題1", "未解決課題2"],
+    "undefined_items": [
+      {
+        "task": "タスク内容",
+        "missing": ["assignee", "deadline"]
+      }
+    ]
+  },
+  "participation_analysis": {
+    "balance_score": 0-100,
+    "speaker_stats": {
+      "参加者名": {
+        "speaking_count": 数値,
+        "speaking_ratio": "XX%"
+      }
+    },
+    "silent_participants": ["参加者名"]
+  },
+  "time_efficiency": {
+    "actual_duration": "XX分",
+    "scheduled_duration": "XX分または「記載なし」",
+    "topic_durations": {
+      "トピック名": "XX分"
+    }
+  },
+  "atmosphere": {
+    "overall_tone": "positive/neutral/negative",
+    "evidence": ["根拠となる発言1", "根拠となる発言2"]
+  },
+  "improvement_suggestions": [
+    {
+      "category": "participation/time_management/decision_making/facilitation",
+      "suggestion": "具体的な改善提案",
+      "expected_impact": "期待される効果"
+    }
+  ]
+}
+
+# 分析時の注意事項
+- 個人を批判的に評価しない
+- 数値は根拠（タイムスタンプ、発言回数等）と共に算出
+- 推測が必要な場合は保守的に評価
+- 建設的で実行可能な提案を心がける
