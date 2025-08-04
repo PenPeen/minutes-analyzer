@@ -158,15 +158,16 @@ graph LR
 2. **日本語処理能力**: ビジネス文脈での高精度理解
 3. **構造化出力の安定性**: JSON形式で高いの成功率
 4. **レスポンス速度**: 5分以内での処理完了
+5. **コンテキスト長**: 初期要件としては1時間会議（20,000文字）での利用を想定しているが、拡張性を持たせたい。
 
 ### 検討対象モデル一覧
 **✅ 候補選定** （コストは2025年8月時点）
 
-| モデル | コスト/1M tokens | Doc |
-|--------|------------------|------------|
-| **Gemini 2.5 Flash** | $0.30 | [url](https://cloud.google.com/vertex-ai/generative-ai/pricing?hl=ja) |
-| **Claude 3.5 Haiku** | $0.80 | [url](https://docs.anthropic.com/ja/docs/about-claude/pricing) |
-| **GPT-o4 mini** | $0.60 | [url](https://openai.com/ja-JP/api/pricing/) |
+| モデル | コスト/1M tokens | コンテキスト長 | Doc |
+|--------|------------------|---------------|------------|
+| **Gemini 2.5 Flash** | $0.30 | 1,048,576 tokens | [url](https://cloud.google.com/vertex-ai/generative-ai/pricing?hl=ja) |
+| **Claude 3.5 Haiku** | $0.80 | 200,000 tokens | [url](https://docs.anthropic.com/ja/docs/about-claude/pricing) |
+| **GPT-4o mini** | $0.60 | 128,000 tokens | [url](https://openai.com/ja-JP/api/pricing/) |
 
 **❌ 除外モデル**
 
@@ -175,6 +176,14 @@ graph LR
 | GPT-4o | $5.00 | ❌ コスト高 |
 | Claude 3.5 Sonnet | $3.00 | ❌ コスト高 |
 
+### コンテキスト長による選定
+- **現在のニーズ**: 1時間会議（20,000文字 ≈ 約7,000-10,000トークン）
+- **将来の拡張性**: 長時間の会議（100,000文字以上 ≈ 約33,000-50,000トークン）
+
+**評価結果:**
+- **Gemini 2.5 Flash**: ✅ 100万トークンで圧倒的な拡張性
+- **Claude 3.5 Haiku**: △ 20万トークンで現在は十分だが、長時間会議では制約の可能性
+- **GPT-4o mini**: △ 12.8万トークンで将来の長時間会議には不十分
 
 ### 🎯 議事録処理精度テスト結果
 
@@ -182,7 +191,12 @@ graph LR
 
 決定事項抽出, アクション抽出などの基本要件については、どのモデルを利用した場合も大きな性能差はなかった。
 
-
 ### 結論
 
-Gemini 2.5 Flash を採択
+**Gemini 2.5 Flash を採択**
+
+**決定要因:**
+1. **最高のコストパフォーマンス**: $0.30/1M tokens
+2. **圧倒的なコンテキスト長**: 100万トークンで将来の長時間会議にも対応
+3. **十分な処理精度**: 他モデルと同等の議事録分析性能
+4. **拡張性**: 現在の要件から将来の5時間会議まで柔軟に対応可能
