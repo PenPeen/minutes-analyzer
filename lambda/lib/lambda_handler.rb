@@ -11,6 +11,7 @@ class LambdaHandler
     @logger.level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
     @secrets_manager = secrets_manager || SecretsManager.new(@logger)
     @gemini_client = gemini_client
+    @environment = ENV.fetch('ENVIRONMENT', 'local')
   end
 
   def handle(event:, context:)
@@ -32,18 +33,45 @@ class LambdaHandler
         return error_response(400, "Request body is missing.")
       end
 
-      input_text = JSON.parse(body)['text']
-      @logger.info("Input text received: #{input_text.length} characters")
+      parsed_body = JSON.parse(body)
+      
+      # Support both old and new input formats
+      if parsed_body['transcript']
+        # New format with structured transcript data
+        transcript_data = parsed_body
+        @logger.info("Received structured transcript data")
+      else
+        # Legacy format with just text
+        input_text = parsed_body['text']
+        @logger.info("Input text received: #{input_text.length} characters")
+        
+        # Convert to new format
+        transcript_data = {
+          "transcript" => {
+            "date" => Time.now.strftime('%Y-%m-%d'),
+            "title" => "Meeting",
+            "participants" => [],
+            "summary" => "",
+            "details" => "",
+            "full_text" => input_text
+          },
+          "metadata" => {
+            "file_id" => "",
+            "scheduled_duration" => "",
+            "actual_duration" => ""
+          }
+        }
+      end
 
-      gemini_client = @gemini_client || GeminiClient.new(api_key, @logger)
-      summary = gemini_client.summarize(input_text)
+      gemini_client = @gemini_client || GeminiClient.new(api_key, @logger, nil, @environment)
+      analysis_result = gemini_client.analyze_meeting(transcript_data)
 
-      @logger.info("Successfully received summary from Gemini API.")
+      @logger.info("Successfully received analysis from Gemini API.")
 
       # 外部サービス連携処理
-      integration_results = process_integrations(summary, secrets)
+      integration_results = process_integrations(analysis_result, secrets)
 
-      success_response(summary, integration_results[:slack], integration_results[:notion])
+      success_response(analysis_result, integration_results[:slack], integration_results[:notion])
 
     rescue JSON::ParserError => e
       @logger.error("Invalid JSON in request body: #{e.message}")
@@ -59,7 +87,7 @@ class LambdaHandler
 
   private
 
-  def process_integrations(summary, secrets)
+  def process_integrations(analysis_result, secrets)
     results = {
       slack: nil,
       notion: nil
@@ -74,7 +102,7 @@ class LambdaHandler
       if notion_api_key && !notion_api_key.empty? && notion_database_id && !notion_database_id.empty?
         @logger.info("Creating meeting page in Notion")
         notion_client = NotionClient.new(notion_api_key, notion_database_id, notion_task_database_id, @logger)
-        results[:notion] = notion_client.create_meeting_page(summary)
+        results[:notion] = notion_client.create_meeting_page(analysis_result)
       else
         @logger.warn("Notion API key or database ID is not configured")
       end
@@ -89,7 +117,7 @@ class LambdaHandler
       if slack_webhook_url && !slack_webhook_url.empty?
         @logger.info("Sending Slack notification")
         slack_client = SlackClient.new(slack_webhook_url, @logger)
-        results[:slack] = slack_client.send_notification(summary)
+        results[:slack] = slack_client.send_notification(analysis_result)
       else
         @logger.warn("Slack webhook URL is not configured")
       end
@@ -110,10 +138,10 @@ class LambdaHandler
     }
   end
 
-  def success_response(summary, slack_result = nil, notion_result = nil)
+  def success_response(analysis_result, slack_result = nil, notion_result = nil)
     response_body = {
       message: "Analysis complete.",
-      summary: summary,
+      analysis: analysis_result,
       integrations: {
         slack: slack_result && slack_result[:success] ? 'sent' : 'not_sent',
         notion: notion_result && notion_result[:success] ? 'created' : 'not_created'

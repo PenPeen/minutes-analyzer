@@ -2,6 +2,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'time'
+require 'date'
 
 class NotionClient
   NOTION_API_BASE_URL = 'https://api.notion.com/v1'
@@ -14,16 +15,16 @@ class NotionClient
     @logger = logger
   end
 
-  def create_meeting_page(summary)
+  def create_meeting_page(analysis_result)
     @logger.info("Creating Notion page for meeting minutes")
     
     uri = URI("#{NOTION_API_BASE_URL}/pages")
     
     # 議事録ページのプロパティを構築
-    properties = build_meeting_properties(summary)
+    properties = build_meeting_properties(analysis_result)
     
     # ページコンテンツを構築
-    children = build_page_content(summary)
+    children = build_page_content(analysis_result)
     
     request_body = {
       parent: { database_id: @database_id },
@@ -37,10 +38,11 @@ class NotionClient
       page_id = response[:data]['id']
       @logger.info("Successfully created Notion page: #{page_id}")
       
-      # TODO項目をタスクDBに連携
+      # アクション項目をタスクDBに連携
       task_results = nil
-      if summary[:todos] && !summary[:todos].empty? && @task_database_id && !@task_database_id.empty?
-        task_results = create_tasks_from_todos(summary[:todos], page_id)
+      actions = analysis_result['actions'] || []
+      if actions.any? && @task_database_id && !@task_database_id.empty?
+        task_results = create_tasks_from_actions(actions, page_id)
       end
       
       result = { success: true, page_id: page_id, url: response[:data]['url'] }
@@ -62,79 +64,92 @@ class NotionClient
 
   private
 
-  def build_meeting_properties(summary)
+  def build_meeting_properties(analysis_result)
+    meeting_summary = analysis_result['meeting_summary'] || {}
+    decisions = analysis_result['decisions'] || []
+    actions = analysis_result['actions'] || []
+    health_assessment = analysis_result['health_assessment'] || {}
+    
     properties = {
       "タイトル" => {
         title: [
           {
             text: {
-              content: summary[:title] || "議事録 #{Time.now.strftime('%Y-%m-%d %H:%M')}"
+              content: meeting_summary['title'] || "議事録 #{Time.now.strftime('%Y-%m-%d %H:%M')}"
             }
           }
         ]
       },
       "日付" => {
         date: {
-          start: Time.now.iso8601
+          start: meeting_summary['date'] || Time.now.strftime('%Y-%m-%d')
         }
       }
     }
     
     # 参加者の設定
-    if summary[:participants] && !summary[:participants].empty?
+    if meeting_summary['participants'] && meeting_summary['participants'].any?
       properties["参加者"] = {
-        multi_select: summary[:participants].map { |p| { name: p } }
+        multi_select: meeting_summary['participants'].map { |p| { name: p } }
       }
     end
     
     # 決定事項の設定
-    if summary[:decisions] && !summary[:decisions].empty?
+    if decisions.any?
       properties["決定事項"] = {
         rich_text: [
           {
             text: {
-              content: summary[:decisions].join("\n")
+              content: decisions.map { |d| "• #{d['content']}" }.join("\n")
             }
           }
         ]
       }
     end
     
-    # TODOの設定
-    if summary[:todos] && !summary[:todos].empty?
+    # アクション項目の設定
+    if actions.any?
       properties["TODO"] = {
         rich_text: [
           {
             text: {
-              content: summary[:todos].map { |todo| "• #{todo[:task]}" }.join("\n")
+              content: actions.map { |a| "• #{a['task']} (#{a['assignee']})" }.join("\n")
             }
           }
         ]
       }
     end
     
-    # スコアの設定
-    if summary[:score]
+    # 健全性スコアの設定
+    if health_assessment['overall_score']
       properties["スコア"] = {
-        number: summary[:score]
+        number: health_assessment['overall_score']
       }
     end
     
     properties
   end
 
-  def build_page_content(summary)
+  def build_page_content(analysis_result)
     content = []
     
     # ヘッダー
     content << build_header
     
     # 各セクションを追加
-    content.concat(build_decisions_section(summary[:decisions])) if summary[:decisions] && !summary[:decisions].empty?
-    content.concat(build_todos_section(summary[:todos])) if summary[:todos] && !summary[:todos].empty?
-    content.concat(build_warnings_section(summary[:warnings])) if summary[:warnings] && !summary[:warnings].empty?
-    content.concat(build_emotion_section(summary[:emotion_analysis])) if summary[:emotion_analysis]
-    content.concat(build_efficiency_section(summary[:efficiency_advice])) if summary[:efficiency_advice]
+    decisions = analysis_result['decisions'] || []
+    actions = analysis_result['actions'] || []
+    health_assessment = analysis_result['health_assessment'] || {}
+    participation_analysis = analysis_result['participation_analysis'] || {}
+    atmosphere = analysis_result['atmosphere'] || {}
+    improvement_suggestions = analysis_result['improvement_suggestions'] || []
+    
+    content.concat(build_decisions_section(decisions)) if decisions.any?
+    content.concat(build_actions_section(actions)) if actions.any?
+    content.concat(build_health_section(health_assessment)) if health_assessment['overall_score']
+    content.concat(build_participation_section(participation_analysis)) if participation_analysis['balance_score']
+    content.concat(build_atmosphere_section(atmosphere)) if atmosphere['overall_tone']
+    content.concat(build_improvements_section(improvement_suggestions)) if improvement_suggestions.any?
     
     content
   end
@@ -168,13 +183,17 @@ class NotionClient
     }
     
     decisions.each do |decision|
+      text = "#{decision['content']}"
+      text += " (#{decision['decided_by']}により決定)" if decision['decided_by']
+      text += " [#{decision['timestamp']}]" if decision['timestamp']
+      
       section << {
         type: "bulleted_list_item",
         bulleted_list_item: {
           rich_text: [
             {
               type: "text",
-              text: { content: decision }
+              text: { content: text }
             }
           ]
         }
@@ -184,7 +203,7 @@ class NotionClient
     section
   end
 
-  def build_todos_section(todos)
+  def build_actions_section(actions)
     section = []
     section << {
       type: "heading_2",
@@ -192,16 +211,22 @@ class NotionClient
         rich_text: [
           {
             type: "text",
-            text: { content: "✅ TODO項目" }
+            text: { content: "✅ アクション項目" }
           }
         ]
       }
     }
     
-    todos.each do |todo|
-      todo_text = todo[:task]
-      todo_text += " (担当: #{todo[:assignee]})" if todo[:assignee]
-      todo_text += " (期限: #{todo[:due_date]})" if todo[:due_date]
+    actions.each do |action|
+      priority_emoji = case action['priority']
+                      when 'high' then '🔴'
+                      when 'medium' then '🟡'
+                      else '⚪'
+                      end
+      
+      action_text = "#{priority_emoji} #{action['task']}"
+      action_text += " (担当: #{action['assignee']})"
+      action_text += " (期限: #{action['deadline_formatted']})"
       
       section << {
         type: "to_do",
@@ -209,7 +234,7 @@ class NotionClient
           rich_text: [
             {
               type: "text",
-              text: { content: todo_text }
+              text: { content: action_text }
             }
           ],
           checked: false
@@ -220,7 +245,7 @@ class NotionClient
     section
   end
 
-  def build_warnings_section(warnings)
+  def build_health_section(health_assessment)
     section = []
     section << {
       type: "heading_2",
@@ -228,30 +253,78 @@ class NotionClient
         rich_text: [
           {
             type: "text",
-            text: { content: "⚠️ 注意点" }
+            text: { content: "📊 会議の健全性評価" }
           }
         ]
       }
     }
     
-    warnings.each do |warning|
-      section << {
-        type: "bulleted_list_item",
-        bulleted_list_item: {
-          rich_text: [
-            {
-              type: "text",
-              text: { content: warning }
-            }
-          ]
-        }
-      }
+    content = "総合スコア: #{health_assessment['overall_score']}/100\n"
+    
+    if health_assessment['contradictions'] && health_assessment['contradictions'].any?
+      content += "\n矛盾点:\n"
+      health_assessment['contradictions'].each { |c| content += "• #{c}\n" }
     end
+    
+    if health_assessment['unresolved_issues'] && health_assessment['unresolved_issues'].any?
+      content += "\n未解決課題:\n"
+      health_assessment['unresolved_issues'].each { |u| content += "• #{u}\n" }
+    end
+    
+    section << {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: content }
+          }
+        ]
+      }
+    }
     
     section
   end
 
-  def build_emotion_section(emotion_analysis)
+  def build_participation_section(participation_analysis)
+    section = []
+    section << {
+      type: "heading_2",
+      heading_2: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: "👥 参加度分析" }
+          }
+        ]
+      }
+    }
+    
+    content = "バランススコア: #{participation_analysis['balance_score']}/100\n\n"
+    
+    if participation_analysis['speaker_stats']
+      content += "発言統計:\n"
+      participation_analysis['speaker_stats'].each do |name, stats|
+        content += "• #{name}: #{stats['speaking_count']}回 (#{stats['speaking_ratio']})\n"
+      end
+    end
+    
+    section << {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: content }
+          }
+        ]
+      }
+    }
+    
+    section
+  end
+
+  def build_atmosphere_section(atmosphere)
     section = []
     section << {
       type: "heading_2",
@@ -265,13 +338,26 @@ class NotionClient
       }
     }
     
+    tone_emoji = case atmosphere['overall_tone']
+                 when 'positive' then '😊'
+                 when 'negative' then '😟'
+                 else '😐'
+                 end
+    
+    content = "全体的な雰囲気: #{tone_emoji} #{atmosphere['overall_tone']}\n\n"
+    
+    if atmosphere['evidence'] && atmosphere['evidence'].any?
+      content += "根拠:\n"
+      atmosphere['evidence'].each { |e| content += "• #{e}\n" }
+    end
+    
     section << {
       type: "paragraph",
       paragraph: {
         rich_text: [
           {
             type: "text",
-            text: { content: emotion_analysis }
+            text: { content: content }
           }
         ]
       }
@@ -280,7 +366,7 @@ class NotionClient
     section
   end
 
-  def build_efficiency_section(efficiency_advice)
+  def build_improvements_section(improvement_suggestions)
     section = []
     section << {
       type: "heading_2",
@@ -288,40 +374,50 @@ class NotionClient
         rich_text: [
           {
             type: "text",
-            text: { content: "💡 効率改善アドバイス" }
+            text: { content: "💡 改善提案" }
           }
         ]
       }
     }
     
-    section << {
-      type: "paragraph",
-      paragraph: {
-        rich_text: [
-          {
-            type: "text",
-            text: { content: efficiency_advice }
-          }
-        ]
+    improvement_suggestions.each do |suggestion|
+      category_emoji = case suggestion['category']
+                      when 'participation' then '👥'
+                      when 'time_management' then '⏱️'
+                      when 'decision_making' then '🎯'
+                      when 'facilitation' then '🎤'
+                      else '💡'
+                      end
+      
+      section << {
+        type: "bulleted_list_item",
+        bulleted_list_item: {
+          rich_text: [
+            {
+              type: "text",
+              text: { content: "#{category_emoji} #{suggestion['suggestion']} (期待効果: #{suggestion['expected_impact']})" }
+            }
+          ]
+        }
       }
-    }
+    end
     
     section
   end
 
-  def create_tasks_from_todos(todos, meeting_page_id)
+  def create_tasks_from_actions(actions, meeting_page_id)
     @logger.info("Creating tasks in task database")
     
     task_results = []
-    todos.each do |todo|
-      result = create_task(todo, meeting_page_id)
-      task_results << { task: todo[:task], success: result[:success], error: result[:error] }
+    actions.each do |action|
+      result = create_task(action, meeting_page_id)
+      task_results << { task: action['task'], success: result[:success], error: result[:error] }
     end
     
     task_results
   end
 
-  def create_task(todo, meeting_page_id)
+  def create_task(action, meeting_page_id)
     uri = URI("#{NOTION_API_BASE_URL}/pages")
     
     properties = {
@@ -329,7 +425,7 @@ class NotionClient
         title: [
           {
             text: {
-              content: todo[:task]
+              content: action['task']
             }
           }
         ]
@@ -348,26 +444,46 @@ class NotionClient
       }
     }
     
+    # 優先度の設定
+    if action['priority']
+      priority_map = {
+        'high' => '高',
+        'medium' => '中',
+        'low' => '低'
+      }
+      properties["優先度"] = {
+        select: {
+          name: priority_map[action['priority']] || '中'
+        }
+      }
+    end
+    
     # 担当者の設定（テキストフィールドとして設定）
-    if todo[:assignee]
+    if action['assignee']
       properties["担当者"] = {
         rich_text: [
           {
             text: {
-              content: todo[:assignee]
+              content: action['assignee']
             }
           }
         ]
       }
     end
     
-    # 期限の設定
-    if todo[:due_date]
-      properties["期限"] = {
-        date: {
-          start: todo[:due_date]
+    # 期限の設定（deadlineをパースして日付形式に変換）
+    if action['deadline']
+      begin
+        # 期限が文字列の場合、日付として解析を試みる
+        deadline_date = Date.parse(action['deadline'].to_s)
+        properties["期限"] = {
+          date: {
+            start: deadline_date.to_s
+          }
         }
-      }
+      rescue
+        @logger.warn("Could not parse deadline: #{action['deadline']}")
+      end
     end
     
     request_body = {
@@ -378,7 +494,7 @@ class NotionClient
     response = make_notion_request(uri, request_body)
     
     if response[:success]
-      @logger.info("Successfully created task: #{todo[:task]}")
+      @logger.info("Successfully created task: #{action['task']}")
     else
       @logger.error("Failed to create task: #{response[:error]}")
     end

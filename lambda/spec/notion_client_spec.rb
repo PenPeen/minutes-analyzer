@@ -10,19 +10,74 @@ RSpec.describe NotionClient do
   let(:client) { NotionClient.new(api_key, database_id, task_database_id, logger) }
 
   describe '#create_meeting_page' do
-    let(:summary) do
+    let(:analysis_result) do
       {
-        title: '週次定例会議',
-        participants: ['田中', '佐藤', '鈴木'],
-        decisions: ['新機能のリリース日を来月15日に決定', '予算を20%増額することを承認'],
-        todos: [
-          { task: '仕様書の作成', assignee: '田中', due_date: '2024-02-01' },
-          { task: 'デザイン案の提出', assignee: '佐藤' }
+        'meeting_summary' => {
+          'title' => '週次定例会議',
+          'date' => '2025-08-04',
+          'duration_minutes' => 30,
+          'participants' => ['田中', '佐藤', '鈴木']
+        },
+        'decisions' => [
+          {
+            'content' => '新機能のリリース日を来月15日に決定',
+            'category' => 'schedule',
+            'timestamp' => '00:10:15',
+            'decided_by' => '田中'
+          },
+          {
+            'content' => '予算を20%増額することを承認',
+            'category' => 'policy',
+            'timestamp' => '00:15:30',
+            'decided_by' => '佐藤'
+          }
         ],
-        warnings: ['リソース不足の懸念あり'],
-        score: 85,
-        emotion_analysis: 'ポジティブで建設的な雰囲気',
-        efficiency_advice: '議題の事前共有により時間短縮可能'
+        'actions' => [
+          {
+            'task' => '仕様書の作成',
+            'assignee' => '田中',
+            'priority' => 'high',
+            'deadline' => '2024-02-01',
+            'deadline_formatted' => '2024/02/01',
+            'suggested_steps' => ['要件整理', 'ドラフト作成', 'レビュー'],
+            'timestamp' => '00:20:00'
+          },
+          {
+            'task' => 'デザイン案の提出',
+            'assignee' => '佐藤',
+            'priority' => 'medium',
+            'deadline' => nil,
+            'deadline_formatted' => '期日未定',
+            'suggested_steps' => ['コンセプト作成', 'プロトタイプ作成'],
+            'timestamp' => '00:25:00'
+          }
+        ],
+        'health_assessment' => {
+          'overall_score' => 85,
+          'contradictions' => [],
+          'unresolved_issues' => ['リソース不足の懸念あり'],
+          'undefined_items' => []
+        },
+        'participation_analysis' => {
+          'balance_score' => 80,
+          'speaker_stats' => {
+            '田中' => { 'speaking_count' => 10, 'speaking_ratio' => '40%' },
+            '佐藤' => { 'speaking_count' => 8, 'speaking_ratio' => '35%' },
+            '鈴木' => { 'speaking_count' => 6, 'speaking_ratio' => '25%' }
+          },
+          'silent_participants' => []
+        },
+        'atmosphere' => {
+          'overall_tone' => 'positive',
+          'evidence' => ['ポジティブで建設的な雰囲気']
+        },
+        'improvement_suggestions' => [
+          {
+            'category' => 'time_management',
+            'suggestion' => '議題の事前共有により時間短縮可能',
+            'expected_impact' => '会議時間の20%削減'
+          }
+        ]
       }
     end
 
@@ -46,7 +101,7 @@ RSpec.describe NotionClient do
           )
 
         # Mock task creation
-        summary[:todos].each do |todo|
+        analysis_result['actions'].each do |action|
           stub_request(:post, "https://api.notion.com/v1/pages")
             .with(
               headers: {
@@ -60,13 +115,13 @@ RSpec.describe NotionClient do
             )
             .to_return(
               status: 200,
-              body: { id: "task-#{todo[:task]}", url: "https://www.notion.so/task" }.to_json
+              body: { id: "task-#{action['task']}", url: "https://www.notion.so/task" }.to_json
             )
         end
       end
 
       it 'creates a page and returns success result' do
-        result = client.create_meeting_page(summary)
+        result = client.create_meeting_page(analysis_result)
 
         expect(result).to eq({
           success: true,
@@ -76,7 +131,7 @@ RSpec.describe NotionClient do
       end
 
       it 'creates tasks for each todo item' do
-        client.create_meeting_page(summary)
+        client.create_meeting_page(analysis_result)
 
         # Verify task creation requests were made
         expect(WebMock).to have_requested(:post, "https://api.notion.com/v1/pages")
@@ -94,7 +149,7 @@ RSpec.describe NotionClient do
       end
 
       it 'returns failure result' do
-        result = client.create_meeting_page(summary)
+        result = client.create_meeting_page(analysis_result)
 
         expect(result[:success]).to be false
         expect(result[:error]).to include('400')
@@ -108,7 +163,7 @@ RSpec.describe NotionClient do
       end
 
       it 'returns failure result with error message' do
-        result = client.create_meeting_page(summary)
+        result = client.create_meeting_page(analysis_result)
 
         expect(result[:success]).to be false
         expect(result[:error]).to include('Net::ReadTimeout')
@@ -117,14 +172,29 @@ RSpec.describe NotionClient do
   end
 
   describe 'page content structure' do
-    let(:summary) do
+    let(:analysis_result) do
       {
-        title: 'テスト会議',
-        decisions: ['決定事項1'],
-        todos: [{ task: 'タスク1' }],
-        warnings: ['警告1'],
-        emotion_analysis: '良好',
-        efficiency_advice: 'アドバイス'
+        'meeting_summary' => {
+          'title' => 'テスト会議',
+          'date' => '2025-08-04'
+        },
+        'decisions' => [
+          { 'content' => '決定事項1', 'timestamp' => '00:05:00' }
+        ],
+        'actions' => [
+          { 'task' => 'タスク1', 'assignee' => '担当者' }
+        ],
+        'health_assessment' => {
+          'overall_score' => 90,
+          'unresolved_issues' => ['警告1']
+        },
+        'atmosphere' => {
+          'overall_tone' => 'positive',
+          'evidence' => ['良好']
+        },
+        'improvement_suggestions' => [
+          { 'category' => 'facilitation', 'suggestion' => 'アドバイス', 'expected_impact' => '改善' }
+        ]
       }
     end
 
@@ -142,7 +212,7 @@ RSpec.describe NotionClient do
         end
         .to_return(status: 200, body: { id: 'test-id', url: 'test-url' }.to_json)
 
-      client.create_meeting_page(summary)
+      client.create_meeting_page(analysis_result)
 
       # Verify page structure
       expect(request_body).not_to be_nil
@@ -158,10 +228,10 @@ RSpec.describe NotionClient do
         .map { |c| c['heading_2']['rich_text'][0]['text']['content'] }
 
       expect(section_headers).to include('📌 決定事項')
-      expect(section_headers).to include('✅ TODO項目')
-      expect(section_headers).to include('⚠️ 注意点')
+      expect(section_headers).to include('✅ アクション項目')
+      expect(section_headers).to include('📊 会議の健全性評価')
       expect(section_headers).to include('😊 会議の雰囲気')
-      expect(section_headers).to include('💡 効率改善アドバイス')
+      expect(section_headers).to include('💡 改善提案')
     end
   end
 end

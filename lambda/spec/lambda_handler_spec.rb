@@ -38,7 +38,7 @@ RSpec.describe LambdaHandler do
 
       before do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
-        allow(gemini_client).to receive(:summarize).and_return(summary)
+        allow(gemini_client).to receive(:analyze_meeting).and_return(summary)
       end
 
       context 'Slack Webhook URLが設定されていない場合' do
@@ -46,7 +46,7 @@ RSpec.describe LambdaHandler do
           result = handler.handle(event: event, context: context)
 
           expect(result[:statusCode]).to eq(200)
-          expect(JSON.parse(result[:body])['summary']).to eq(summary)
+          expect(JSON.parse(result[:body])['analysis']).to eq(summary)
           expect(JSON.parse(result[:body])['message']).to eq('Analysis complete.')
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('not_sent')
           expect(JSON.parse(result[:body])['integrations']['notion']).to eq('not_created')
@@ -72,7 +72,7 @@ RSpec.describe LambdaHandler do
           result = handler.handle(event: event, context: context)
 
           expect(result[:statusCode]).to eq(200)
-          expect(JSON.parse(result[:body])['summary']).to eq(summary)
+          expect(JSON.parse(result[:body])['analysis']).to eq(summary)
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('sent')
           expect(JSON.parse(result[:body])['slack_notification']).to eq(JSON.parse(slack_result.to_json))
         end

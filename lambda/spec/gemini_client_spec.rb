@@ -4,28 +4,64 @@ require_relative '../lib/gemini_client'
 RSpec.describe GeminiClient do
   let(:api_key) { 'test-api-key' }
   let(:logger) { double('logger') }
-  let(:gemini_client) { GeminiClient.new(api_key, logger) }
+  let(:mock_s3_client) { double('S3Client') }
+  let(:gemini_client) { GeminiClient.new(api_key, logger, mock_s3_client, 'local') }
   let(:test_text) { 'This is a meeting transcript to be summarized.' }
   let(:mock_http) { double('Net::HTTP') }
   let(:mock_response) { double('Net::HTTPResponse') }
+  let(:prompt_text) { 'Test prompt text' }
+  let(:output_schema) { { 'type' => 'object', 'properties' => {} } }
 
   before do
     allow(logger).to receive(:info)
     allow(logger).to receive(:error)
     allow(Net::HTTP).to receive(:new).and_return(mock_http)
     allow(mock_http).to receive(:use_ssl=)
+    allow(mock_http).to receive(:read_timeout=)
+    allow(mock_http).to receive(:open_timeout=)
     allow(mock_http).to receive(:request).and_return(mock_response)
+    allow(mock_s3_client).to receive(:get_prompt).and_return(prompt_text)
+    allow(mock_s3_client).to receive(:get_output_schema).and_return(output_schema)
   end
 
-  describe '#summarize' do
+  describe '#analyze_meeting' do
+    let(:transcript_data) do
+      {
+        'transcript' => {
+          'date' => '2025-08-04',
+          'title' => 'Test Meeting',
+          'participants' => ['Alice', 'Bob'],
+          'summary' => 'Meeting summary',
+          'details' => 'Meeting details',
+          'full_text' => test_text
+        },
+        'metadata' => {
+          'file_id' => 'test-file-id',
+          'scheduled_duration' => '30分',
+          'actual_duration' => '25分'
+        }
+      }
+    end
+
     context 'when API call is successful' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'title' => 'Test Meeting',
+            'date' => '2025-08-04'
+          },
+          'decisions' => [],
+          'actions' => []
+        }
+      end
+
       let(:successful_response_body) do
         {
           candidates: [
             {
               content: {
                 parts: [
-                  { text: 'This is a summary of the meeting.' }
+                  { text: analysis_result.to_json }
                 ]
               }
             }
@@ -39,16 +75,17 @@ RSpec.describe GeminiClient do
         allow(mock_response).to receive(:body).and_return(successful_response_body)
       end
 
-      it 'returns the summary text' do
-        result = gemini_client.summarize(test_text)
-        expect(result).to eq('This is a summary of the meeting.')
+      it 'returns the parsed analysis result' do
+        result = gemini_client.analyze_meeting(transcript_data)
+        expect(result).to eq(analysis_result)
       end
 
       it 'logs API call and response status' do
-        expect(logger).to receive(:info).with('Calling Gemini API...')
+        expect(logger).to receive(:info).with('Calling Gemini API for meeting analysis...')
         expect(logger).to receive(:info).with('Gemini API response status: 200')
+        expect(logger).to receive(:info).with('Successfully parsed structured response from Gemini')
 
-        gemini_client.summarize(test_text)
+        gemini_client.analyze_meeting(transcript_data)
       end
 
       it 'makes HTTP request with correct parameters' do
@@ -57,39 +94,49 @@ RSpec.describe GeminiClient do
         allow(request).to receive(:[]=)
         allow(request).to receive(:body=)
 
-        gemini_client.summarize(test_text)
+        gemini_client.analyze_meeting(transcript_data)
 
         expect(Net::HTTP).to have_received(:new).with('generativelanguage.googleapis.com', 443)
         expect(mock_http).to have_received(:use_ssl=).with(true)
         expect(request).to have_received(:[]=).with('content-type', 'application/json')
       end
 
-      it 'sends correct request body' do
+      it 'sends correct request body with structured output' do
         request = double('Net::HTTP::Post')
         allow(Net::HTTP::Post).to receive(:new).and_return(request)
         allow(request).to receive(:[]=)
         allow(request).to receive(:body=)
 
-        gemini_client.summarize(test_text)
+        gemini_client.analyze_meeting(transcript_data)
 
         expected_body = {
           contents: [
             {
               parts: [
-                { text: "Please summarize the following meeting transcript:\n\n#{test_text}" }
+                { text: "#{prompt_text}\n\n# 入力データ:\n#{JSON.pretty_generate(transcript_data)}" }
               ]
             }
           ],
           generationConfig: {
-            maxOutputTokens: 1024
+            response_mime_type: "application/json",
+            response_schema: output_schema,
+            maxOutputTokens: 8192,
+            temperature: 0.1
           }
         }.to_json
 
         expect(request).to have_received(:body=).with(expected_body)
       end
+
+      it 'retrieves prompt and schema from S3' do
+        expect(mock_s3_client).to receive(:get_prompt)
+        expect(mock_s3_client).to receive(:get_output_schema)
+
+        gemini_client.analyze_meeting(transcript_data)
+      end
     end
 
-    context 'when API response does not contain summary' do
+    context 'when API response does not contain content' do
       let(:incomplete_response_body) do
         {
           candidates: [
@@ -110,8 +157,8 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises exception' do
         parsed_response = JSON.parse(incomplete_response_body)
-        expect(logger).to receive(:error).with("Failed to extract summary from Gemini response: #{parsed_response}")
-        expect { gemini_client.summarize(test_text) }.to raise_error('Summary could not be generated from API response.')
+        expect(logger).to receive(:error).with("Failed to extract content from Gemini response: #{parsed_response}")
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error('Content could not be generated from API response.')
       end
     end
 
@@ -132,7 +179,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises authentication exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 401: API key not valid')
-        expect { gemini_client.summarize(test_text) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
           'Authentication failed with Gemini API. Please check your API key. Details: API key not valid'
         )
       end
@@ -155,7 +202,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises authentication exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 403: Access denied')
-        expect { gemini_client.summarize(test_text) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
           'Authentication failed with Gemini API. Please check your API key. Details: Access denied'
         )
       end
@@ -178,7 +225,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises general API exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 500: Internal server error')
-        expect { gemini_client.summarize(test_text) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
           'Gemini API request failed. Status: 500, Details: Internal server error'
         )
       end
@@ -195,7 +242,7 @@ RSpec.describe GeminiClient do
 
       it 'handles invalid JSON error response gracefully' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 400: Invalid JSON response')
-        expect { gemini_client.summarize(test_text) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
           'Gemini API request failed. Status: 400, Details: Invalid JSON response'
         )
       end
@@ -212,10 +259,64 @@ RSpec.describe GeminiClient do
 
       it 'uses default error message' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 400: Unknown API error')
-        expect { gemini_client.summarize(test_text) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
           'Gemini API request failed. Status: 400, Details: Unknown API error'
         )
       end
+    end
+
+    context 'when response is not valid JSON' do
+      let(:non_json_response_body) do
+        {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: 'This is not JSON' }
+                ]
+              }
+            }
+          ]
+        }.to_json
+      end
+
+      before do
+        allow(mock_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+        allow(mock_response).to receive(:code).and_return('200')
+        allow(mock_response).to receive(:body).and_return(non_json_response_body)
+      end
+
+      it 'logs error and returns raw content' do
+        expect(logger).to receive(:error).with(/Failed to parse Gemini response as JSON/)
+        expect(logger).to receive(:error).with(/Raw content/)
+        
+        result = gemini_client.analyze_meeting(transcript_data)
+        expect(result).to eq('This is not JSON')
+      end
+    end
+  end
+
+  describe '#summarize' do
+    it 'provides backward compatibility for legacy interface' do
+      allow(mock_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
+      allow(mock_response).to receive(:code).and_return('200')
+      allow(mock_response).to receive(:body).and_return(
+        {
+          candidates: [
+            {
+              content: {
+                parts: [
+                  { text: { 'meeting_summary' => {} }.to_json }
+                ]
+              }
+            }
+          ]
+        }.to_json
+      )
+
+      result = gemini_client.summarize(test_text)
+      expect(result).to be_a(Hash)
+      expect(result).to have_key('meeting_summary')
     end
   end
 
