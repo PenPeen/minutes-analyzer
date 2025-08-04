@@ -45,11 +45,10 @@
 - [x] ON/OFF切り替え機能実装（`NOTION_ENABLED`環境変数）
 
 #### 2.3 Notion連携機能実装
-- [ ] Notion API基本連携実装
-- [ ] 議事録ページ自動作成機能
-- [ ] TODO項目のタスクDB連携
-- [ ] デモ用Notionワークスペース準備
-- [ ] ON/OFF切り替え機能実装（`NOTION_ENABLED`環境変数）
+- [x] Notion API設定
+- [x] Notion API基本連携実装
+- [x] 議事録ページ自動作成機能
+- [x] TODO項目のタスクDB連携
 
 #### 2.4 エラーハンドリング最小実装
 - [ ] API呼び出し失敗時の基本対応
