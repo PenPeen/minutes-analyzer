@@ -53,31 +53,14 @@ variable "gemini_api_key" {
   default     = "dummy-gemini-api-key"
 }
 
-variable "slack_error_webhook_url" {
-  description = "Slack webhook URL for error notifications"
+variable "slack_webhook_url" {
+  description = "Slack webhook URL for notifications"
   type        = string
   default     = ""
   sensitive   = true
 }
 
-variable "slack_success_webhook_url" {
-  description = "Slack webhook URL for success notifications"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
 
-variable "slack_integration_enabled" {
-  description = "Enable Slack integration"
-  type        = string
-  default     = "true"
-}
-
-variable "notion_integration_enabled" {
-  description = "Enable Notion integration"
-  type        = string
-  default     = "true"
-}
 
 variable "log_level" {
   description = "Log level for the lambda function"
