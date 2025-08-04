@@ -1,0 +1,170 @@
+{
+  "type": "object",
+  "properties": {
+    "meeting_summary": {
+      "type": "object",
+      "properties": {
+        "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
+        "title": {"type": "string"},
+        "duration_minutes": {"type": "number"},
+        "participants": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "required": ["date", "title", "duration_minutes", "participants"]
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "content": {"type": "string"},
+          "category": {
+            "type": "string",
+            "enum": ["pricing", "schedule", "policy", "other"]
+          },
+          "timestamp": {"type": "string", "pattern": "^\\d{2}:\\d{2}:\\d{2}$"},
+          "decided_by": {"type": "string"}
+        },
+        "required": ["content", "category", "timestamp", "decided_by"]
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "task": {"type": "string"},
+          "assignee": {"type": "string"},
+          "priority": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          },
+          "deadline": {"type": ["string", "null"]},
+          "deadline_formatted": {"type": "string"},
+          "suggested_steps": {
+            "type": "array",
+            "items": {"type": "string"}
+          },
+          "timestamp": {"type": "string", "pattern": "^\\d{2}:\\d{2}:\\d{2}$"},
+          "notion_task_id": {"type": ["string", "null"]}
+        },
+        "required": ["task", "assignee", "priority", "deadline_formatted", "suggested_steps", "timestamp"]
+      }
+    },
+    "actions_summary": {
+      "type": "object",
+      "properties": {
+        "total_count": {"type": "number"},
+        "with_deadline": {"type": "number"},
+        "without_deadline": {"type": "number"},
+        "high_priority_count": {"type": "number"}
+      },
+      "required": ["total_count", "with_deadline", "without_deadline", "high_priority_count"]
+    },
+    "health_assessment": {
+      "type": "object",
+      "properties": {
+        "overall_score": {"type": "number", "minimum": 0, "maximum": 100},
+        "contradictions": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "unresolved_issues": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "undefined_items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "task": {"type": "string"},
+              "missing": {
+                "type": "array",
+                "items": {"type": "string"}
+              }
+            },
+            "required": ["task", "missing"]
+          }
+        }
+      },
+      "required": ["overall_score", "contradictions", "unresolved_issues", "undefined_items"]
+    },
+    "participation_analysis": {
+      "type": "object",
+      "properties": {
+        "balance_score": {"type": "number", "minimum": 0, "maximum": 100},
+        "speaker_stats": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "speaking_count": {"type": "number"},
+              "speaking_ratio": {"type": "string", "pattern": "^\\d+%$"}
+            },
+            "required": ["speaking_count", "speaking_ratio"]
+          }
+        },
+        "silent_participants": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "required": ["balance_score", "speaker_stats", "silent_participants"]
+    },
+    "time_efficiency": {
+      "type": "object",
+      "properties": {
+        "actual_duration": {"type": "string"},
+        "scheduled_duration": {"type": "string"},
+        "topic_durations": {
+          "type": "object",
+          "additionalProperties": {"type": "string"}
+        }
+      },
+      "required": ["actual_duration", "scheduled_duration", "topic_durations"]
+    },
+    "atmosphere": {
+      "type": "object",
+      "properties": {
+        "overall_tone": {
+          "type": "string",
+          "enum": ["positive", "neutral", "negative"]
+        },
+        "evidence": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      },
+      "required": ["overall_tone", "evidence"]
+    },
+    "improvement_suggestions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["participation", "time_management", "decision_making", "facilitation"]
+          },
+          "suggestion": {"type": "string"},
+          "expected_impact": {"type": "string"}
+        },
+        "required": ["category", "suggestion", "expected_impact"]
+      }
+    }
+  },
+  "required": [
+    "meeting_summary",
+    "decisions",
+    "actions",
+    "actions_summary",
+    "health_assessment",
+    "participation_analysis",
+    "time_efficiency",
+    "atmosphere",
+    "improvement_suggestions"
+  ]
+}
