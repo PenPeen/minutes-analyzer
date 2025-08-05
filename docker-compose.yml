@@ -11,7 +11,7 @@ services:
       - DEBUG=1
       - LAMBDA_EXECUTOR=docker
       - LAMBDA_REMOTE_DOCKER=false
-      - LAMBDA_DOCKER_NETWORK=bridge
+      - LAMBDA_DOCKER_NETWORK=minutes-analyzer_localstack-network
       - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
 
       # AWS services to enable
