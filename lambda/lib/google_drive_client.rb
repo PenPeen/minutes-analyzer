@@ -3,8 +3,7 @@ require 'googleauth'
 require 'json'
 
 # Google Drive APIクライアント
-# 非公開の議事録ファイルにアクセスするため、サービスアカウント認証を使用
-# 事前に議事録フォルダへサービスアカウントのメールアドレスを「閲覧者」として共有する必要あり
+# IAMでサービスアカウントに権限を付与
 class GoogleDriveClient
   def initialize(credentials_json, logger)
     @logger = logger
@@ -56,7 +55,7 @@ class GoogleDriveClient
     credentials = JSON.parse(@credentials_json)
     
     # サービスアカウント認証の作成
-    # JSONキーにはprivate_keyとclient_email（Driveフォルダに共有するメールアドレス）が含まれる
+    # IAMで必要な権限を付与済み
     authorizer = Google::Auth::ServiceAccountCredentials.make_creds(
       json_key_io: StringIO.new(@credentials_json),
       scope: 'https://www.googleapis.com/auth/drive.readonly'
