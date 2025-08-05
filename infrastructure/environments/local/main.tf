@@ -42,11 +42,12 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id     = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    GEMINI_API_KEY          = var.gemini_api_key
-    SLACK_WEBHOOK_URL       = var.slack_webhook_url
-    NOTION_API_KEY          = var.notion_api_key
-    NOTION_DATABASE_ID      = var.notion_database_id
-    NOTION_TASK_DATABASE_ID = var.notion_task_database_id
+    GEMINI_API_KEY              = var.gemini_api_key
+    GOOGLE_SERVICE_ACCOUNT_JSON = var.google_service_account_json
+    SLACK_WEBHOOK_URL           = var.slack_webhook_url
+    NOTION_API_KEY              = var.notion_api_key
+    NOTION_DATABASE_ID          = var.notion_database_id
+    NOTION_TASK_DATABASE_ID     = var.notion_task_database_id
   })
 }
 

@@ -47,6 +47,12 @@ generate-tfvars: ## terraform.tfvarsを.env.localから生成
 		( \
 			echo "# .env.localから自動生成されるTerraform変数ファイル"; \
 			echo "gemini_api_key=\"$$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""; \
+			# BASE64エンコードされたGoogle認証情報をデコード（JSONの改行対策） \
+			if [ -n "$$(grep GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 .env.local | cut -d '=' -f2-)" ]; then \
+				echo "google_service_account_json=\"$$(grep GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 .env.local | cut -d '=' -f2- | base64 -d)\""; \
+			else \
+				echo "google_service_account_json=\"\""; \
+			fi; \
 			echo "slack_webhook_url=\"$$(grep SLACK_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""; \
 			echo "notion_api_key=\"$$(grep NOTION_API_KEY .env.local | cut -d '=' -f2-)\""; \
 			echo "notion_database_id=\"$$(grep NOTION_DATABASE_ID .env.local | cut -d '=' -f2-)\""; \
