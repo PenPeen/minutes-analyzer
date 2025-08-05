@@ -146,11 +146,14 @@ minutes-analyzer/
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
 
 ### Google Drive API設定手順
-1. [Google Cloud Console](https://console.cloud.google.com)でプロジェクトを作成
-2. Google Drive APIを有効化
+詳細な手順は[Google Drive API設定ガイド](docs/google-drive-api-setup.md)を参照してください。
+
+概要：
+1. Google Cloud Consoleでプロジェクトを作成
+2. Google Drive APIを有効化  
 3. サービスアカウントを作成し、JSONキーをダウンロード
-4. 議事録フォルダにサービスアカウントのメールアドレスを「閲覧者」として共有
-5. JSONキーの内容を`GOOGLE_SERVICE_ACCOUNT_JSON`に設定（改行を含む全文）
+4. IAMでサービスアカウントに適切な権限を付与
+5. JSONキーをBASE64エンコードして環境変数に設定
 
 ### Notion設定手順
 1. [Notion開発者ポータル](https://www.notion.so/my-integrations)でインテグレーションを作成
@@ -161,6 +164,7 @@ minutes-analyzer/
 ## 📖 ドキュメント
 
 - [アーキテクチャ設計](docs/architecture.md)
+- [Google Drive API設定ガイド](docs/google-drive-api-setup.md)
 
 ## 🧪 ヘルスチェック
 
