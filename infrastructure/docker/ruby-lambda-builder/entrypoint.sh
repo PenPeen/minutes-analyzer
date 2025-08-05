@@ -10,19 +10,23 @@ if [ ! -f Gemfile ]; then
 fi
 
 # 依存関係のインストール
-if [ ! -f .bundle/config ] || [ Gemfile -nt .bundle/config ] || [ Gemfile.lock -nt .bundle/config ]; then
-    echo "📦 依存関係をインストール中..."
-    bundle install
-    touch .bundle/config
-else
-    echo "✅ 依存関係は最新です"
-fi
+echo "📦 依存関係をインストール中..."
+# Lambda環境に合わせた設定
+bundle config set --local path 'vendor/bundle'
+bundle config set --local deployment 'true'
+bundle config set --local without 'development test'
+# Ruby 3.2プラットフォーム用にビルド
+bundle config set --local force_ruby_platform 'true'
+bundle lock --add-platform ruby
+bundle install --jobs=4 --retry=3
 
 # 出力パスを /output に固定（docker-compose.ymlでマウント）
 OUTPUT_PATH="/output/lambda.zip"
 
 # zipファイルを作成
 echo "📦 パッケージング中... ($OUTPUT_PATH)"
+# Lambda関数に必要なファイルのみをパッケージング
+cd /var/task
 zip -qr "$OUTPUT_PATH" . -x \
     'spec/*' \
     '*.git*' \

@@ -36,33 +36,27 @@ class LambdaHandler
 
       parsed_body = JSON.parse(body)
       
-      # Check for file_id in the new format
-      if parsed_body['file_id']
-        # New format: fetch file from Google Drive
-        file_id = parsed_body['file_id']
-        file_name = parsed_body['file_name'] || 'Unknown'
-        @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
-        
-        # Get Google service account credentials from secrets
-        google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
-        unless google_credentials && !google_credentials.empty?
-          @logger.error('GOOGLE_SERVICE_ACCOUNT_JSON is not available in secrets.')
-          return error_response(500, 'Server configuration error: Google credentials missing.')
-        end
-        
-        # Fetch file content from Google Drive
-        require_relative 'google_drive_client' unless defined?(GoogleDriveClient)
-        drive_client = GoogleDriveClient.new(google_credentials, @logger)
-        input_text = drive_client.get_file_content(file_id)
-        
-      elsif parsed_body['text']
-        # Legacy format: direct text input
-        input_text = parsed_body['text']
-        @logger.info("Received direct text input: #{input_text.length} characters")
-      else
-        @logger.error("Neither file_id nor text found in request body")
-        return error_response(400, "Request must include either 'file_id' or 'text' field")
+      # Extract file_id from request
+      file_id = parsed_body['file_id']
+      unless file_id
+        @logger.error("file_id is missing in request body")
+        return error_response(400, "Request must include 'file_id' field")
       end
+      
+      file_name = parsed_body['file_name'] || 'Unknown'
+      @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
+      
+      # Get Google service account credentials from secrets
+      google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
+      unless google_credentials && !google_credentials.empty?
+        @logger.error('GOOGLE_SERVICE_ACCOUNT_JSON is not available in secrets.')
+        return error_response(500, 'Server configuration error: Google credentials missing.')
+      end
+      
+      # Fetch file content from Google Drive
+      require_relative 'google_drive_client' unless defined?(GoogleDriveClient)
+      drive_client = GoogleDriveClient.new(google_credentials, @logger)
+      input_text = drive_client.get_file_content(file_id)
 
       gemini_client = @gemini_client || GeminiClient.new(api_key, @logger, nil, @environment)
       analysis_result = gemini_client.analyze_meeting(input_text)

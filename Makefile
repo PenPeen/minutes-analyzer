@@ -158,7 +158,7 @@ test: test-lambda
 
 test-lambda:
 	@echo "🧪 Lambda関数のテストを実行中..."
-	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /app && bundle install --quiet && bundle exec rspec spec/ --format documentation"
+	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
 	@echo "✅ テストが完了しました"
 
 # 簡単なヘルスチェック
