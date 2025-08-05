@@ -5,6 +5,8 @@ gem 'net-http'
 gem 'uri'
 gem 'aws-sdk-secretsmanager'
 gem 'aws-sdk-s3'
+gem 'google-apis-drive_v3'
+gem 'googleauth'
 
 group :test do
   gem 'rspec', '~> 3.12'
