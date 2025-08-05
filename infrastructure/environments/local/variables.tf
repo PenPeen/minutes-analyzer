@@ -104,10 +104,9 @@ variable "notion_task_database_id" {
   default     = ""
 }
 
-variable "google_service_account_json" {
-  description = "Google service account JSON for Drive API access"
+variable "google_service_account_json_path" {
+  description = "Path to Google service account JSON file for Drive API access"
   type        = string
-  sensitive   = true
-  default     = ""
+  default     = "./google_service_account.json"
 }
 

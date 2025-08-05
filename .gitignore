@@ -57,6 +57,11 @@ yarn-error.log*
 *.p12
 *.key
 *.crt
+# Google Service Account認証情報
+# Makefileのgenerate-tfvarsタスクで.env.localから生成される
+# Terraformがfile()関数で読み込むため、リポジトリには含めない
+google_service_account.json
+*_service_account.json
 
 # Cache
 infrastructure/infrastructure/volume/cache/*

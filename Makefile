@@ -32,7 +32,7 @@ start: ## 開発環境を起動・デプロイ
 		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \
 		exit 1; \
 	fi
-	@export $$(cat .env.local | grep -v '^#' | xargs) && \
+	@export $$(cat .env.local | grep -v '^#' | grep -v 'GOOGLE_SERVICE_ACCOUNT_JSON' | xargs) && \
 	cd infrastructure && docker compose up -d
 	@$(MAKE) wait-for-localstack
 	@$(MAKE) generate-tfvars
@@ -41,23 +41,33 @@ start: ## 開発環境を起動・デプロイ
 	@echo "✅ 開発環境の起動が完了しました"
 
 # terraform.tfvarsの生成
+# 
+# Google Service Account JSONの処理について:
+# 当初はBASE64エンコードを使用していたが、以下の理由でファイル生成方式に変更:
+# 1. JSON内の改行文字（private_key内の\n）をTerraform変数として正しくエスケープするのが複雑
+# 2. Terraformのtfvarsファイルは複数行文字列の処理に制限がある
+# 3. JSONをtfvarsに埋め込むとエスケープ処理が多重になり、メンテナンスが困難
+# 
+# 現在の方式の利点:
+# - JSONファイルをそのまま保存し、Terraformのfile()関数で読み込むため、エスケープ不要
+# - .env.localには1行のJSONを保存し、環境変数として扱いやすい
+# - google_service_account.jsonは.gitignoreに追加済みで、誤ったコミットを防止
+#
 generate-tfvars: ## terraform.tfvarsを.env.localから生成
-	@echo "📝 terraform.tfvarsを生成中..."
+	@echo "📝 terraform.tfvarsとGoogle認証情報を生成中..."
 	@if [ -f .env.local ]; then \
 		( \
 			echo "# .env.localから自動生成されるTerraform変数ファイル"; \
 			echo "gemini_api_key=\"$$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""; \
-			# BASE64エンコードされたGoogle認証情報をデコード（JSONの改行対策） \
-			if [ -n "$$(grep GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 .env.local | cut -d '=' -f2-)" ]; then \
-				echo "google_service_account_json=\"$$(grep GOOGLE_SERVICE_ACCOUNT_JSON_BASE64 .env.local | cut -d '=' -f2- | base64 -d)\""; \
-			else \
-				echo "google_service_account_json=\"\""; \
-			fi; \
 			echo "slack_webhook_url=\"$$(grep SLACK_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""; \
 			echo "notion_api_key=\"$$(grep NOTION_API_KEY .env.local | cut -d '=' -f2-)\""; \
 			echo "notion_database_id=\"$$(grep NOTION_DATABASE_ID .env.local | cut -d '=' -f2-)\""; \
 			echo "notion_task_database_id=\"$$(grep NOTION_TASK_DATABASE_ID .env.local | cut -d '=' -f2-)\""; \
 		) > infrastructure/environments/local/terraform.tfvars; \
+		if [ -n "$$(grep GOOGLE_SERVICE_ACCOUNT_JSON .env.local | cut -d '=' -f2-)" ]; then \
+			grep GOOGLE_SERVICE_ACCOUNT_JSON .env.local | cut -d '=' -f2- > infrastructure/environments/local/google_service_account.json; \
+			echo "✅ google_service_account.jsonを生成しました"; \
+		fi; \
 		echo "✅ terraform.tfvarsを生成しました"; \
 	else \
 		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \

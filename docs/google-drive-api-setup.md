@@ -53,28 +53,19 @@ IAMを活用することで、個別のフォルダ共有は不要になり、�
    - **Storage オブジェクト閲覧者**
 5. 「保存」をクリック
 
-### 6. サービスアカウントキーのBASE64エンコード
+### 6. サービスアカウントキーを環境変数に設定
 
-ダウンロードしたJSONファイルを環境変数で使用するため、BASE64エンコードします：
+ダウンロードしたサービスアカウントキー（JSONファイル）の内容全体をコピーし、プロジェクトルートにある`.env.local`ファイルの`GOOGLE_SERVICE_ACCOUNT_JSON`の値として貼り付けます。
+
+**重要:** JSONを貼り付ける際は、改行も含めてそのまま1行で貼り付けてください。以下のコマンドを使用すると便利です。
 
 ```bash
-# Linux/Unix
-cat ~/Downloads/your-service-account-key.json | base64
-
-# macOS（改行なしで出力）
-cat ~/Downloads/your-service-account-key.json | base64 -b 0
-
-# Windows (PowerShell)
-[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes((Get-Content ~/Downloads/your-service-account-key.json -Raw)))
+cat your-service-account-key.json | jq -c . | pbcopy
 ```
 
-### 7. 環境変数に設定
+これにより、整形されたJSONが1行でクリップボードにコピーされます。
 
-1. プロジェクトルートの`.env.local`ファイルを編集
-2. 以下の行を見つけて、BASE64エンコードした文字列を設定：
-   ```
-   GOOGLE_SERVICE_ACCOUNT_JSON_BASE64=<ここに長いBASE64文字列を貼り付け>
-   ```
+
 
 ## セキュリティのベストプラクティス
 
@@ -98,7 +89,7 @@ cat ~/Downloads/your-service-account-key.json | base64 -b 0
 
 ### 認証エラーが発生する場合
 
-1. JSONキーが正しくBASE64エンコードされているか確認
+1. `GOOGLE_SERVICE_ACCOUNT_JSON`に正しいJSONが設定されているか確認
 2. 環境変数が正しく設定されているか確認
 3. サービスアカウントが有効か確認
 
