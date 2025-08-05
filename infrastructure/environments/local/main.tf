@@ -40,10 +40,13 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 }
 
 resource "aws_secretsmanager_secret_version" "app_secrets" {
-  secret_id     = aws_secretsmanager_secret.app_secrets.id
+  secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    GEMINI_API_KEY              = var.gemini_api_key
-    GOOGLE_SERVICE_ACCOUNT_JSON = var.google_service_account_json
+    GEMINI_API_KEY = var.gemini_api_key
+    # Google Service Account JSONはファイルから読み込む
+    # file()関数を使用することで、JSONの改行やエスケープを正しく処理
+    # ファイルが存在しない場合は空文字列を設定（オプショナル対応）
+    GOOGLE_SERVICE_ACCOUNT_JSON = fileexists(var.google_service_account_json_path) ? file(var.google_service_account_json_path) : ""
     SLACK_WEBHOOK_URL           = var.slack_webhook_url
     NOTION_API_KEY              = var.notion_api_key
     NOTION_DATABASE_ID          = var.notion_database_id
