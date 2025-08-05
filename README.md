@@ -137,12 +137,20 @@ minutes-analyzer/
 
 ### 必須設定
 - `GEMINI_API_KEY`: Gemini 2.5 Flash APIキー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: Google Drive API用のサービスアカウント認証情報（JSON形式）
 
 ### オプション設定
 - `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL（[Slack App](https://api.slack.com/apps)で取得）
 - `NOTION_API_KEY`: Notion Integration トークン（[Notion開発者ポータル](https://www.notion.so/my-integrations)で取得）
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
+
+### Google Drive API設定手順
+1. [Google Cloud Console](https://console.cloud.google.com)でプロジェクトを作成
+2. Google Drive APIを有効化
+3. サービスアカウントを作成し、JSONキーをダウンロード
+4. 議事録フォルダにサービスアカウントのメールアドレスを「閲覧者」として共有
+5. JSONキーの内容を`GOOGLE_SERVICE_ACCOUNT_JSON`に設定（改行を含む全文）
 
 ### Notion設定手順
 1. [Notion開発者ポータル](https://www.notion.so/my-integrations)でインテグレーションを作成
