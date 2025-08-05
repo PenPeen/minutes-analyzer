@@ -2,6 +2,7 @@ require_relative 'secrets_manager'
 require_relative 'gemini_client'
 require_relative 'slack_client'
 require_relative 'notion_client'
+require_relative 'google_drive_client'
 require 'json'
 require 'logger'
 
@@ -35,36 +36,36 @@ class LambdaHandler
 
       parsed_body = JSON.parse(body)
       
-      # Support both old and new input formats
-      if parsed_body['transcript']
-        # New format with structured transcript data
-        transcript_data = parsed_body
-        @logger.info("Received structured transcript data")
-      else
-        # Legacy format with just text
-        input_text = parsed_body['text']
-        @logger.info("Input text received: #{input_text.length} characters")
+      # Check for file_id in the new format
+      if parsed_body['file_id']
+        # New format: fetch file from Google Drive
+        file_id = parsed_body['file_id']
+        file_name = parsed_body['file_name'] || 'Unknown'
+        @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
         
-        # Convert to new format
-        transcript_data = {
-          "transcript" => {
-            "date" => Time.now.strftime('%Y-%m-%d'),
-            "title" => "Meeting",
-            "participants" => [],
-            "summary" => "",
-            "details" => "",
-            "full_text" => input_text
-          },
-          "metadata" => {
-            "file_id" => "",
-            "scheduled_duration" => "",
-            "actual_duration" => ""
-          }
-        }
+        # Get Google service account credentials from secrets
+        google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
+        unless google_credentials && !google_credentials.empty?
+          @logger.error('GOOGLE_SERVICE_ACCOUNT_JSON is not available in secrets.')
+          return error_response(500, 'Server configuration error: Google credentials missing.')
+        end
+        
+        # Fetch file content from Google Drive
+        require_relative 'google_drive_client' unless defined?(GoogleDriveClient)
+        drive_client = GoogleDriveClient.new(google_credentials, @logger)
+        input_text = drive_client.get_file_content(file_id)
+        
+      elsif parsed_body['text']
+        # Legacy format: direct text input
+        input_text = parsed_body['text']
+        @logger.info("Received direct text input: #{input_text.length} characters")
+      else
+        @logger.error("Neither file_id nor text found in request body")
+        return error_response(400, "Request must include either 'file_id' or 'text' field")
       end
 
       gemini_client = @gemini_client || GeminiClient.new(api_key, @logger, nil, @environment)
-      analysis_result = gemini_client.analyze_meeting(transcript_data)
+      analysis_result = gemini_client.analyze_meeting(input_text)
 
       @logger.info("Successfully received analysis from Gemini API.")
 

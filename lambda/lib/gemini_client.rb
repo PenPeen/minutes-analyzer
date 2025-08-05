@@ -13,7 +13,7 @@ class GeminiClient
     @environment = environment
   end
 
-  def analyze_meeting(transcript_data)
+  def analyze_meeting(transcript_text)
     uri = URI.parse("#{GEMINI_API_URL}?key=#{@api_key}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
@@ -22,7 +22,7 @@ class GeminiClient
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['content-type'] = 'application/json'
-    request.body = build_analysis_request_body(transcript_data)
+    request.body = build_analysis_request_body(transcript_text)
 
     @logger.info("Calling Gemini API for meeting analysis...")
     response = http.request(request)
@@ -33,32 +33,17 @@ class GeminiClient
 
   def summarize(text)
     # Legacy method for backward compatibility
-    transcript_data = {
-      "transcript" => {
-        "date" => Time.now.strftime('%Y-%m-%d'),
-        "title" => "Meeting",
-        "participants" => [],
-        "summary" => "",
-        "details" => "",
-        "full_text" => text
-      },
-      "metadata" => {
-        "file_id" => "",
-        "scheduled_duration" => "",
-        "actual_duration" => ""
-      }
-    }
-    analyze_meeting(transcript_data)
+    analyze_meeting(text)
   end
 
   private
 
-  def build_analysis_request_body(transcript_data)
+  def build_analysis_request_body(transcript_text)
     prompt = @s3_client.get_prompt
     schema = @s3_client.get_output_schema
     
-    # Construct the full prompt with the transcript data
-    full_prompt = "#{prompt}\n\n# 入力データ:\n#{JSON.pretty_generate(transcript_data)}"
+    # Construct the full prompt with the transcript text
+    full_prompt = "#{prompt}\n\n# 入力議事録:\n#{transcript_text}"
     
     {
       contents: [

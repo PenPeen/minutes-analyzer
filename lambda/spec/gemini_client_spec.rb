@@ -25,23 +25,7 @@ RSpec.describe GeminiClient do
   end
 
   describe '#analyze_meeting' do
-    let(:transcript_data) do
-      {
-        'transcript' => {
-          'date' => '2025-08-04',
-          'title' => 'Test Meeting',
-          'participants' => ['Alice', 'Bob'],
-          'summary' => 'Meeting summary',
-          'details' => 'Meeting details',
-          'full_text' => test_text
-        },
-        'metadata' => {
-          'file_id' => 'test-file-id',
-          'scheduled_duration' => '30分',
-          'actual_duration' => '25分'
-        }
-      }
-    end
+    let(:transcript_text) { "2025年1月15日\n\n新機能リリース進捗確認ミーティング\n録音済み 平岡健児氏 小田まゆか\n\nまとめ\n..." }
 
     context 'when API call is successful' do
       let(:analysis_result) do
@@ -76,7 +60,7 @@ RSpec.describe GeminiClient do
       end
 
       it 'returns the parsed analysis result' do
-        result = gemini_client.analyze_meeting(transcript_data)
+        result = gemini_client.analyze_meeting(transcript_text)
         expect(result).to eq(analysis_result)
       end
 
@@ -85,7 +69,7 @@ RSpec.describe GeminiClient do
         expect(logger).to receive(:info).with('Gemini API response status: 200')
         expect(logger).to receive(:info).with('Successfully parsed structured response from Gemini')
 
-        gemini_client.analyze_meeting(transcript_data)
+        gemini_client.analyze_meeting(transcript_text)
       end
 
       it 'makes HTTP request with correct parameters' do
@@ -94,7 +78,7 @@ RSpec.describe GeminiClient do
         allow(request).to receive(:[]=)
         allow(request).to receive(:body=)
 
-        gemini_client.analyze_meeting(transcript_data)
+        gemini_client.analyze_meeting(transcript_text)
 
         expect(Net::HTTP).to have_received(:new).with('generativelanguage.googleapis.com', 443)
         expect(mock_http).to have_received(:use_ssl=).with(true)
@@ -107,13 +91,13 @@ RSpec.describe GeminiClient do
         allow(request).to receive(:[]=)
         allow(request).to receive(:body=)
 
-        gemini_client.analyze_meeting(transcript_data)
+        gemini_client.analyze_meeting(transcript_text)
 
         expected_body = {
           contents: [
             {
               parts: [
-                { text: "#{prompt_text}\n\n# 入力データ:\n#{JSON.pretty_generate(transcript_data)}" }
+                { text: "#{prompt_text}\n\n# 入力議事録:\n#{transcript_text}" }
               ]
             }
           ],
@@ -132,7 +116,7 @@ RSpec.describe GeminiClient do
         expect(mock_s3_client).to receive(:get_prompt)
         expect(mock_s3_client).to receive(:get_output_schema)
 
-        gemini_client.analyze_meeting(transcript_data)
+        gemini_client.analyze_meeting(transcript_text)
       end
     end
 
@@ -158,7 +142,7 @@ RSpec.describe GeminiClient do
       it 'logs error and raises exception' do
         parsed_response = JSON.parse(incomplete_response_body)
         expect(logger).to receive(:error).with("Failed to extract content from Gemini response: #{parsed_response}")
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error('Content could not be generated from API response.')
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error('Content could not be generated from API response.')
       end
     end
 
@@ -179,7 +163,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises authentication exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 401: API key not valid')
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error(
           'Authentication failed with Gemini API. Please check your API key. Details: API key not valid'
         )
       end
@@ -202,7 +186,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises authentication exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 403: Access denied')
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error(
           'Authentication failed with Gemini API. Please check your API key. Details: Access denied'
         )
       end
@@ -225,7 +209,7 @@ RSpec.describe GeminiClient do
 
       it 'logs error and raises general API exception' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 500: Internal server error')
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error(
           'Gemini API request failed. Status: 500, Details: Internal server error'
         )
       end
@@ -242,7 +226,7 @@ RSpec.describe GeminiClient do
 
       it 'handles invalid JSON error response gracefully' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 400: Invalid JSON response')
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error(
           'Gemini API request failed. Status: 400, Details: Invalid JSON response'
         )
       end
@@ -259,7 +243,7 @@ RSpec.describe GeminiClient do
 
       it 'uses default error message' do
         expect(logger).to receive(:error).with('Gemini API request failed with status 400: Unknown API error')
-        expect { gemini_client.analyze_meeting(transcript_data) }.to raise_error(
+        expect { gemini_client.analyze_meeting(transcript_text) }.to raise_error(
           'Gemini API request failed. Status: 400, Details: Unknown API error'
         )
       end
@@ -290,7 +274,7 @@ RSpec.describe GeminiClient do
         expect(logger).to receive(:error).with(/Failed to parse Gemini response as JSON/)
         expect(logger).to receive(:error).with(/Raw content/)
         
-        result = gemini_client.analyze_meeting(transcript_data)
+        result = gemini_client.analyze_meeting(transcript_text)
         expect(result).to eq('This is not JSON')
       end
     end
