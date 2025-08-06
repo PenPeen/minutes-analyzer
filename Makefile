@@ -173,8 +173,7 @@ clean:
 	@$(MAKE) clean-docker
 	@$(MAKE) clean-build-artifacts
 	@$(MAKE) clean-terraform
-	@$(MAKE) clean-config
-	@echo "✅ 完全クリーンアップが完了しました"
+	@echo "✅ クリーンアップが完了しました"
 
 clean-docker:
 	@echo "🐳 Docker環境をクリーンアップ中..."
@@ -189,7 +188,7 @@ clean-build-artifacts:
 
 clean-terraform:
 	@echo "🏗️  Terraform状態を削除中..."
-	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars .env.tfvars
+	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars google_service_account.json
 
 clean-config:
 	@echo "⚙️  設定ファイルを削除中..."
