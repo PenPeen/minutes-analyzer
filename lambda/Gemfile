@@ -6,7 +6,9 @@ gem 'uri'
 gem 'aws-sdk-secretsmanager'
 gem 'aws-sdk-s3'
 gem 'google-apis-drive_v3'
+gem 'google-apis-calendar_v3'
 gem 'googleauth'
+gem 'concurrent-ruby'
 
 group :test do
   gem 'rspec', '~> 3.12'
