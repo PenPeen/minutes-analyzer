@@ -77,10 +77,12 @@ RSpec.describe SlackUserManager do
             { status: 429, headers: { 'Retry-After' => '1' }, body: { 'ok' => false, 'error' => 'rate_limited' }.to_json },
             { status: 200, body: user_response.to_json }
           )
+        
+        # Mock sleep to avoid actual waiting
+        allow_any_instance_of(SlackUserManager::RateLimiter).to receive(:sleep)
       end
       
       it 'retries after rate limit' do
-        allow(manager).to receive(:sleep)
         user = manager.lookup_user_by_email(email)
         expect(user[:id]).to eq('U12345')
       end
@@ -174,12 +176,15 @@ RSpec.describe SlackUserManager do
     let(:rate_limiter) { SlackUserManager::RateLimiter.new(2) }
     
     it 'throttles requests' do
-      start_time = Time.now
-      3.times { rate_limiter.throttle }
-      elapsed = Time.now - start_time
+      # Mock sleep to avoid actual waiting
+      allow(rate_limiter).to receive(:sleep)
       
-      # 3rd request should wait since limit is 2 per minute
-      expect(elapsed).to be >= 0
+      # First 2 requests should pass
+      2.times { rate_limiter.throttle }
+      
+      # 3rd request should trigger throttling
+      expect(rate_limiter).to receive(:sleep).at_least(:once)
+      rate_limiter.throttle
     end
   end
 end
