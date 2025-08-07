@@ -3,6 +3,8 @@ require 'uri'
 require 'json'
 require 'time'
 
+class RateLimitError < StandardError; end
+
 class SlackUserManager
   API_BASE_URL = 'https://slack.com/api'
   RATE_LIMIT_PER_MINUTE = 50
@@ -201,12 +203,18 @@ class SlackUserManager
       # Rate limitエラーの処理
       if response.code == '429' || result['error'] == 'rate_limited'
         retry_after = response['Retry-After'] || result['retry_after'] || 60
-        @rate_limiter.handle_rate_limit_error(retry_after)
-        retry_count += 1
-        retry if retry_count < max_retries
+        raise RateLimitError.new(retry_after)
       end
       
       result
+    rescue RateLimitError => e
+      retry_count += 1
+      if retry_count < max_retries
+        @rate_limiter.handle_rate_limit_error(e.message.to_i)
+        retry
+      else
+        return { 'ok' => false, 'error' => 'rate_limited' }
+      end
     rescue => e
       retry_count += 1
       if retry_count < max_retries
