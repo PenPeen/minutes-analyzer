@@ -72,11 +72,10 @@ services:
       context: ./infrastructure/docker/ruby-lambda-builder
       dockerfile: Dockerfile
     volumes:
-      - ./lambda:/app
+      - ./lambda:/var/task
       - ./infrastructure/modules/lambda:/output
-      - ./infrastructure/modules/lambda:/workspace
-      - bundle_cache:/app/.bundle
-    working_dir: /app
+      - bundle_cache:/var/task/.bundle
+    working_dir: /var/task
 
 networks:
   localstack-network:

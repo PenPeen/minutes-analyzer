@@ -1,11 +1,13 @@
 require 'spec_helper'
 require_relative '../lib/lambda_handler'
 require_relative '../lib/slack_client'
+require_relative '../lib/google_drive_client'
 
 RSpec.describe LambdaHandler do
   let(:logger) { instance_double(Logger) }
   let(:secrets_manager) { instance_double(SecretsManager) }
   let(:gemini_client) { instance_double(GeminiClient) }
+  let(:google_drive_client) { instance_double(GoogleDriveClient) }
   let(:context) { double(aws_request_id: 'test-request-id') }
   let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client) }
 
@@ -18,8 +20,9 @@ RSpec.describe LambdaHandler do
 
   describe '#handle' do
     context '正常なケース' do
-      let(:event) { { 'body' => JSON.generate({ 'text' => 'meeting transcript' }) } }
-      let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key' } }
+      let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id', 'file_name' => 'test.txt' }) } }
+      let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
+      let(:file_content) { 'meeting transcript' }
       let(:summary) { 
         {
           'meeting_summary' => {
@@ -39,6 +42,8 @@ RSpec.describe LambdaHandler do
       before do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
         allow(gemini_client).to receive(:analyze_meeting).and_return(summary)
+        allow(GoogleDriveClient).to receive(:new).and_return(google_drive_client)
+        allow(google_drive_client).to receive(:get_file_content).and_return(file_content)
       end
 
       context 'Slack Webhook URLが設定されていない場合' do
@@ -61,7 +66,7 @@ RSpec.describe LambdaHandler do
       context 'Slack Webhook URLが設定されている場合' do
         let(:slack_client) { instance_double(SlackClient) }
         let(:slack_result) { { success: true, response_code: '200' } }
-        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test' } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
           allow(SlackClient).to receive(:new).and_return(slack_client)
@@ -86,7 +91,7 @@ RSpec.describe LambdaHandler do
       context 'Slack通知が失敗した場合' do
         let(:slack_client) { instance_double(SlackClient) }
         let(:slack_result) { { success: false, response_code: '404', error: 'channel_not_found' } }
-        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test' } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
           allow(SlackClient).to receive(:new).and_return(slack_client)
@@ -207,7 +212,7 @@ RSpec.describe LambdaHandler do
       end
     end
 
-    context 'file_idもtextも含まれていない場合' do
+    context 'file_idが含まれていない場合' do
       let(:event) { { 'body' => JSON.generate({}) } }
       let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key' } }
 
@@ -219,7 +224,7 @@ RSpec.describe LambdaHandler do
         result = handler.handle(event: event, context: context)
 
         expect(result[:statusCode]).to eq(400)
-        expect(JSON.parse(result[:body])['error']).to include("Request must include either 'file_id' or 'text' field")
+        expect(JSON.parse(result[:body])['error']).to include("Request must include 'file_id' field")
       end
     end
   end
