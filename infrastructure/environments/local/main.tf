@@ -46,7 +46,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     # Google Service Account JSONはファイルから読み込む
     # file()関数を使用することで、JSONの改行やエスケープを正しく処理
     # ファイルが存在しない場合は空文字列を設定（オプショナル対応）
-    GOOGLE_SERVICE_ACCOUNT_JSON = fileexists(var.google_service_account_json_path) ? file(var.google_service_account_json_path) : ""
+    GOOGLE_SERVICE_ACCOUNT_JSON = var.google_service_account_json_path != "" ? (fileexists(var.google_service_account_json_path) ? file(var.google_service_account_json_path) : "") : ""
     SLACK_WEBHOOK_URL           = var.slack_webhook_url
     SLACK_BOT_TOKEN             = var.slack_bot_token
     NOTION_API_KEY              = var.notion_api_key
