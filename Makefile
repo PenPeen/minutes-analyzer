@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda deploy-production validate-production
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -225,8 +225,35 @@ stop: ## 開発環境を停止
 	@echo "開発環境が停止しました"
 
 # AWS本番環境用のコマンド
-deploy-production: ## 本番環境にデプロイ
+deploy-production: validate-production build-lambda ## 本番環境にデプロイ
 	@echo "🚀 本番環境にデプロイ中..."
+	@echo "⚠️  本番環境へのデプロイを実行しますか？ [y/N]"
+	@read -r confirm && [ "$$confirm" = "y" ] || (echo "❌ デプロイをキャンセルしました" && exit 1)
+	@cd infrastructure/environments/production && \
+		terraform init && \
+		terraform plan -out=tfplan && \
+		terraform apply tfplan
+	@echo "✅ 本番環境へのデプロイが完了しました"
+	@$(MAKE) post-deploy-check
+
+validate-production: ## 本番デプロイ前の検証
+	@echo "🔍 本番デプロイ前の検証を実行中..."
+	@# テストの実行
+	@cd lambda && bundle exec rspec --format progress
+	@# 環境変数チェック
+	@if [ ! -f infrastructure/environments/production/terraform.tfvars ]; then \
+		echo "❌ 本番環境の設定ファイルがありません"; \
+		exit 1; \
+	fi
+	@echo "✅ 検証が完了しました"
+
+post-deploy-check: ## デプロイ後の動作確認
+	@echo "🔍 デプロイ後の動作確認中..."
+	@# Lambda関数の状態確認
+	aws lambda get-function --function-name $(PROJECT_NAME)-production --query 'Configuration.State' --output text
+	@# 最新のログ確認（エラーがないか）
+	aws logs tail /aws/lambda/$(PROJECT_NAME)-production --since 5m --filter-pattern "ERROR" || true
+	@echo "✅ 動作確認が完了しました"
 	@if [ ! -f infrastructure/environments/production/terraform.tfvars ]; then \
 		echo "❌ Error: Please create terraform.tfvars from terraform.tfvars.sample"; \
 		echo "  cp infrastructure/environments/production/terraform.tfvars.sample infrastructure/environments/production/terraform.tfvars"; \

@@ -1,0 +1,237 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-northeast-1
+  RUBY_VERSION: '3.2'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          bundler-cache: true
+          
+      - name: Run tests
+        run: |
+          cd lambda
+          bundle install
+          bundle exec rspec --format documentation
+          
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: lambda/coverage
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ env.RUBY_VERSION }}
+          
+      - name: Build Lambda package
+        run: |
+          cd lambda
+          bundle config set --local deployment true
+          bundle install
+          zip -r ../lambda.zip . -x "*.git*" -x "spec/*" -x "coverage/*"
+          
+      - name: Upload Lambda package
+        uses: actions/upload-artifact@v3
+        with:
+          name: lambda-package
+          path: lambda.zip
+
+  deploy-staging:
+    needs: build
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download Lambda package
+        uses: actions/download-artifact@v3
+        with:
+          name: lambda-package
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Deploy to Staging
+        run: |
+          aws lambda update-function-code \
+            --function-name minutes-analyzer-staging \
+            --zip-file fileb://lambda.zip \
+            --publish
+            
+      - name: Run smoke tests
+        run: |
+          # 簡単な動作確認
+          aws lambda invoke \
+            --function-name minutes-analyzer-staging \
+            --payload '{"test": true}' \
+            response.json
+          cat response.json
+
+  deploy-production:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download Lambda package
+        uses: actions/download-artifact@v3
+        with:
+          name: lambda-package
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Backup current version
+        run: |
+          # 現在のバージョンをバックアップ
+          aws lambda get-function \
+            --function-name minutes-analyzer-production \
+            --query 'Configuration.CodeSha256' \
+            --output text > previous-version.txt
+            
+      - name: Deploy to Production
+        run: |
+          # Blue-Green deployment with alias
+          VERSION=$(aws lambda update-function-code \
+            --function-name minutes-analyzer-production \
+            --zip-file fileb://lambda.zip \
+            --publish \
+            --query 'Version' \
+            --output text)
+            
+          # Update alias to new version
+          aws lambda update-alias \
+            --function-name minutes-analyzer-production \
+            --name LIVE \
+            --function-version $VERSION \
+            || aws lambda create-alias \
+              --function-name minutes-analyzer-production \
+              --name LIVE \
+              --function-version $VERSION
+              
+      - name: Verify deployment
+        run: |
+          # Check function state
+          STATE=$(aws lambda get-function \
+            --function-name minutes-analyzer-production \
+            --query 'Configuration.State' \
+            --output text)
+            
+          if [ "$STATE" != "Active" ]; then
+            echo "Function is not active: $STATE"
+            exit 1
+          fi
+          
+      - name: Monitor for errors
+        run: |
+          # Wait for 1 minute
+          sleep 60
+          
+          # Check for recent errors
+          ERROR_COUNT=$(aws cloudwatch get-metric-statistics \
+            --namespace AWS/Lambda \
+            --metric-name Errors \
+            --dimensions Name=FunctionName,Value=minutes-analyzer-production \
+            --start-time $(date -u -d '5 minutes ago' +%Y-%m-%dT%H:%M:%S) \
+            --end-time $(date -u +%Y-%m-%dT%H:%M:%S) \
+            --period 300 \
+            --statistics Sum \
+            --query 'Datapoints[0].Sum' \
+            --output text)
+            
+          if [ "$ERROR_COUNT" != "None" ] && [ "$ERROR_COUNT" -gt "5" ]; then
+            echo "High error rate detected: $ERROR_COUNT errors"
+            echo "Consider rolling back"
+            exit 1
+          fi
+          
+      - name: Send notification
+        if: always()
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            Production deployment ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Commit: ${{ github.sha }}
+            Author: ${{ github.actor }}
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  rollback:
+    needs: deploy-production
+    if: failure()
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+          
+      - name: Rollback to previous version
+        run: |
+          # Get previous stable version
+          PREVIOUS_VERSION=$(aws lambda get-alias \
+            --function-name minutes-analyzer-production \
+            --name STABLE \
+            --query 'FunctionVersion' \
+            --output text)
+            
+          # Rollback LIVE alias
+          aws lambda update-alias \
+            --function-name minutes-analyzer-production \
+            --name LIVE \
+            --function-version $PREVIOUS_VERSION
+            
+          echo "Rolled back to version: $PREVIOUS_VERSION"
+          
+      - name: Send rollback notification
+        uses: 8398a7/action-slack@v3
+        with:
+          status: custom
+          custom_payload: |
+            {
+              text: "⚠️ Production deployment rolled back",
+              color: "warning"
+            }
+          webhook_url: ${{ secrets.SLACK_WEBHOOK_URL }}
