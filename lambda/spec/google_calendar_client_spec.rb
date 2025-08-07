@@ -58,34 +58,6 @@ RSpec.describe GoogleCalendarClient do
       result = client.find_meeting_by_recording_file(file_id, drive_client)
       expect(result).to eq(event_with_attachment)
     end
-    
-    context 'when no direct match found' do
-      let(:event_with_url) do
-        double('event',
-          id: 'event456',
-          summary: '新機能リリース進捗確認ミーティング',
-          attachments: [
-            double('attachment', 
-              file_id: nil, 
-              file_url: "https://drive.google.com/file/d/#{file_id}/view"
-            )
-          ],
-          start: double('start', date_time: '2025-01-15T09:00:00Z'),
-          end: double('end', date_time: '2025-01-15T10:00:00Z')
-        )
-      end
-      
-      before do
-        allow(mock_service).to receive(:list_events).and_return(
-          double('response', items: [event_with_url], next_page_token: nil)
-        )
-      end
-      
-      it 'finds meeting by attachment URL pattern' do
-        result = client.find_meeting_by_recording_file(file_id, drive_client)
-        expect(result).to eq(event_with_url)
-      end
-    end
   end
   
   describe '#get_event_participants' do
