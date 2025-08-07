@@ -56,7 +56,7 @@ class GeminiClient
       generationConfig: {
         response_mime_type: "application/json",
         response_schema: schema,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 327680,
         temperature: 0.1
       }
     }.to_json
