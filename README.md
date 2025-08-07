@@ -45,11 +45,15 @@ cp env.local.sample .env.local
 ```
 
 `.env.local`で以下の設定を必ず変更してください：
-- `GEMINI_API_KEY`: Gemini API キーを設定
-- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URLを設定
-- `NOTION_API_KEY`: Notion Integration トークンを設定
-- `NOTION_DATABASE_ID`: 議事録用データベースIDを設定
-- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースIDを設定
+
+**必須設定**
+- `GEMINI_API_KEY`: Gemini API キー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: Google サービスアカウント認証情報
+
+- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL
+- `NOTION_API_KEY`: Notion Integration トークン
+- `NOTION_DATABASE_ID`: 議事録用データベースID
+- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
 
 ### 開発環境の起動
 
@@ -150,7 +154,7 @@ minutes-analyzer/
 
 概要：
 1. Google Cloud Consoleでプロジェクトを作成
-2. Google Drive APIを有効化  
+2. Google Drive APIを有効化
 3. サービスアカウントを作成し、JSONキーをダウンロード
 4. IAMでサービスアカウントに適切な権限を付与
 5. JSONキーをBASE64エンコードして環境変数に設定
