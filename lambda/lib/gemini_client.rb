@@ -17,8 +17,8 @@ class GeminiClient
     uri = URI.parse("#{GEMINI_API_URL}?key=#{@api_key}")
     http = Net::HTTP.new(uri.host, uri.port)
     http.use_ssl = true
-    http.read_timeout = 30
-    http.open_timeout = 10
+    http.read_timeout = 900
+    http.open_timeout = 900
 
     request = Net::HTTP::Post.new(uri.request_uri)
     request['content-type'] = 'application/json'
@@ -41,10 +41,10 @@ class GeminiClient
   def build_analysis_request_body(transcript_text)
     prompt = @s3_client.get_prompt
     schema = @s3_client.get_output_schema
-    
+
     # Construct the full prompt with the transcript text
     full_prompt = "#{prompt}\n\n# 入力議事録:\n#{transcript_text}"
-    
+
     {
       contents: [
         {
@@ -56,7 +56,7 @@ class GeminiClient
       generationConfig: {
         response_mime_type: "application/json",
         response_schema: schema,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 327680,
         temperature: 0.1
       }
     }.to_json
