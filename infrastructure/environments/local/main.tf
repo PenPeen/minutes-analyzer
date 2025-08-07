@@ -48,6 +48,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     # ファイルが存在しない場合は空文字列を設定（オプショナル対応）
     GOOGLE_SERVICE_ACCOUNT_JSON = fileexists(var.google_service_account_json_path) ? file(var.google_service_account_json_path) : ""
     SLACK_WEBHOOK_URL           = var.slack_webhook_url
+    SLACK_BOT_TOKEN             = var.slack_bot_token
     NOTION_API_KEY              = var.notion_api_key
     NOTION_DATABASE_ID          = var.notion_database_id
     NOTION_TASK_DATABASE_ID     = var.notion_task_database_id
@@ -125,6 +126,9 @@ resource "aws_lambda_function" "minutes_analyzer" {
       LOG_LEVEL                   = var.log_level
       AWS_ENDPOINT_URL            = "http://host.docker.internal:4566"  # LocalStack endpoint
       PROMPTS_BUCKET_NAME         = aws_s3_bucket.prompts.id
+      GOOGLE_CALENDAR_ENABLED     = var.google_calendar_enabled
+      USER_MAPPING_ENABLED        = var.user_mapping_enabled
+      CACHE_TTL                   = var.cache_ttl
     }
   }
 
@@ -163,6 +167,28 @@ resource "aws_iam_role" "lambda_execution_role" {
 resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
   role       = aws_iam_role.lambda_execution_role.name
+}
+
+# CloudWatch Metrics権限
+resource "aws_iam_role_policy" "lambda_cloudwatch_policy" {
+  name = "${var.project_name}-lambda-cloudwatch-policy-${var.environment}"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "cloudwatch:PutMetricData",
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
 }
 
 # IAM Policy for Secrets Manager
