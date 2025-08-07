@@ -29,9 +29,9 @@ RSpec.describe MeetingTranscriptProcessor do
     end
     
     it 'initializes clients based on config' do
-      expect(processor.calendar_bridge).to be_present
-      expect(processor.slack_manager).to be_present
-      expect(processor.notion_manager).to be_present
+      expect(processor.calendar_bridge).not_to be_nil
+      expect(processor.slack_manager).not_to be_nil
+      expect(processor.notion_manager).not_to be_nil
     end
     
     context 'with disabled features' do
@@ -56,6 +56,7 @@ RSpec.describe MeetingTranscriptProcessor do
         event: double('event',
           id: 'event123',
           summary: 'Test Meeting',
+          description: 'Meeting description',
           start: double('start', date_time: '2025-01-15T10:00:00Z'),
           end: double('end', date_time: '2025-01-15T11:00:00Z'),
           organizer: double('organizer', email: 'organizer@example.com'),
@@ -103,7 +104,7 @@ RSpec.describe MeetingTranscriptProcessor do
       
       expect(result[:status]).to eq('completed')
       expect(result[:file_id]).to eq(file_id)
-      expect(result[:meeting]).to be_present
+      expect(result[:meeting]).not_to be_nil
       expect(result[:participants]).to eq(['user1@example.com', 'user2@example.com'])
     end
     

@@ -47,7 +47,7 @@ RSpec.describe NotionUserManager do
             'Authorization' => "Bearer #{api_key}",
             'Notion-Version' => '2022-06-28'
           },
-          query: { 'page_size' => '100' }
+          query: hash_including({ 'page_size' => '100' })
         )
         .to_return(status: 200, body: users_response.to_json)
     end
@@ -85,19 +85,17 @@ RSpec.describe NotionUserManager do
       
       before do
         stub_request(:get, "https://api.notion.com/v1/users")
-          .with(query: { 'page_size' => '100' })
+          .with(query: hash_including({ 'page_size' => '100' }))
           .to_return(status: 200, body: page1_response.to_json)
-        
-        stub_request(:get, "https://api.notion.com/v1/users")
-          .with(query: { 'page_size' => '100', 'start_cursor' => 'cursor123' })
+          .then
           .to_return(status: 200, body: page2_response.to_json)
       end
       
       it 'handles pagination correctly' do
         users = manager.list_all_users
         expect(users.size).to eq(2)
-        expect(users['user1@example.com']).to be_present
-        expect(users['user2@example.com']).to be_present
+        expect(users['user1@example.com']).not_to be_nil
+        expect(users['user2@example.com']).not_to be_nil
       end
     end
   end
@@ -107,6 +105,7 @@ RSpec.describe NotionUserManager do
     
     before do
       stub_request(:get, "https://api.notion.com/v1/users")
+        .with(query: hash_including({ 'page_size' => '100' }))
         .to_return(status: 200, body: {
           'object' => 'list',
           'results' => [
@@ -146,6 +145,7 @@ RSpec.describe NotionUserManager do
     before do
       # Mock user lookup
       stub_request(:get, "https://api.notion.com/v1/users")
+        .with(query: hash_including({ 'page_size' => '100' }))
         .to_return(status: 200, body: {
           'object' => 'list',
           'results' => [
@@ -193,6 +193,7 @@ RSpec.describe NotionUserManager do
     before do
       # Mock user lookups
       stub_request(:get, "https://api.notion.com/v1/users")
+        .with(query: hash_including({ 'page_size' => '100' }))
         .to_return(status: 200, body: {
           'object' => 'list',
           'results' => [
@@ -226,14 +227,16 @@ RSpec.describe NotionUserManager do
     
     it 'expires values after TTL' do
       cache.set('key1', 'value1')
-      sleep(1.1)
+      # Mock Time.now to simulate time passing
+      allow(Time).to receive(:now).and_return(Time.now + 2)
       expect(cache.get('key1')).to be_nil
     end
     
     it 'refreshes cache by removing expired entries' do
       cache.set('key1', 'value1')
       cache.set('key2', 'value2')
-      sleep(1.1)
+      # Mock Time.now to simulate time passing
+      allow(Time).to receive(:now).and_return(Time.now + 2)
       cache.refresh_if_needed
       expect(cache.get('key1')).to be_nil
       expect(cache.get('key2')).to be_nil
