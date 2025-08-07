@@ -104,7 +104,7 @@ RSpec.describe GeminiClient do
           generationConfig: {
             response_mime_type: "application/json",
             response_schema: output_schema,
-            maxOutputTokens: 8192,
+            maxOutputTokens: 327680,
             temperature: 0.1
           }
         }.to_json
@@ -273,7 +273,7 @@ RSpec.describe GeminiClient do
       it 'logs error and returns raw content' do
         expect(logger).to receive(:error).with(/Failed to parse Gemini response as JSON/)
         expect(logger).to receive(:error).with(/Raw content/)
-        
+
         result = gemini_client.analyze_meeting(transcript_text)
         expect(result).to eq('This is not JSON')
       end
