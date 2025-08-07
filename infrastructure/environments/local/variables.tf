@@ -60,7 +60,36 @@ variable "slack_webhook_url" {
   sensitive   = true
 }
 
+variable "slack_bot_token" {
+  description = "Slack Bot User OAuth Token"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
 
+variable "google_service_account_json_path" {
+  description = "Path to Google service account JSON file"
+  type        = string
+  default     = ""
+}
+
+variable "google_calendar_enabled" {
+  description = "Enable Google Calendar integration"
+  type        = bool
+  default     = false
+}
+
+variable "user_mapping_enabled" {
+  description = "Enable user mapping for Slack and Notion"
+  type        = bool
+  default     = false
+}
+
+variable "cache_ttl" {
+  description = "Cache TTL in seconds"
+  type        = number
+  default     = 600
+}
 
 variable "log_level" {
   description = "Log level for the lambda function"
