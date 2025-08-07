@@ -2,6 +2,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'time'
+require 'date'
 
 # Slack通知を送信するクライアントクラス
 # Gemini APIから返された議事録分析結果をSlackのBlock Kit形式で整形して送信する
@@ -64,7 +65,7 @@ class SlackClient
     actions = analysis_result['actions'] || []
     actions_summary = analysis_result['actions_summary'] || {}
     health_assessment = analysis_result['health_assessment'] || {}
-    
+
     {
       blocks: build_message_blocks(meeting_summary, decisions, actions, actions_summary, health_assessment),
       text: build_fallback_text(meeting_summary)
@@ -82,7 +83,6 @@ class SlackClient
     blocks << { type: "divider" }
     blocks.concat(build_decisions_section(decisions))
     blocks.concat(build_actions_section(actions, actions_summary))
-    blocks.concat(build_health_score_section(health_assessment))
 
     blocks.compact
   end
@@ -144,7 +144,7 @@ class SlackClient
     return [] unless actions.any?
 
     sections = []
-    
+
     sections << {
       type: "section",
       text: {
@@ -174,25 +174,9 @@ class SlackClient
     }
   end
 
-  # 健全性スコアセクションを構築
-  def build_health_score_section(health_assessment)
-    return [] unless health_assessment['overall_score']
-
-    [
-      { type: "divider" },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: "*📊 会議の健全性スコア: #{health_assessment['overall_score']}/100*"
-        }
-      }
-    ]
-  end
-
   def build_meeting_info_fields(meeting_summary)
     fields = []
-    
+
     if meeting_summary['date']
       fields << {
         type: "mrkdwn",
@@ -208,8 +192,12 @@ class SlackClient
     end
 
     if meeting_summary['participants'] && meeting_summary['participants'].any?
-      participants_text = meeting_summary['participants'].take(3).join(', ')
-      participants_text += " 他" if meeting_summary['participants'].length > 3
+      participants = meeting_summary['participants']
+      if participants.length <= 3
+        participants_text = participants.join(', ')
+      else
+        participants_text = participants.take(3).join(', ') + "…他#{participants.length - 3}名"
+      end
       fields << {
         type: "mrkdwn",
         text: "*👥 参加者:* #{participants_text}"
@@ -220,13 +208,23 @@ class SlackClient
   end
 
   def format_decisions(decisions)
-    decisions.take(3).map.with_index do |decision, index|
+    displayed_decisions = decisions.take(3).map.with_index do |decision, index|
       "#{index + 1}. #{decision['content']}"
-    end.join("\n") + (decisions.length > 3 ? "\n_他 #{decisions.length - 3}件_" : "")
+    end.join("\n")
+
+    if decisions.length > 3
+      displayed_decisions + "\n…他#{decisions.length - 3}件"
+    else
+      displayed_decisions
+    end
   end
 
   def format_actions(actions)
-    actions.take(5).map.with_index do |action, index|
+    # アクションを優先度（高→低）、期日（早い→遅い・期日なしは最後）でソート
+    sorted_actions = sort_actions(actions)
+
+    # 最大3件まで表示
+    displayed_actions = sorted_actions.take(3).map.with_index do |action, index|
       deadline = action['deadline_formatted'] || '期日未定'
       priority_emoji = case action['priority']
                       when 'high' then '🔴'
@@ -234,7 +232,55 @@ class SlackClient
                       else '⚪'
                       end
       "#{index + 1}. #{priority_emoji} #{action['task']} - #{action['assignee']}（#{deadline}）"
-    end.join("\n") + (actions.length > 5 ? "\n_他 #{actions.length - 5}件_" : "")
+    end.join("\n")
+
+    if actions.length > 3
+      displayed_actions + "\n…他#{actions.length - 3}件"
+    else
+      displayed_actions
+    end
+  end
+
+  # アクションを優先度と期日でソート
+  def sort_actions(actions)
+    actions.sort do |a, b|
+      # 優先度の比較（high: 3, medium: 2, low: 1）
+      priority_weight = { 'high' => 3, 'medium' => 2, 'low' => 1 }
+      priority_a = priority_weight[a['priority']] || 0
+      priority_b = priority_weight[b['priority']] || 0
+
+      if priority_a != priority_b
+        priority_b <=> priority_a  # 優先度が高い方が先
+      else
+        # 同じ優先度の場合は期日で比較
+        deadline_a = parse_deadline(a['deadline'])
+        deadline_b = parse_deadline(b['deadline'])
+
+        if deadline_a.nil? && deadline_b.nil?
+          0  # 両方期日なしなら同じ
+        elsif deadline_a.nil?
+          1  # aが期日なしならbが先
+        elsif deadline_b.nil?
+          -1  # bが期日なしならaが先
+        else
+          deadline_a <=> deadline_b  # 期日が早い方が先
+        end
+      end
+    end
+  end
+
+  # 期日文字列を比較可能な形式に変換
+  def parse_deadline(deadline)
+    return nil if deadline.nil? || deadline == '期日未定'
+
+    # YYYY/MM/DD形式を想定
+    if deadline =~ /(\d{4})\/(\d{2})\/(\d{2})/
+      Date.new($1.to_i, $2.to_i, $3.to_i)
+    else
+      nil
+    end
+  rescue ArgumentError
+    nil
   end
 
   def build_fallback_text(meeting_summary)
