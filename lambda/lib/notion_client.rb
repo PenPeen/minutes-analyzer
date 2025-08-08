@@ -306,8 +306,8 @@ class NotionClient
     
     if participation_analysis['speaker_stats']
       content += "発言統計:\n"
-      participation_analysis['speaker_stats'].each do |speaker|
-        content += "• #{speaker['name']}: #{speaker['speaking_count']}回 (#{speaker['speaking_ratio']})\n"
+      participation_analysis['speaker_stats'].each do |name, stats|
+        content += "• #{name}: #{stats['speaking_count']}回 (#{stats['speaking_ratio']})\n"
       end
     end
     
