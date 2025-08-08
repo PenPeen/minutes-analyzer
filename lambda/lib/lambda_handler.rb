@@ -103,6 +103,7 @@ class LambdaHandler
       end
     rescue StandardError => e
       @logger.error("Notion integration failed: #{e.message}")
+      @logger.error("Backtrace: #{e.backtrace.join("\n")}")
       results[:notion] = { success: false, error: e.message }
     end
 

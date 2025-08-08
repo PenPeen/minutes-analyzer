@@ -41,14 +41,14 @@
             "type": "string",
             "enum": ["high", "medium", "low"]
           },
-          "deadline": {"type": ["string", "null"]},
+          "deadline": {"type": "string"},
           "deadline_formatted": {"type": "string"},
           "suggested_steps": {
             "type": "array",
             "items": {"type": "string"}
           },
           "timestamp": {"type": "string", "pattern": "^\\d{2}:\\d{2}:\\d{2}$"},
-          "notion_task_id": {"type": ["string", "null"]}
+          "notion_task_id": {"type": "string"}
         },
         "required": ["task", "assignee", "priority", "deadline_formatted", "suggested_steps", "timestamp"]
       }
@@ -97,14 +97,15 @@
       "properties": {
         "balance_score": {"type": "number", "minimum": 0, "maximum": 100},
         "speaker_stats": {
-          "type": "object",
-          "additionalProperties": {
+          "type": "array",
+          "items": {
             "type": "object",
             "properties": {
+              "name": {"type": "string"},
               "speaking_count": {"type": "number"},
               "speaking_ratio": {"type": "string", "pattern": "^\\d+%$"}
             },
-            "required": ["speaking_count", "speaking_ratio"]
+            "required": ["name", "speaking_count", "speaking_ratio"]
           }
         },
         "silent_participants": {
@@ -120,8 +121,15 @@
         "actual_duration": {"type": "string"},
         "scheduled_duration": {"type": "string"},
         "topic_durations": {
-          "type": "object",
-          "additionalProperties": {"type": "string"}
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "topic": {"type": "string"},
+              "duration": {"type": "string"}
+            },
+            "required": ["topic", "duration"]
+          }
         }
       },
       "required": ["actual_duration", "scheduled_duration", "topic_durations"]
