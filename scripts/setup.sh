@@ -229,12 +229,9 @@ setup_terraform_vars() {
     log_info "Terraform変数ファイルを作成中..."
     cd "$PROJECT_ROOT"
     if [ -f ".env.local" ]; then
-        (
-            echo "# .env.localから自動生成されるTerraform変数ファイル"
-            echo "GEMINI_API_KEY=\"$(grep GEMINI_API_KEY .env.local | cut -d '=' -f2-)\""
-            echo "slack_webhook_url=\"$(grep SLACK_WEBHOOK_URL .env.local | cut -d '=' -f2-)\""
-        ) > infrastructure/environments/local/terraform.tfvars
-        log_success "✅ infrastructure/environments/local/terraform.tfvars を作成しました"
+        log_warning "⚠️ .env.localが見つかりました。"
+        log_info "Terraform変数ファイルを生成するには 'make generate-tfvars' を実行してください。"
+        log_info "このコマンドはMakefile内で安全に環境変数を処理します。"
     else
         log_warning "⚠️ .env.local が見つかりません。terraform.tfvars は作成されませんでした。"
     fi
