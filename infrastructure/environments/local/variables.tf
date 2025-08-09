@@ -53,18 +53,17 @@ variable "gemini_api_key" {
   default     = "dummy-gemini-api-key"
 }
 
-variable "slack_webhook_url" {
-  description = "Slack webhook URL for notifications"
-  type        = string
-  default     = ""
-  sensitive   = true
-}
-
 variable "slack_bot_token" {
   description = "Slack Bot User OAuth Token"
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "slack_channel_id" {
+  description = "Slack channel ID for notifications"
+  type        = string
+  default     = ""
 }
 
 variable "google_service_account_json_path" {

@@ -46,11 +46,17 @@ variable "gemini_api_key_secret_name" {
   default     = "minutes-analyzer-gemini-api-key-production"
 }
 
-variable "slack_webhook_url" {
-  description = "Slack webhook URL for notifications"
+variable "slack_bot_token" {
+  description = "Slack Bot User OAuth Token"
   type        = string
   default     = ""
   sensitive   = true
+}
+
+variable "slack_channel_id" {
+  description = "Slack channel ID for notifications"
+  type        = string
+  default     = ""
 }
 
 
