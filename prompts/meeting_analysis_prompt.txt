@@ -33,6 +33,7 @@
 - 期日（明記されている場合は抽出、ない場合はnull）
 - deadline_formatted（期日をYYYY/MM/DD形式に変換、またはnullの場合は'期日未定'）
 - 実行手順の提案（2-3ステップの簡潔な手順）
+- タスクの背景・文脈（task_context）：タスクが生まれた背景、議論の文脈、関連する決定事項など、タスクを理解するために必要な補足情報を簡潔に記載
 - アクションのサマリー情報（総数、期日あり/なしの数、高優先度の数）を生成
 
 ## 3. 会議の健全性評価
@@ -91,6 +92,7 @@
       "deadline_formatted": "YYYY/MM/DD形式または'期日未定'",  // Slack通知用のフォーマット済み日付
       "suggested_steps": ["ステップ1", "ステップ2", "ステップ3"],
       "timestamp": "HH:MM:SS",
+      "task_context": "タスクの背景・文脈情報",
       "notion_task_id": null  // Notion DB連携時に後から付与されるID
     }
   ],
@@ -113,20 +115,24 @@
   },
   "participation_analysis": {
     "balance_score": 0-100,
-    "speaker_stats": {
-      "参加者名": {
+    "speaker_stats": [
+      {
+        "name": "参加者名",
         "speaking_count": 数値,
         "speaking_ratio": "XX%"
       }
-    },
+    ],
     "silent_participants": ["参加者名"]
   },
   "time_efficiency": {
     "actual_duration": "XX分",
     "scheduled_duration": "XX分または「記載なし」",
-    "topic_durations": {
-      "トピック名": "XX分"
-    }
+    "topic_durations": [
+      {
+        "topic": "トピック名",
+        "duration": "XX分"
+      }
+    ]
   },
   "atmosphere": {
     "overall_tone": "positive/neutral/negative",

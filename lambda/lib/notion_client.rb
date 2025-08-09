@@ -74,27 +74,19 @@ class NotionClient
   private
 
   # 発言統計データを文字列形式にフォーマット
-  # Gemini APIから返される発言統計は配列またはハッシュの可能性があるため両方に対応
-  # @param speaker_stats [Array<Hash>, Hash] 発言統計データ
+  # Gemini APIから返される発言統計は配列形式
+  # @param speaker_stats [Array<Hash>] 発言統計データ
   # @return [String] フォーマット済みの発言統計テキスト
   def format_speaker_stats(speaker_stats)
     result = ""
     
-    # 統一的な処理でハッシュと配列の両方に対応
-    case speaker_stats
-    when Array
+    # 配列形式のデータを処理
+    if speaker_stats.is_a?(Array)
       speaker_stats.each do |speaker|
         next unless speaker.is_a?(Hash)
         name = speaker['name'] || 'Unknown'
         count = speaker['speaking_count'] || 0
         ratio = speaker['speaking_ratio'] || '0%'
-        result += "• #{name}: #{count}回 (#{ratio})\n"
-      end
-    when Hash
-      speaker_stats.each do |name, stats|
-        next unless stats.is_a?(Hash)
-        count = stats['speaking_count'] || 0
-        ratio = stats['speaking_ratio'] || '0%'
         result += "• #{name}: #{count}回 (#{ratio})\n"
       end
     end
@@ -456,6 +448,106 @@ class NotionClient
     section
   end
 
+  def build_task_content(action)
+    content = []
+
+    # タスクの背景・文脈情報
+    if action['task_context'] && !action['task_context'].empty?
+      content << {
+        type: "heading_2",
+        heading_2: {
+          rich_text: [
+            {
+              type: "text",
+              text: { content: "📝 背景・文脈" }
+            }
+          ]
+        }
+      }
+
+      content << {
+        type: "paragraph",
+        paragraph: {
+          rich_text: [
+            {
+              type: "text",
+              text: { content: action['task_context'] }
+            }
+          ]
+        }
+      }
+    end
+
+    # 実行手順
+    if action['suggested_steps'] && action['suggested_steps'].any?
+      content << {
+        type: "heading_2",
+        heading_2: {
+          rich_text: [
+            {
+              type: "text",
+              text: { content: "📋 実行手順" }
+            }
+          ]
+        }
+      }
+
+      action['suggested_steps'].each_with_index do |step, index|
+        content << {
+          type: "numbered_list_item",
+          numbered_list_item: {
+            rich_text: [
+              {
+                type: "text",
+                text: { content: step }
+              }
+            ]
+          }
+        }
+      end
+    end
+
+    # タスク詳細情報
+    content << {
+      type: "heading_2",
+      heading_2: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: "ℹ️ タスク情報" }
+          }
+        ]
+      }
+    }
+
+    # 優先度
+    priority_emoji = case action['priority']
+                    when 'high' then '🔴'
+                    when 'medium' then '🟡'
+                    else '⚪'
+                    end
+    
+    details = []
+    details << "優先度: #{priority_emoji} #{action['priority']}"
+    details << "担当者: #{action['assignee']}" if action['assignee']
+    details << "期限: #{action['deadline_formatted']}" if action['deadline_formatted']
+    details << "作成時刻: #{action['timestamp']}" if action['timestamp']
+
+    content << {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: details.join("\n") }
+          }
+        ]
+      }
+    }
+
+    content
+  end
+
   def create_tasks_from_actions(actions, meeting_page_id)
     @logger.info("Creating tasks in task database")
 
@@ -538,9 +630,13 @@ class NotionClient
       end
     end
 
+    # タスクの本文を構築
+    children = build_task_content(action)
+
     request_body = {
       parent: { database_id: @task_database_id },
-      properties: properties
+      properties: properties,
+      children: children
     }
 
     response = make_notion_request(uri, request_body)
