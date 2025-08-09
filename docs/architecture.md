@@ -56,12 +56,24 @@ https://developers.google.com/apps-script/guides/services/quotas
 ### パターンB: Google Apps Script + AWS Lambda ハイブリッド型 ⭐選択
 
 ```mermaid
-graph LR
-    A[Google Meet] --> B[Google Drive文字起こし]
-    B --> C[GAS監視・前処理]
-    C --> D[Lambda AI処理・配信]
-    D --> E[Slack通知]
-    D --> F[Notion連携]
+sequenceDiagram
+    participant GM as Google Meet
+    participant GD as Google Drive
+    participant GAS as Google Apps Script
+    participant Lambda as AWS Lambda
+    participant Gemini as Gemini API
+    participant Slack as Slack API
+    participant Notion as Notion API
+
+    GM->>GD: 議事録自動保存
+    GAS->>GD: 新規ファイル検知
+    GAS->>Lambda: ファイルID送信
+    Lambda->>GD: ファイル内容取得
+    Lambda->>Gemini: テキスト分析依頼
+    Note over Gemini: 決定事項・アクション抽出<br/>タスク背景・手順生成
+    Gemini->>Lambda: 分析結果返却
+    Lambda->>Slack: 通知送信
+    Lambda->>Notion: ページ・タスク作成
 ```
 
 **技術スタック:**

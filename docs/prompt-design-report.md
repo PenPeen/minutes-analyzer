@@ -99,6 +99,7 @@
 - 優先度（high/medium/low）を文脈から判断
 - 期日（明記されている場合は抽出、ない場合はnull）
 - deadline_formatted（期日をYYYY/MM/DD形式に変換、またはnullの場合は'期日未定'）
+- タスクの背景・文脈（なぜこのタスクが必要か、議論の背景を簡潔に記載）
 - 実行手順の提案（2-3ステップの簡潔な手順）
 - アクションのサマリー情報（総数、期日あり/なしの数、高優先度の数）を生成
 
@@ -156,6 +157,7 @@
       "priority": "high/medium/low",
       "deadline": "期日またはnull",
       "deadline_formatted": "YYYY/MM/DD形式または'期日未定'",  // Slack通知用のフォーマット済み日付
+      "task_context": "タスクの背景・文脈情報",  // なぜこのタスクが必要か
       "suggested_steps": ["ステップ1", "ステップ2", "ステップ3"],
       "timestamp": "HH:MM:SS",
       "notion_task_id": null  // Notion DB連携時に後から付与されるID
@@ -275,6 +277,7 @@
       "priority": "high",
       "deadline": "今週末",
       "deadline_formatted": "2025/08/10",
+      "task_context": "リリース前の最終セキュリティチェックとして、外部向けAPIの脆弱性評価が必要",
       "suggested_steps": [
         "OWASP Top 10の項目をチェック",
         "ペネトレーションテストの実行",
@@ -288,6 +291,7 @@
       "priority": "medium",
       "deadline": "来週",
       "deadline_formatted": "2025/08/15",
+      "task_context": "フロントエンド・バックエンドの主要機能が完成したため、統合テストを開始する段階",
       "suggested_steps": [
         "テストケースの作成",
         "機能テストの実施",
@@ -301,6 +305,7 @@
       "priority": "high",
       "deadline": null,
       "deadline_formatted": "期日未定",
+      "task_context": "外部APIの仕様変更により軽微な遅延が発生、早急な対応が必要",
       "suggested_steps": [
         "API仕様変更の詳細確認",
         "実装の修正",
