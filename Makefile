@@ -12,6 +12,7 @@ LOCALSTACK_CHECK_INTERVAL ?= 3
 AWS_REGION = ap-northeast-1
 PROJECT_NAME = minutes-analyzer
 ENVIRONMENT = local
+TF_DIR = infrastructure/environments/local
 
 # LocalStack AWS設定
 AWS_ENDPOINT_FLAG = --endpoint-url=$(LOCALSTACK_ENDPOINT)
@@ -20,10 +21,18 @@ AWS_LOCAL_CREDENTIALS = AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test
 # 初期セットアップ（OSS公開用）
 setup: ## 初期セットアップを実行
 	@if [ -f .env.local ]; then \
-		echo "📋 .env.localは既に存在するため、スキップします"; \
+		echo "📋 .env.localは既に存在します（保護されています）"; \
+		echo "🔧 その他のセットアップを継続します..."; \
 	else \
 		./scripts/setup.sh; \
 	fi
+	@echo "📦 依存関係をインストール中..."
+	@if command -v bundle >/dev/null 2>&1; then \
+		cd lambda && bundle install; \
+	else \
+		echo "⚠️  Bundlerがインストールされていません。Rubyの依存関係はスキップします"; \
+	fi
+	@echo "✅ セットアップが完了しました"
 
 # 開発環境起動（ビルド・デプロイ含む）
 start: ## 開発環境を起動・デプロイ
@@ -32,13 +41,23 @@ start: ## 開発環境を起動・デプロイ
 		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \
 		exit 1; \
 	fi
+	@echo "🐳 Dockerコンテナを起動中..."
 	@export $$(cat .env.local | grep -v '^#' | grep -v 'GOOGLE_SERVICE_ACCOUNT_JSON' | xargs) && \
 	cd infrastructure && docker compose up -d
 	@$(MAKE) wait-for-localstack
+	@echo "📝 設定ファイルを生成中..."
 	@$(MAKE) generate-tfvars
+	@echo "🔨 Lambda関数をビルド中..."
 	@$(MAKE) build-lambda
-	@$(MAKE) deploy-local
+	@echo "🚀 インフラストラクチャをデプロイ中..."
+	@$(MAKE) tf-init
+	@$(MAKE) tf-apply
+	@echo "📤 プロンプトをアップロード中..."
+	@$(MAKE) upload-prompts-local
 	@echo "✅ 開発環境の起動が完了しました"
+	@echo ""
+	@echo "📋 デプロイ情報:"
+	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
 
 # terraform.tfvarsの生成
 # 
@@ -129,21 +148,24 @@ tf-init: ## Terraformを初期化
 # Terraformプランの実行
 tf-plan: tf-init ## Terraformプランを実行
 	@echo "📋 Terraformプランを実行中..."
-	@cd infrastructure/environments/local && terraform plan
+	@cd $(TF_DIR) && terraform plan
 	@echo "✅ Terraformプランが完了しました"
 
-# LocalStack環境にデプロイ
-deploy-local: tf-plan ## LocalStack環境にデプロイ
-	@echo "🚀 LocalStack環境にデプロイ中..."
-	@if [ -f infrastructure/environments/local/terraform.tfvars ]; then \
-		cd infrastructure/environments/local && terraform apply -var-file="terraform.tfvars" -auto-approve; \
+# Terraform適用（プランなし）
+tf-apply: ## Terraformを適用
+	@echo "🚀 Terraformを適用中..."
+	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
+		cd $(TF_DIR) && terraform apply -var-file="terraform.tfvars" -auto-approve; \
 	else \
-		cd infrastructure/environments/local && terraform apply -auto-approve; \
+		cd $(TF_DIR) && terraform apply -auto-approve; \
 	fi
+	@echo "✅ Terraformの適用が完了しました"
+
+# LocalStack環境にデプロイ（プラン確認あり）
+deploy-local: tf-plan tf-apply upload-prompts-local ## LocalStack環境にデプロイ
 	@echo "✅ デプロイが完了しました"
 	@echo "📋 デプロイ情報:"
-	@cd infrastructure/environments/local && terraform output
-	@$(MAKE) upload-prompts-local
+	@cd $(TF_DIR) && terraform output
 
 # プロンプトをS3にアップロード
 upload-prompts-local: ## プロンプトファイルをLocalStackのS3にアップロード
@@ -154,7 +176,7 @@ upload-prompts-local: ## プロンプトファイルをLocalStackのS3にアッ�
 # LocalStack環境を破棄
 destroy-local: ## LocalStack環境を破棄
 	@echo "🗑️  LocalStack環境を破棄中..."
-	@cd infrastructure/environments/local && terraform destroy -auto-approve
+	@cd $(TF_DIR) && terraform destroy -auto-approve
 	@echo "✅ 環境の破棄が完了しました"
 
 # テスト実行
@@ -172,7 +194,7 @@ health-check: ## APIヘルスチェック
 	curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"
 
 # ローカル環境のクリーンアップ
-clean:
+clean: ## ローカル環境をクリーンアップ
 	@echo "🧹 ローカル環境をクリーンアップ中..."
 	@$(MAKE) clean-docker
 	@$(MAKE) clean-build-artifacts
@@ -192,22 +214,24 @@ clean-build-artifacts:
 
 clean-terraform:
 	@echo "🏗️  Terraform状態を削除中..."
-	@cd infrastructure/environments/local && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars google_service_account.json
+	@cd $(TF_DIR) && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars google_service_account.json
 
 clean-config:
 	@echo "⚙️  設定ファイルを削除中..."
 	@rm -f .env.local .env.production
 
 # Lambda関数をビルド・デプロイする完全なタスク
-build-and-deploy: build-lambda deploy-local ## Lambda関数をビルドしてデプロイ
+build-and-deploy: build-lambda tf-init tf-apply upload-prompts-local ## Lambda関数をビルドしてデプロイ
 	@echo "🎉 ビルドとデプロイが完了しました！"
+	@echo "📋 デプロイ情報:"
+	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
 
 # 開発環境の完全セットアップ
 dev-setup: setup-local build-and-deploy ## 開発環境を完全にセットアップ
 	@echo "🎉 開発環境のセットアップが完了しました！"
 	@echo ""
 	@echo "📋 利用可能な情報:"
-	@cd infrastructure/environments/local && \
+	@cd $(TF_DIR) && \
 	echo "API エンドポイント: $$(terraform output -raw api_endpoint_url 2>/dev/null || echo 'N/A')" && \
 	echo "API キー: $$(terraform output -raw api_key_value 2>/dev/null || echo 'N/A')"
 	@echo ""
