@@ -75,13 +75,13 @@ variable "google_service_account_json_path" {
 variable "google_calendar_enabled" {
   description = "Enable Google Calendar integration"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "user_mapping_enabled" {
   description = "Enable user mapping for Slack and Notion"
   type        = bool
-  default     = false
+  default     = true
 }
 
 variable "cache_ttl" {

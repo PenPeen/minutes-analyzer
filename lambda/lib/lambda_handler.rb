@@ -18,8 +18,8 @@ class LambdaHandler
     @environment = ENV.fetch('ENVIRONMENT', 'local')
     
     # ユーザーマッピング機能の設定を読み込み
-    @google_calendar_enabled = ENV.fetch('GOOGLE_CALENDAR_ENABLED', 'false').downcase == 'true'
-    @user_mapping_enabled = ENV.fetch('USER_MAPPING_ENABLED', 'false').downcase == 'true'
+    @google_calendar_enabled = parse_boolean_env('GOOGLE_CALENDAR_ENABLED', false)
+    @user_mapping_enabled = parse_boolean_env('USER_MAPPING_ENABLED', false)
     
     @logger.info("Google Calendar integration: #{@google_calendar_enabled ? 'enabled' : 'disabled'}")
     @logger.info("User mapping: #{@user_mapping_enabled ? 'enabled' : 'disabled'}")
@@ -110,6 +110,13 @@ class LambdaHandler
   end
 
   private
+  
+  def parse_boolean_env(key, default_value)
+    value = ENV.fetch(key, default_value.to_s)
+    return default_value if value.nil? || value.empty?
+    
+    %w[true yes 1 on].include?(value.downcase)
+  end
 
   def process_user_mapping(file_id, secrets)
     @logger.info("Starting user mapping for file_id: #{file_id}")
@@ -161,28 +168,29 @@ class LambdaHandler
       end
       
       result
-    rescue Timeout::Error => e
+    rescue Timeout::Error
       @logger.error("User mapping timeout after 60 seconds")
-      {
-        status: 'partial',
-        error: 'Timeout during user mapping',
-        file_id: file_id,
-        warnings: ['Some user mappings may be incomplete due to timeout']
-      }
+      build_partial_result(file_id, 'Timeout during user mapping', 
+                          ['Some user mappings may be incomplete due to timeout'])
     rescue StandardError => e
       # Calendar API接続エラーなどの場合もフォールバック
       @logger.error("Error in user mapping process: #{e.message}")
       @logger.error(e.backtrace.first(5).join("\n"))
       
       # エラーでも基本的な情報は返す
-      {
-        status: 'partial',
-        error: e.message,
-        file_id: file_id,
-        warnings: ['User mapping unavailable, continuing without it'],
-        user_mappings: { slack: {}, notion: {} }
-      }
+      build_partial_result(file_id, e.message, 
+                          ['User mapping unavailable, continuing without it'])
     end
+  end
+  
+  def build_partial_result(file_id, error_message, warnings)
+    {
+      status: 'partial',
+      error: error_message,
+      file_id: file_id,
+      warnings: warnings,
+      user_mappings: { slack: {}, notion: {} }
+    }
   end
   
   def count_successful_mappings(user_mappings)
@@ -213,37 +221,49 @@ class LambdaHandler
   end
 
   def enrich_actions_with_assignees(analysis_result, user_mappings)
-    return analysis_result unless analysis_result.is_a?(Hash) && analysis_result['actions'].is_a?(Array)
+    return analysis_result unless valid_analysis_result?(analysis_result)
     
     @logger.info("Enriching actions with user mapping data")
     
-    # アクション項目に担当者情報を追加
     analysis_result['actions'].each do |action|
       next unless action['assignee']
       
-      # 担当者名からメールアドレスを推測（参加者リストから照合）
       assignee_email = find_email_for_assignee(action['assignee'], user_mappings[:participants])
+      next unless assignee_email
       
-      if assignee_email
-        # Notionユーザー情報を追加
-        if user_mappings[:user_mappings][:notion] && user_mappings[:user_mappings][:notion][assignee_email]
-          notion_user = user_mappings[:user_mappings][:notion][assignee_email]
-          action['notion_user_id'] = notion_user[:id] if notion_user[:id]
-          action['assignee_email'] = assignee_email
-          @logger.debug("Added Notion user ID for #{action['assignee']}: #{notion_user[:id]}")
-        end
-        
-        # Slackメンション情報を追加
-        if user_mappings[:user_mappings][:slack] && user_mappings[:user_mappings][:slack][assignee_email]
-          slack_user = user_mappings[:user_mappings][:slack][assignee_email]
-          action['slack_user_id'] = slack_user[:id] if slack_user[:id]
-          action['slack_mention'] = "<@#{slack_user[:id]}>" if slack_user[:id]
-          @logger.debug("Added Slack mention for #{action['assignee']}: <@#{slack_user[:id]}>")
-        end
-      end
+      enrich_action_with_notion_user(action, assignee_email, user_mappings)
+      enrich_action_with_slack_user(action, assignee_email, user_mappings)
     end
     
     analysis_result
+  end
+  
+  def valid_analysis_result?(result)
+    result.is_a?(Hash) && result['actions'].is_a?(Array)
+  end
+  
+  def enrich_action_with_notion_user(action, email, user_mappings)
+    notion_users = user_mappings.dig(:user_mappings, :notion)
+    return unless notion_users
+    
+    notion_user = notion_users[email]
+    return unless notion_user && notion_user[:id]
+    
+    action['notion_user_id'] = notion_user[:id]
+    action['assignee_email'] = email
+    @logger.debug("Added Notion user ID for #{action['assignee']}: #{notion_user[:id]}") if @logger.level == Logger::DEBUG
+  end
+  
+  def enrich_action_with_slack_user(action, email, user_mappings)
+    slack_users = user_mappings.dig(:user_mappings, :slack)
+    return unless slack_users
+    
+    slack_user = slack_users[email]
+    return unless slack_user && slack_user[:id]
+    
+    action['slack_user_id'] = slack_user[:id]
+    action['slack_mention'] = "<@#{slack_user[:id]}>"
+    @logger.debug("Added Slack mention for #{action['assignee']}: <@#{slack_user[:id]}>") if @logger.level == Logger::DEBUG
   end
 
   def find_email_for_assignee(assignee_name, participants)
@@ -297,12 +317,13 @@ class LambdaHandler
         slack_client = SlackClient.new(slack_bot_token, slack_channel_id, @logger)
         
         # メンション情報を含むアクション項目を送信
-        enhanced_result = analysis_result.dup
-        if user_mappings[:user_mappings] && user_mappings[:user_mappings][:slack_mentions]
-          enhanced_result['slack_mentions'] = user_mappings[:user_mappings][:slack_mentions]
+        result_with_mentions = analysis_result.dup
+        slack_mentions = user_mappings.dig(:user_mappings, :slack_mentions)
+        if slack_mentions
+          result_with_mentions['slack_mentions'] = slack_mentions
         end
         
-        results[:slack] = slack_client.send_notification(enhanced_result)
+        results[:slack] = slack_client.send_notification(result_with_mentions)
       else
         @logger.warn("Slack bot token or channel ID is not configured")
       end
