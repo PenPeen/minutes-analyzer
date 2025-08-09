@@ -448,66 +448,85 @@ class NotionClient
     section
   end
 
+  # Notionタスクページの本文コンテンツを構築
+  # @param action [Hash] タスクのアクション情報
+  # @return [Array<Hash>] Notion APIのブロック形式のコンテンツ配列
   def build_task_content(action)
     content = []
+    add_task_context_section(content, action)
+    add_task_steps_section(content, action)
+    add_task_details_section(content, action)
+    content
+  end
 
-    # タスクの背景・文脈情報
-    if action['task_context'] && !action['task_context'].empty?
-      content << {
-        type: "heading_2",
-        heading_2: {
-          rich_text: [
-            {
-              type: "text",
-              text: { content: "📝 背景・文脈" }
-            }
-          ]
-        }
-      }
+  # タスクの背景・文脈セクションを追加
+  # @param content [Array] コンテンツ配列
+  # @param action [Hash] タスクのアクション情報
+  def add_task_context_section(content, action)
+    return unless action['task_context'] && !action['task_context'].empty?
 
-      content << {
-        type: "paragraph",
-        paragraph: {
-          rich_text: [
-            {
-              type: "text",
-              text: { content: action['task_context'] }
-            }
-          ]
-        }
-      }
-    end
-
-    # 実行手順
-    if action['suggested_steps'] && action['suggested_steps'].any?
-      content << {
-        type: "heading_2",
-        heading_2: {
-          rich_text: [
-            {
-              type: "text",
-              text: { content: "📋 実行手順" }
-            }
-          ]
-        }
-      }
-
-      action['suggested_steps'].each_with_index do |step, index|
-        content << {
-          type: "numbered_list_item",
-          numbered_list_item: {
-            rich_text: [
-              {
-                type: "text",
-                text: { content: step }
-              }
-            ]
+    content << {
+      type: "heading_2",
+      heading_2: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: "📝 背景・文脈" }
           }
-        }
-      end
-    end
+        ]
+      }
+    }
 
-    # タスク詳細情報
+    content << {
+      type: "paragraph",
+      paragraph: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: action['task_context'] }
+          }
+        ]
+      }
+    }
+  end
+
+  # タスクの実行手順セクションを追加
+  # @param content [Array] コンテンツ配列
+  # @param action [Hash] タスクのアクション情報
+  def add_task_steps_section(content, action)
+    return unless action['suggested_steps'] && action['suggested_steps'].any?
+
+    content << {
+      type: "heading_2",
+      heading_2: {
+        rich_text: [
+          {
+            type: "text",
+            text: { content: "📋 実行手順" }
+          }
+        ]
+      }
+    }
+
+    action['suggested_steps'].each do |step|
+      content << {
+        type: "numbered_list_item",
+        numbered_list_item: {
+          rich_text: [
+            {
+              type: "text",
+              text: { content: step }
+            }
+          ]
+        }
+      }
+    end
+  end
+
+  # タスクの詳細情報セクションを追加
+  # @param content [Array] コンテンツ配列
+  # @param action [Hash] タスクのアクション情報
+  def add_task_details_section(content, action)
     content << {
       type: "heading_2",
       heading_2: {
@@ -520,7 +539,6 @@ class NotionClient
       }
     }
 
-    # 優先度
     priority_emoji = case action['priority']
                     when 'high' then '🔴'
                     when 'medium' then '🟡'
@@ -544,8 +562,6 @@ class NotionClient
         ]
       }
     }
-
-    content
   end
 
   def create_tasks_from_actions(actions, meeting_page_id)
