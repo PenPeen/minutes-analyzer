@@ -7,44 +7,59 @@ require 'date'
 # Slack通知を送信するクライアントクラス
 # Gemini APIから返された議事録分析結果をSlackのBlock Kit形式で整形して送信する
 class SlackClient
-  def initialize(webhook_url, logger)
-    @webhook_url = webhook_url
+  SLACK_API_BASE = 'https://slack.com/api'
+  
+  def initialize(bot_token, channel_id, logger)
+    @bot_token = bot_token
+    @channel_id = channel_id
     @logger = logger
   end
 
   # 議事録分析結果をSlackに送信する
   # @param analysis_result [Hash] Gemini APIから返された分析結果
-  # @return [Hash] 送信結果（success, response_code, error）
+  # @return [Hash] 送信結果（success, response_code, error, timestamp）
   def send_notification(analysis_result)
-    return { success: false, message: 'Webhook URL not configured' } unless @webhook_url && !@webhook_url.empty?
+    return { success: false, message: 'Bot token not configured' } unless @bot_token && !@bot_token.empty?
+    return { success: false, message: 'Channel ID not configured' } unless @channel_id && !@channel_id.empty?
 
     begin
-      uri = URI.parse(@webhook_url)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      http.read_timeout = 30
-      http.open_timeout = 30
-
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request['Content-Type'] = 'application/json'
-      request.body = build_slack_message(analysis_result).to_json
-
-      @logger.info("Sending notification to Slack")
-      response = http.request(request)
-
-      if response.code == '200'
-        @logger.info("Successfully sent notification to Slack")
-        { success: true, response_code: response.code }
+      # メインメッセージを送信
+      main_message = build_slack_message(analysis_result)
+      main_result = post_message(main_message)
+      
+      unless main_result[:success]
+        return main_result
+      end
+      
+      # タイムスタンプを取得
+      timestamp = main_result[:ts]
+      
+      # スレッド返信として雰囲気と改善提案を送信
+      atmosphere = analysis_result['atmosphere'] || {}
+      suggestions = analysis_result['improvement_suggestions'] || []
+      
+      if !atmosphere.empty? || suggestions.any?
+        thread_message = build_thread_message(atmosphere, suggestions)
+        thread_message[:thread_ts] = timestamp
+        thread_result = post_message(thread_message)
+        
+        return {
+          success: true,
+          response_code: '200',
+          timestamp: timestamp,
+          thread_sent: thread_result[:success]
+        }
       else
-        @logger.error("Failed to send notification to Slack: #{response.code} - #{response.body}")
-        { success: false, response_code: response.code, error: response.body }
+        return {
+          success: true,
+          response_code: '200',
+          timestamp: timestamp,
+          thread_sent: false
+        }
       end
     rescue Net::OpenTimeout, Net::ReadTimeout => e
       @logger.error("Slack notification timeout: #{e.message}")
       { success: false, error: "Request timeout: #{e.message}" }
-    rescue URI::InvalidURIError => e
-      @logger.error("Invalid Slack webhook URL: #{e.message}")
-      { success: false, error: "Invalid webhook URL format" }
     rescue JSON::GeneratorError => e
       @logger.error("Failed to generate JSON for Slack message: #{e.message}")
       { success: false, error: "Message formatting error" }
@@ -52,6 +67,56 @@ class SlackClient
       @logger.error("Unexpected error sending Slack notification: #{e.class.name} - #{e.message}")
       { success: false, error: e.message }
     end
+  end
+  
+  # Slack Web APIを使用してメッセージを送信
+  # Bot TokenとChannel IDを使用してchat.postMessage APIを呼び出す
+  # @param message_data [Hash] メッセージデータ（blocks, text, thread_ts等）
+  # @return [Hash] 送信結果（success, ts, error等）
+  def post_message(message_data)
+    uri = URI.parse("#{SLACK_API_BASE}/chat.postMessage")
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.read_timeout = 30
+    http.open_timeout = 30
+    
+    request = Net::HTTP::Post.new(uri.request_uri)
+    request['Authorization'] = "Bearer #{@bot_token}"
+    request['Content-Type'] = 'application/json'
+    
+    # channel IDを追加
+    message_data[:channel] = @channel_id
+    request.body = message_data.to_json
+    
+    @logger.info("Sending message to Slack via Web API")
+    @logger.info("Channel ID: #{@channel_id}")
+    response = http.request(request)
+    
+    if response.code == '200'
+      response_body = JSON.parse(response.body)
+      if response_body['ok']
+        @logger.info("Successfully sent message to Slack")
+        { success: true, ts: response_body['ts'] }
+      else
+        @logger.error("Slack API error: #{response_body['error']}")
+        # デバッグログは開発環境のみで出力
+        if ENV['APP_ENV'] == 'local' || ENV['APP_ENV'] == 'development'
+          @logger.error("Full Slack API response: #{response_body.inspect}")
+          @logger.error("Response metadata: #{response_body['response_metadata'].inspect}") if response_body['response_metadata']
+        end
+        { success: false, error: response_body['error'] }
+      end
+    else
+      @logger.error("Failed to send message to Slack: HTTP #{response.code}")
+      # 本番環境では詳細なエラー情報を返さない
+      error_msg = ENV['APP_ENV'] == 'production' ? 'Communication error' : response.body
+      { success: false, response_code: response.code, error: error_msg }
+    end
+  rescue StandardError => e
+    @logger.error("Error in post_message: #{e.class.name}")
+    # 本番環境では詳細なエラーメッセージを隠蔽
+    error_msg = ENV['APP_ENV'] == 'production' ? 'Internal error' : e.message
+    { success: false, error: error_msg }
   end
 
   private
@@ -285,5 +350,118 @@ class SlackClient
 
   def build_fallback_text(meeting_summary)
     "📝 #{meeting_summary['title'] || '議事録'}の分析が完了しました"
+  end
+
+  # スレッド返信用のメッセージを構築する
+  # @param atmosphere [Hash] 会議の雰囲気
+  # @param suggestions [Array<Hash>] 改善提案
+  # @return [Hash] Slack API用のメッセージ構造
+  def build_thread_message(atmosphere, suggestions)
+    blocks = []
+    
+    # 雰囲気セクション
+    if atmosphere && !atmosphere.empty?
+      blocks.concat(build_atmosphere_blocks(atmosphere))
+    end
+    
+    # 改善提案セクション
+    if suggestions && suggestions.any?
+      blocks << { type: "divider" } if blocks.any?
+      blocks.concat(build_suggestions_blocks(suggestions))
+    end
+    
+    {
+      blocks: blocks,
+      text: "会議の分析詳細"
+    }
+  end
+
+  # 雰囲気のブロックを構築
+  def build_atmosphere_blocks(atmosphere)
+    blocks = []
+    
+    # ヘッダー
+    blocks << {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "😊 会議の雰囲気",
+        emoji: true
+      }
+    }
+    
+    # 全体評価
+    tone = atmosphere['overall_tone'] || 'neutral'
+    tone_emoji = case tone
+                 when 'positive' then '😊'
+                 when 'negative' then '😔'
+                 else '😐'
+                 end
+    
+    tone_text = "*全体的な雰囲気:* #{tone_emoji} #{tone}\n\n"
+    
+    # 根拠
+    if atmosphere['evidence'] && atmosphere['evidence'].any?
+      tone_text += "*根拠:*\n"
+      atmosphere['evidence'].each do |evidence|
+        tone_text += "• #{evidence}\n"
+      end
+    end
+    
+    blocks << {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: tone_text
+      }
+    }
+    
+    blocks
+  end
+
+  # 改善提案のブロックを構築
+  def build_suggestions_blocks(suggestions)
+    blocks = []
+    
+    # ヘッダー
+    blocks << {
+      type: "header",
+      text: {
+        type: "plain_text",
+        text: "💡 改善提案",
+        emoji: true
+      }
+    }
+    
+    # 各提案を整形
+    suggestions_text = ""
+    suggestions.take(4).each do |suggestion|
+      category_emoji = case suggestion['category']
+                       when 'participation' then '🎤'
+                       when 'time_management' then '⏱️'
+                       when 'decision_making' then '🎯'
+                       when 'facilitation' then '📋'
+                       else '💡'
+                       end
+      
+      suggestions_text += "#{category_emoji} #{suggestion['suggestion']}\n"
+      if suggestion['expected_impact']
+        suggestions_text += "   _(期待効果: #{suggestion['expected_impact']})_\n\n"
+      end
+    end
+    
+    if suggestions.length > 4
+      suggestions_text += "\n_…他#{suggestions.length - 4}件の提案_"
+    end
+    
+    blocks << {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: suggestions_text
+      }
+    }
+    
+    blocks
   end
 end
