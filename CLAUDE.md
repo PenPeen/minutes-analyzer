@@ -15,12 +15,16 @@
 - 必要なAPIキー・サービスアカウント
 
 ## 環境変数の設定
-- 必須: GEMINI_API_KEY
-- オプション:
-  - SLACK_WEBHOOK_URL
-  - NOTION_API_KEY,
-  - NOTION_DATABASE_ID
-  - NOTION_TASK_DATABASE_ID
+### 必須設定
+- `GEMINI_API_KEY`: Gemini API キー
+- `GOOGLE_SERVICE_ACCOUNT_JSON`: Google サービスアカウント認証情報
+
+### オプション設定
+- `SLACK_BOT_TOKEN`: Slack Bot User OAuth Token（xoxb-で始まる）
+- `SLACK_CHANNEL_ID`: Slack 送信先チャンネルID（例: C1234567890）
+- `NOTION_API_KEY`: Notion Integration トークン
+- `NOTION_DATABASE_ID`: 議事録用データベースID
+- `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
 
 ## 利用可能なMakefileコマンド
   - make help - ヘルプ表示

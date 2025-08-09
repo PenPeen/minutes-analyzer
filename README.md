@@ -50,7 +50,9 @@ cp env.local.sample .env.local
 - `GEMINI_API_KEY`: Gemini API キー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google サービスアカウント認証情報
 
-- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL
+**オプション設定**
+- `SLACK_BOT_TOKEN`: Slack Bot User OAuth Token（[設定ガイド](docs/slack-integration-guide.md)参照）
+- `SLACK_CHANNEL_ID`: Slack 送信先チャンネルID（例: C1234567890）
 - `NOTION_API_KEY`: Notion Integration トークン
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
@@ -144,7 +146,8 @@ minutes-analyzer/
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google Drive API用のサービスアカウント認証情報（JSON形式）
 
 ### オプション設定
-- `SLACK_WEBHOOK_URL`: Slack Incoming Webhook URL（[Slack App](https://api.slack.com/apps)で取得）
+- `SLACK_BOT_TOKEN`: Slack Bot User OAuth Token（[設定ガイド](docs/slack-integration-guide.md)参照）
+- `SLACK_CHANNEL_ID`: Slack 送信先チャンネルID（例: C1234567890）
 - `NOTION_API_KEY`: Notion Integration トークン（[Notion開発者ポータル](https://www.notion.so/my-integrations)で取得）
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
@@ -169,6 +172,8 @@ minutes-analyzer/
 
 - [アーキテクチャ設計](docs/architecture.md)
 - [Google Drive API設定ガイド](docs/google-drive-api-setup.md)
+- [Slack Integration設定ガイド](docs/slack-integration-guide.md)
+- [統合テスト実施手順書](docs/integration-test-guide.md)
 
 ## 🧪 ヘルスチェック
 
