@@ -32,7 +32,7 @@ class NotionClient
     # 議事録ページのプロパティを構築
     properties = build_meeting_properties(analysis_result)
 
-    # ページコンテンツを構築
+    # ページコンテンツを構築（タスクDBが設定されている場合はビューも含む）
     children = build_page_content(analysis_result)
 
     request_body = {
@@ -79,7 +79,7 @@ class NotionClient
   # @return [String] フォーマット済みの発言統計テキスト
   def format_speaker_stats(speaker_stats)
     result = ""
-    
+
     # 配列形式のデータを処理
     if speaker_stats.is_a?(Array)
       speaker_stats.each do |speaker|
@@ -90,7 +90,7 @@ class NotionClient
         result += "• #{name}: #{count}回 (#{ratio})\n"
       end
     end
-    
+
     result
   end
 
@@ -126,37 +126,7 @@ class NotionClient
       }
     end
 
-    # 決定事項の設定
-    if decisions.any?
-      properties["決定事項"] = {
-        rich_text: [
-          {
-            text: {
-              content: decisions.map { |d| "• #{d.is_a?(Hash) ? d['content'] : d}" }.join("\n")
-            }
-          }
-        ]
-      }
-    end
-
-    # アクション項目の設定
-    if actions.any?
-      properties["TODO"] = {
-        rich_text: [
-          {
-            text: {
-              content: actions.map { |a|
-                    if a.is_a?(Hash)
-                      "• #{a['task']} (#{a['assignee']})"
-                    else
-                      "• #{a}"
-                    end
-                  }.join("\n")
-            }
-          }
-        ]
-      }
-    end
+    # 決定事項とアクション項目は本文に記載するため、プロパティには設定しない
 
     # 健全性スコアの設定
     if health_assessment['overall_score']
@@ -257,31 +227,31 @@ class NotionClient
       }
     }
 
-    actions.each do |action|
-      next unless action.is_a?(Hash)
-      priority_emoji = case action['priority']
-                      when 'high' then '🔴'
-                      when 'medium' then '🟡'
-                      else '⚪'
-                      end
+    # タスクデータベースが設定されている場合のみ処理
+    return section if @task_database_id.to_s.empty?
 
-      action_text = "#{priority_emoji} #{action['task']}"
-      action_text += " (担当: #{action['assignee']})"
-      action_text += " (期限: #{action['deadline_formatted']})"
+    total = actions&.size.to_i
+    high = actions.to_a.count { |a| a['priority'].to_s.downcase == 'high' }
 
-      section << {
-        type: "to_do",
-        to_do: {
-          rich_text: [
-            {
-              type: "text",
-              text: { content: action_text }
-            }
-          ],
-          checked: false
-        }
+    # URLは既存ビューURL（環境変数から取得可能な場合）またはDB直URLを使用
+    # ハイフン無しのコンパクトIDに変換
+    compact_task_db_id = @task_database_id.to_s.gsub('-', '')
+    tasks_view_url = ENV['NOTION_TASKS_VIEW_URL'] # 既存ビューURLがあれば使用
+    url = tasks_view_url || "https://www.notion.so/#{compact_task_db_id}"
+
+    callout_rich = [
+      { type: "text", text: { content: "📊 タスク: #{total}件（高優先度: #{high}件）\n" } },
+      { type: "text", text: { content: "→ タスク管理データベースで詳細確認", link: { url: url } } }
+    ]
+
+    section << {
+      type: "callout",
+      callout: {
+        rich_text: callout_rich,
+        icon: { emoji: "📋" },
+        color: "blue_background"
       }
-    end
+    }
 
     section
   end
@@ -544,7 +514,7 @@ class NotionClient
                     when 'medium' then '🟡'
                     else '⚪'
                     end
-    
+
     details = []
     details << "優先度: #{priority_emoji} #{action['priority']}"
     details << "担当者: #{action['assignee']}" if action['assignee']
