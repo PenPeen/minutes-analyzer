@@ -108,13 +108,16 @@ class LambdaHandler
 
     # Slack通知処理
     begin
-      slack_webhook_url = secrets['SLACK_WEBHOOK_URL']
-      if slack_webhook_url && !slack_webhook_url.empty?
-        @logger.info("Sending Slack notification")
-        slack_client = SlackClient.new(slack_webhook_url, @logger)
+      # Bot TokenとChannel IDを使用
+      slack_bot_token = secrets['SLACK_BOT_TOKEN']
+      slack_channel_id = secrets['SLACK_CHANNEL_ID']
+      
+      if slack_bot_token && !slack_bot_token.empty? && slack_channel_id && !slack_channel_id.empty?
+        @logger.info("Sending Slack notification via Web API")
+        slack_client = SlackClient.new(slack_bot_token, slack_channel_id, @logger)
         results[:slack] = slack_client.send_notification(analysis_result)
       else
-        @logger.warn("Slack webhook URL is not configured")
+        @logger.warn("Slack bot token or channel ID is not configured")
       end
     rescue StandardError => e
       @logger.error("Slack integration failed: #{e.message}")

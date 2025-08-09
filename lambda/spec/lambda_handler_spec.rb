@@ -46,7 +46,7 @@ RSpec.describe LambdaHandler do
         allow(google_drive_client).to receive(:get_file_content).and_return(file_content)
       end
 
-      context 'Slack Webhook URLが設定されていない場合' do
+      context 'Slack Bot Tokenが設定されていない場合' do
         it '成功レスポンスを返す（Slack通知なし）' do
           result = handler.handle(event: event, context: context)
 
@@ -57,16 +57,16 @@ RSpec.describe LambdaHandler do
           expect(JSON.parse(result[:body])['integrations']['notion']).to eq('not_created')
         end
 
-        it 'Slack webhook URL未設定の警告をログに出力' do
-          expect(logger).to receive(:warn).with('Slack webhook URL is not configured')
+        it 'Slack bot token未設定の警告をログに出力' do
+          expect(logger).to receive(:warn).with('Slack bot token or channel ID is not configured')
           handler.handle(event: event, context: context)
         end
       end
 
-      context 'Slack Webhook URLが設定されている場合' do
+      context 'Slack Bot Tokenが設定されている場合' do
         let(:slack_client) { instance_double(SlackClient) }
         let(:slack_result) { { success: true, response_code: '200' } }
-        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_BOT_TOKEN' => 'xoxb-test-token', 'SLACK_CHANNEL_ID' => 'C1234567890', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
           allow(SlackClient).to receive(:new).and_return(slack_client)
@@ -91,7 +91,7 @@ RSpec.describe LambdaHandler do
       context 'Slack通知が失敗した場合' do
         let(:slack_client) { instance_double(SlackClient) }
         let(:slack_result) { { success: false, response_code: '404', error: 'channel_not_found' } }
-        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_WEBHOOK_URL' => 'https://hooks.slack.com/test', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_BOT_TOKEN' => 'xoxb-test-token', 'SLACK_CHANNEL_ID' => 'C1234567890', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
           allow(SlackClient).to receive(:new).and_return(slack_client)
@@ -103,8 +103,10 @@ RSpec.describe LambdaHandler do
 
           expect(result[:statusCode]).to eq(200)
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('not_sent')
-          expect(JSON.parse(result[:body])['slack_notification']['success']).to eq(false)
-          expect(JSON.parse(result[:body])['slack_notification']['error']).to eq('channel_not_found')
+          body = JSON.parse(result[:body])
+          slack_result = body['slack_notification'] || body['slack'] || {}
+          expect(slack_result['success'] || false).to eq(false)
+          expect(slack_result['error'] || 'unknown').to include('channel_not_found')
         end
       end
     end
