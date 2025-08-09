@@ -9,13 +9,16 @@ RSpec.describe LambdaHandler do
   let(:gemini_client) { instance_double(GeminiClient) }
   let(:google_drive_client) { instance_double(GoogleDriveClient) }
   let(:context) { double(aws_request_id: 'test-request-id') }
-  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client) }
+  let(:meeting_processor) { instance_double(MeetingTranscriptProcessor) }
+  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client, meeting_processor: meeting_processor) }
 
   before do
     allow(logger).to receive(:level=)
+    allow(logger).to receive(:level).and_return(Logger::INFO)
     allow(logger).to receive(:info)
     allow(logger).to receive(:error)
     allow(logger).to receive(:warn)
+    allow(logger).to receive(:debug)
   end
 
   describe '#handle' do
@@ -158,6 +161,52 @@ RSpec.describe LambdaHandler do
       end
     end
 
+    context 'ユーザーマッピング機能が有効な場合' do
+      let(:file_id) { 'test-file-id' }
+      let(:event) { { 'body' => JSON.generate({ 'file_id' => file_id, 'file_name' => 'test.txt' }) } }
+      let(:secrets) do
+        {
+          'GEMINI_API_KEY' => 'test-api-key',
+          'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}',
+          'SLACK_BOT_TOKEN' => 'xoxb-test-token',
+          'NOTION_API_KEY' => 'secret_test'
+        }
+      end
+      let(:mapping_result) do
+        {
+          status: 'completed',
+          participants: ['user@example.com'],
+          user_mappings: {
+            slack: { 'user@example.com' => { id: 'U12345' } },
+            notion: { 'user@example.com' => { id: 'notion-user-id' } }
+          }
+        }
+      end
+      
+      before do
+        ENV['GOOGLE_CALENDAR_ENABLED'] = 'true'
+        ENV['USER_MAPPING_ENABLED'] = 'true'
+        allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
+        allow(GoogleDriveClient).to receive(:new).and_return(google_drive_client)
+        allow(google_drive_client).to receive(:get_file_content).and_return('meeting content')
+        allow(gemini_client).to receive(:analyze_meeting).and_return({
+          'actions' => [{ 'task' => 'Test task', 'assignee' => 'User' }]
+        })
+        allow(meeting_processor).to receive(:process_transcript).and_return(mapping_result)
+        allow(meeting_processor).to receive(:get_statistics).and_return({})
+      end
+      
+      after do
+        ENV.delete('GOOGLE_CALENDAR_ENABLED')
+        ENV.delete('USER_MAPPING_ENABLED')
+      end
+      
+      it 'ユーザーマッピングを実行する' do
+        handler.handle(event: event, context: context)
+        expect(meeting_processor).to have_received(:process_transcript).with(file_id)
+      end
+    end
+    
     context 'Google Driveファイルを取得する場合' do
       let(:file_id) { '1234567890abcdef' }
       let(:file_name) { '2025年1月15日_新機能リリース進捗確認ミーティング.txt' }

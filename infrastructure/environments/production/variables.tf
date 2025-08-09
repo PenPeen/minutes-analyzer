@@ -106,3 +106,21 @@ variable "notion_task_database_id" {
   type        = string
   default     = ""
 }
+
+variable "google_calendar_enabled" {
+  description = "Enable Google Calendar integration"
+  type        = bool
+  default     = true
+}
+
+variable "user_mapping_enabled" {
+  description = "Enable user mapping for Slack and Notion"
+  type        = bool
+  default     = true
+}
+
+variable "cache_ttl" {
+  description = "Cache TTL in seconds"
+  type        = number
+  default     = 600
+}

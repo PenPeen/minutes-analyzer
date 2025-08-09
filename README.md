@@ -10,8 +10,9 @@ Google Meetの文字起こしを自動分析し、決定事項・アクション
 
 - 🤖 **AI分析**: Gemini 2.5 Flash APIによる議事録分析
 - 📋 **自動抽出**: 決定事項・アクション項目・懸念事項を自動識別
-- 📢 **Slack連携**: 分析結果のSlack通知
-- 📝 **Notion連携**: 議事録とTODOタスクの自動作成
+- 📢 **Slack連携**: 分析結果のSlack通知（メンション機能付き）
+- 📝 **Notion連携**: 議事録とTODOタスクの自動作成（担当者自動設定）
+- 👥 **ユーザーマッピング**: Google Calendar参加者から自動的にSlack/Notionユーザーを特定
 - 💰 **コスト効率**: 月間$2-4の低コスト運用（100回/日実行時）
 
 ## 🚀 クイックスタート
@@ -52,10 +53,15 @@ cp env.local.sample .env.local
 
 **オプション設定**
 - `SLACK_BOT_TOKEN`: Slack Bot User OAuth Token（[設定ガイド](docs/slack-integration-guide.md)参照）
+  - ユーザーマッピング機能使用時は `users:read`, `users:read.email` スコープも必要
 - `SLACK_CHANNEL_ID`: Slack 送信先チャンネルID（例: C1234567890）
 - `NOTION_API_KEY`: Notion Integration トークン
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
+
+**ユーザーマッピング機能設定**
+- `GOOGLE_CALENDAR_ENABLED`: Google Calendar統合（デフォルト: true）
+- `USER_MAPPING_ENABLED`: ユーザー自動マッピング（デフォルト: true）
 
 ### 開発環境の起動
 

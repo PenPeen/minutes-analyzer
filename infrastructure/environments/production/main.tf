@@ -48,6 +48,9 @@ resource "aws_lambda_function" "minutes_analyzer" {
       NOTION_INTEGRATION          = var.notion_integration_enabled
       LOG_LEVEL                   = var.log_level
       AI_MODEL                    = var.ai_model
+      GOOGLE_CALENDAR_ENABLED     = var.google_calendar_enabled
+      USER_MAPPING_ENABLED        = var.user_mapping_enabled
+      CACHE_TTL                   = var.cache_ttl
     }
   }
 
