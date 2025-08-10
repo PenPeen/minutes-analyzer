@@ -22,12 +22,19 @@ class NotionPageBuilder
     analysis_result ||= {}
     meeting_summary = analysis_result['meeting_summary'] || {}
     
+    # 日付を取得（なければ現在日付を使用）
+    date_str = meeting_summary['date'] || Time.now.strftime('%Y-%m-%d')
+    # タイトルを取得
+    title = meeting_summary['title'] || 'Untitled Meeting'
+    # 日付付きタイトルを生成
+    title_with_date = "#{date_str} #{title}"
+    
     {
       'タイトル' => {
         'title' => [
           {
             'text' => {
-              'content' => meeting_summary['title'] || 'Untitled Meeting'
+              'content' => title_with_date
             }
           }
         ]
