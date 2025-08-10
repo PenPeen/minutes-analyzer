@@ -44,18 +44,23 @@ class NotionIntegrationService
 
       result = { success: true, page_id: page_id, url: response[:data]['url'] }
 
-      # タスク作成結果を含める
+      # タスク作成結果を含める（失敗がある場合のみ）
       if task_results
         failed_tasks = task_results.select { |t| !t[:success] }
-        if !failed_tasks.empty?
+        if failed_tasks && failed_tasks.any?
           result[:task_creation_failures] = failed_tasks
         end
       end
 
       result
     else
-      @logger.error("Failed to create Notion page: #{response[:error]}")
-      { success: false, error: response[:error] }
+      error_msg = if response[:code]
+                    "Notion API error (#{response[:code]}): #{response[:error]}"
+                  else
+                    "Failed to create Notion page: #{response[:error]}"
+                  end
+      @logger.error(error_msg)
+      { success: false, error: error_msg }
     end
   end
 

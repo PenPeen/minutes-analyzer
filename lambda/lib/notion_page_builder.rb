@@ -23,7 +23,7 @@ class NotionPageBuilder
     meeting_summary = analysis_result['meeting_summary'] || {}
     
     {
-      'Title' => {
+      'タイトル' => {
         'title' => [
           {
             'text' => {
@@ -32,15 +32,24 @@ class NotionPageBuilder
           }
         ]
       },
-      'Date' => build_date_property(meeting_summary['date']),
-      'Duration' => build_duration_property(meeting_summary['duration_minutes']),
-      'Participants' => build_participants_property(meeting_summary['participants']),
-      'HealthScore' => build_health_score_property(analysis_result)
+      '日付' => build_date_property(meeting_summary['date']),
+      '所要時間' => build_duration_property(meeting_summary['duration_minutes']),
+      '参加者' => build_participants_property(meeting_summary['participants']),
+      'スコア' => build_health_score_property(analysis_result)
     }
   end
   
   def build_content(analysis_result)
     sections = []
+    
+    # 最初にheading_1を追加
+    sections << {
+      'object' => 'block',
+      'type' => 'heading_1',
+      'heading_1' => {
+        'rich_text' => [{ 'type' => 'text', 'text' => { 'content' => '議事録サマリー' } }]
+      }
+    }
     
     sections << build_summary_section(analysis_result)
     sections << build_decisions_section(analysis_result)
@@ -221,7 +230,7 @@ class NotionPageBuilder
     decisions = analysis_result['decisions'] || []
     return [] if decisions.empty?
     
-    blocks = [create_heading('🎯 決定事項')]
+    blocks = [create_heading('📌 決定事項')]
     
     decisions.first(MAX_DECISION_DISPLAY).each do |decision|
       blocks << create_bulleted_item(decision['content'])
@@ -238,7 +247,7 @@ class NotionPageBuilder
     actions = analysis_result['actions'] || []
     return [] if actions.empty?
     
-    blocks = [create_heading('📋 今後のアクション')]
+    blocks = [create_heading('✅ アクション項目')]
     
     sorted_actions = sort_actions(actions)
     sorted_actions.first(MAX_ACTION_DISPLAY).each do |action|
@@ -256,7 +265,7 @@ class NotionPageBuilder
     health = analysis_result['health_assessment'] || {}
     return [] unless health['overall_score']
     
-    blocks = [create_heading('💊 会議の健全性評価')]
+    blocks = [create_heading('📊 会議の健全性評価')]
     blocks << create_paragraph("健全性スコア: #{health['overall_score']}/100")
     
     if health['contradictions']&.any?
@@ -280,8 +289,27 @@ class NotionPageBuilder
     blocks << create_paragraph("バランススコア: #{participation['balance_score'] || 0}/100")
     blocks << create_paragraph('発言統計:')
     
-    participation['speaker_stats'].each do |name, stats|
-      blocks << create_bulleted_item("#{name}: #{stats['speaking_count']}回 (#{stats['speaking_ratio']})")
+    speaker_stats = participation['speaker_stats']
+    if speaker_stats
+      if speaker_stats.is_a?(Array)
+        # 配列形式の場合
+        speaker_stats.each do |speaker|
+          next unless speaker.is_a?(Hash)
+          name = speaker['name'] || 'Unknown'
+          count = speaker['speaking_count'] || 0
+          ratio = speaker['speaking_ratio'] || '0%'
+          blocks << create_bulleted_item("#{name}: #{count}回 (#{ratio})")
+        end
+      elsif speaker_stats.is_a?(Hash)
+        # ハッシュ形式の場合
+        speaker_stats.each do |name, stats|
+          if stats.is_a?(Hash)
+            count = stats['speaking_count'] || 0
+            ratio = stats['speaking_ratio'] || '0%'
+            blocks << create_bulleted_item("#{name}: #{count}回 (#{ratio})")
+          end
+        end
+      end
     end
     
     blocks
@@ -298,7 +326,7 @@ class NotionPageBuilder
                  end
     
     [
-      create_heading('🌡️ 会議の雰囲気'),
+      create_heading('😊 会議の雰囲気'),
       create_paragraph("#{tone_emoji} #{atmosphere['overall_tone']}")
     ]
   end

@@ -58,7 +58,7 @@ class NotionTaskManager
   
   def build_task_properties(action, parent_page_id)
     properties = {
-      'Name' => {
+      'タスク名' => {
         'title' => [
           {
             'text' => {
@@ -67,27 +67,27 @@ class NotionTaskManager
           }
         ]
       },
-      'Status' => {
+      'ステータス' => {
         'select' => { 'name' => '未着手' }
       },
-      'Priority' => build_priority_property(action['priority'])
+      '優先度' => build_priority_property(action['priority'])
     }
     
     # 担当者設定
     if action['notion_user_id']
-      properties['Assignee'] = {
+      properties['担当者'] = {
         'people' => [{ 'id' => action['notion_user_id'] }]
       }
     end
     
     # 期限設定
     if action['deadline']
-      properties['Deadline'] = build_deadline_property(action['deadline'])
+      properties['期限'] = build_deadline_property(action['deadline'])
     end
     
     # 親ページへのリレーション
     if parent_page_id
-      properties['Meeting'] = {
+      properties['関連議事録'] = {
         'relation' => [{ 'id' => parent_page_id }]
       }
     end
@@ -96,7 +96,7 @@ class NotionTaskManager
   end
   
   def build_task_children(action)
-    page_builder = NotionPageBuilder.new(@logger)
+    page_builder = NotionPageBuilder.new(@task_database_id, @logger)
     page_builder.build_task_content(action)
   end
   

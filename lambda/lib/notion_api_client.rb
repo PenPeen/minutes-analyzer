@@ -38,8 +38,6 @@ class NotionApiClient
   private
   
   def make_request(uri, body, method = 'POST')
-    retries = 0
-    
     begin
       http = create_http_client(uri)
       request = create_request(uri, method)
@@ -49,14 +47,7 @@ class NotionApiClient
       parse_response(response)
       
     rescue Net::ReadTimeout, Net::OpenTimeout => e
-      retries += 1
-      if retries <= MAX_RETRIES
-        @logger.warn("Request timeout (attempt #{retries}/#{MAX_RETRIES}), retrying...")
-        sleep(RETRY_DELAY * retries)
-        retry
-      else
-        handle_error("Request timeout after #{MAX_RETRIES} attempts", e)
-      end
+      handle_error("Request timeout", e)
     rescue => e
       handle_error("Request failed", e)
     end

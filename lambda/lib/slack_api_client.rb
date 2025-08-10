@@ -50,7 +50,6 @@ class SlackApiClient
   
   def make_request(endpoint, payload)
     uri = URI(endpoint)
-    retries = 0
     
     begin
       http = create_http_client(uri)
@@ -60,14 +59,7 @@ class SlackApiClient
       parse_response(response)
       
     rescue Net::ReadTimeout, Net::OpenTimeout => e
-      retries += 1
-      if retries <= MAX_RETRIES
-        @logger.warn("Request timeout (attempt #{retries}/#{MAX_RETRIES}), retrying...")
-        sleep(RETRY_DELAY * retries)
-        retry
-      else
-        handle_error("Request timeout after #{MAX_RETRIES} attempts", e)
-      end
+      handle_error("Request timeout", e)
     rescue => e
       handle_error("Request failed", e)
     end
