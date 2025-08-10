@@ -40,7 +40,6 @@ class NotionPageBuilder
         ]
       },
       '日付' => build_date_property(meeting_summary['date']),
-      '所要時間' => build_duration_property(meeting_summary['duration_minutes']),
       '参加者' => build_participants_property(meeting_summary['participants']),
       'スコア' => build_health_score_property(analysis_result)
     }
@@ -62,7 +61,6 @@ class NotionPageBuilder
     sections << build_decisions_section(analysis_result)
     sections << build_actions_section(analysis_result)
     sections << build_health_assessment_section(analysis_result)
-    sections << build_participation_section(analysis_result)
     sections << build_atmosphere_section(analysis_result)
     sections << build_improvements_section(analysis_result)
     sections << build_linked_database_section if has_task_database?
@@ -204,9 +202,6 @@ class NotionPageBuilder
     end
   end
   
-  def build_duration_property(duration)
-    { 'number' => duration.to_i }
-  end
   
   def build_participants_property(participants)
     return { 'multi_select' => [] } unless participants.is_a?(Array)
@@ -228,7 +223,6 @@ class NotionPageBuilder
     [
       create_heading('📝 会議概要'),
       create_paragraph("日時: #{meeting_summary['date'] || 'N/A'}"),
-      create_paragraph("所要時間: #{meeting_summary['duration_minutes'] || 0}分"),
       create_paragraph("参加者: #{format_participants(meeting_summary['participants'])}")
     ]
   end
@@ -288,39 +282,6 @@ class NotionPageBuilder
     blocks
   end
   
-  def build_participation_section(analysis_result)
-    participation = analysis_result['participation_analysis'] || {}
-    return [] unless participation['speaker_stats']
-    
-    blocks = [create_heading('👥 参加度分析')]
-    blocks << create_paragraph("バランススコア: #{participation['balance_score'] || 0}/100")
-    blocks << create_paragraph('発言統計:')
-    
-    speaker_stats = participation['speaker_stats']
-    if speaker_stats
-      if speaker_stats.is_a?(Array)
-        # 配列形式の場合
-        speaker_stats.each do |speaker|
-          next unless speaker.is_a?(Hash)
-          name = speaker['name'] || 'Unknown'
-          count = speaker['speaking_count'] || 0
-          ratio = speaker['speaking_ratio'] || '0%'
-          blocks << create_bulleted_item("#{name}: #{count}回 (#{ratio})")
-        end
-      elsif speaker_stats.is_a?(Hash)
-        # ハッシュ形式の場合
-        speaker_stats.each do |name, stats|
-          if stats.is_a?(Hash)
-            count = stats['speaking_count'] || 0
-            ratio = stats['speaking_ratio'] || '0%'
-            blocks << create_bulleted_item("#{name}: #{count}回 (#{ratio})")
-          end
-        end
-      end
-    end
-    
-    blocks
-  end
   
   def build_atmosphere_section(analysis_result)
     atmosphere = analysis_result['atmosphere'] || {}
@@ -354,13 +315,13 @@ class NotionPageBuilder
   def build_linked_database_section
     return [] unless has_task_database?
     
+    # タスクデータベースへのリンクを含むセクション
+    compact_task_db_id = @task_database_id.to_s.gsub('-', '')
+    tasks_url = "https://www.notion.so/#{compact_task_db_id}"
+    
     [
       create_heading('🔗 関連タスク'),
-      {
-        'object' => 'block',
-        'type' => 'child_database',
-        'child_database' => { 'title' => 'タスク一覧' }
-      }
+      create_paragraph("タスク管理データベース: #{tasks_url}")
     ]
   end
   
