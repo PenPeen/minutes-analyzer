@@ -6,13 +6,12 @@
       "properties": {
         "date": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$"},
         "title": {"type": "string"},
-        "duration_minutes": {"type": "number"},
         "participants": {
           "type": "array",
           "items": {"type": "string"}
         }
       },
-      "required": ["date", "title", "duration_minutes", "participants"]
+      "required": ["date", "title", "participants"]
     },
     "decisions": {
       "type": "array",
@@ -91,29 +90,6 @@
       },
       "required": ["overall_score", "contradictions", "unresolved_issues", "undefined_items"]
     },
-    "participation_analysis": {
-      "type": "object",
-      "properties": {
-        "balance_score": {"type": "number", "minimum": 0, "maximum": 100},
-        "speaker_stats": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": {"type": "string"},
-              "speaking_count": {"type": "number"},
-              "speaking_ratio": {"type": "string", "pattern": "^\\d+%$"}
-            },
-            "required": ["name", "speaking_count", "speaking_ratio"]
-          }
-        },
-        "silent_participants": {
-          "type": "array",
-          "items": {"type": "string"}
-        }
-      },
-      "required": ["balance_score", "speaker_stats", "silent_participants"]
-    },
     "time_efficiency": {
       "type": "object",
       "properties": {
@@ -169,7 +145,6 @@
     "actions",
     "actions_summary",
     "health_assessment",
-    "participation_analysis",
     "time_efficiency",
     "atmosphere",
     "improvement_suggestions"

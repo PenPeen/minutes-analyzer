@@ -15,8 +15,10 @@ RSpec.describe NotionPageBuilder do
           'meeting_summary' => {
             'date' => '2025-01-15',
             'title' => '新機能リリース進捗確認MTG',
-            'duration_minutes' => 30,
             'participants' => ['田中太郎', '山田花子']
+          },
+          'health_assessment' => {
+            'overall_score' => 85
           }
         }
       end
@@ -31,8 +33,8 @@ RSpec.describe NotionPageBuilder do
         properties = builder.build_properties(analysis_result)
         
         expect(properties['日付']).not_to be_nil
-        expect(properties['所要時間']).not_to be_nil
         expect(properties['参加者']).not_to be_nil
+        expect(properties['スコア']).not_to be_nil
       end
     end
 

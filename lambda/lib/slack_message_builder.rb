@@ -64,10 +64,6 @@ class SlackMessageBuilder
       {
         type: "mrkdwn",
         text: "*📅 日時:*\n#{meeting_summary['date'] || 'N/A'}"
-      },
-      {
-        type: "mrkdwn",
-        text: "*⏱ 所要時間:*\n#{meeting_summary['duration_minutes'] || 0}分"
       }
     ]
     
