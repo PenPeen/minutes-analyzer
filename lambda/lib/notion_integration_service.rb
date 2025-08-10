@@ -187,8 +187,6 @@ class NotionIntegrationService
     decisions.each do |decision|
       next unless decision.is_a?(Hash)
       text = "#{decision['content'] || '内容不明'}"
-      text += " (#{decision['decided_by']}により決定)" if decision['decided_by']
-      text += " [#{decision['timestamp']}]" if decision['timestamp']
 
       section << {
         type: "bulleted_list_item",
