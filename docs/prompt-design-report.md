@@ -145,9 +145,7 @@
   "decisions": [
     {
       "content": "決定内容",
-      "category": "pricing/schedule/policy/other",
-      "timestamp": "HH:MM:SS",
-      "decided_by": "決定者名"
+      "category": "pricing/schedule/policy/other"
     }
   ],
   "actions": [
@@ -265,9 +263,7 @@
   "decisions": [
     {
       "content": "価格設定：基本プラン500円/ユーザー、プレミアムプラン8,000円",
-      "category": "pricing",
-      "timestamp": "00:02:13",
-      "decided_by": "小田まゆか"
+      "category": "pricing"
     }
   ],
   "actions": [
