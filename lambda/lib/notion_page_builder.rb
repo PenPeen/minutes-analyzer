@@ -250,13 +250,37 @@ class NotionPageBuilder
     
     blocks = [create_heading('✅ アクション項目')]
     
-    sorted_actions = sort_actions(actions)
-    sorted_actions.first(MAX_ACTION_DISPLAY).each do |action|
-      blocks << create_action_item(action)
-    end
-    
-    if actions.size > MAX_ACTION_DISPLAY
-      blocks << create_paragraph("...他#{actions.size - MAX_ACTION_DISPLAY}件")
+    # タスクデータベースが設定されている場合はリンクを表示
+    if has_task_database?
+      total = actions.size
+      high = actions.count { |a| a['priority'].to_s.downcase == 'high' }
+      
+      # タスクデータベースへのリンクを生成
+      compact_task_db_id = @task_database_id.to_s.gsub('-', '')
+      tasks_url = ENV['NOTION_TASKS_VIEW_URL'] || "https://www.notion.so/#{compact_task_db_id}"
+      
+      blocks << {
+        'object' => 'block',
+        'type' => 'callout',
+        'callout' => {
+          'rich_text' => [
+            { 'type' => 'text', 'text' => { 'content' => "📊 タスク: #{total}件（高優先度: #{high}件）\n" } },
+            { 'type' => 'text', 'text' => { 'content' => '→ タスク管理データベースで詳細確認', 'link' => { 'url' => tasks_url } } }
+          ],
+          'icon' => { 'emoji' => '📋' },
+          'color' => 'blue_background'
+        }
+      }
+    else
+      # タスクデータベースが設定されていない場合は直接表示
+      sorted_actions = sort_actions(actions)
+      sorted_actions.first(MAX_ACTION_DISPLAY).each do |action|
+        blocks << create_action_item(action)
+      end
+      
+      if actions.size > MAX_ACTION_DISPLAY
+        blocks << create_paragraph("...他#{actions.size - MAX_ACTION_DISPLAY}件")
+      end
     end
     
     blocks
