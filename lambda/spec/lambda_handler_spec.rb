@@ -115,7 +115,7 @@ RSpec.describe LambdaHandler do
     end
 
     context 'APIキーが不足している場合' do
-      let(:event) { { 'body' => JSON.generate({ 'text' => 'meeting transcript' }) } }
+      let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id' }) } }
       let(:secrets) { { 'GEMINI_API_KEY' => '' } }
 
       before do
