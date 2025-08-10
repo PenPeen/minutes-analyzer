@@ -145,7 +145,7 @@ class SlackMessageBuilder
     atmosphere = analysis_result['atmosphere'] || {}
     return nil unless atmosphere['overall_tone']
     
-    tone_emoji = EMOJIS[atmosphere['overall_tone']] || EMOJIS['neutral']
+    tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
     
     {
       type: "section",
@@ -191,14 +191,14 @@ class SlackMessageBuilder
   def sort_actions(actions)
     actions.sort_by do |action|
       [
-        LEVELS[action['priority']] || 3,
+        Constants::Priority::LEVELS[action['priority']] || 3,
         action['deadline'] || 'zzzz'
       ]
     end
   end
   
   def build_action_text(action)
-    priority_emoji = Priority::EMOJIS[action['priority']] || Priority::EMOJIS['low']
+    priority_emoji = Constants::Priority::EMOJIS[action['priority']] || Constants::Priority::EMOJIS['low']
     
     assignee = action['slack_mention'] || action['assignee'] || '未定'
     deadline = action['deadline_formatted'] || '期日未定'
