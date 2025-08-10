@@ -23,11 +23,9 @@
           "category": {
             "type": "string",
             "enum": ["pricing", "schedule", "policy", "other"]
-          },
-          "timestamp": {"type": "string", "pattern": "^\\d{2}:\\d{2}:\\d{2}$"},
-          "decided_by": {"type": "string"}
+          }
         },
-        "required": ["content", "category", "timestamp", "decided_by"]
+        "required": ["content", "category"]
       }
     },
     "actions": {
