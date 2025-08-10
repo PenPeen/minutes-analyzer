@@ -24,7 +24,6 @@
 議事録全体（まとめ、詳細、文字起こし）から、明確に決定された事項を抽出してください。
 - 「決定」「確認」「合意」「設定」等の表現に注目
 - 価格設定、スケジュール、方針、合意事項など
-- 各決定事項にタイムスタンプと決定者を付与
 
 ## 2. 今後のアクションの分析
 議事録全体から、実行すべきタスクを抽出し、以下の情報を付与してください。
@@ -78,9 +77,7 @@
   "decisions": [
     {
       "content": "決定内容",
-      "category": "pricing/schedule/policy/other",
-      "timestamp": "HH:MM:SS",
-      "decided_by": "決定者名"
+      "category": "pricing/schedule/policy/other"
     }
   ],
   "actions": [
