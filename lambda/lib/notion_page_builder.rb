@@ -5,8 +5,17 @@ class NotionPageBuilder
   MAX_ACTION_DISPLAY = 5
   MAX_SUGGESTION_DISPLAY = 3
   
-  def initialize(logger)
+  def initialize(task_database_id, logger)
+    @task_database_id = task_database_id
     @logger = logger
+  end
+  
+  def build_meeting_page(analysis_result, database_id)
+    {
+      parent: { database_id: database_id },
+      properties: build_properties(analysis_result),
+      children: build_content(analysis_result)
+    }
   end
   
   def build_properties(analysis_result)
@@ -136,6 +145,35 @@ class NotionPageBuilder
   private
   
   def has_task_database?
+    @task_database_id && !@task_database_id.to_s.empty?
+  end
+  
+  def build_linked_database_section
+    return [] unless has_task_database?
+    
+    [
+      {
+        type: 'heading_2',
+        heading_2: {
+          rich_text: [
+            {
+              type: 'text',
+              text: { content: '📝 関連タスク' }
+            }
+          ]
+        }
+      },
+      {
+        type: 'linked_database',
+        linked_database: {
+          database_id: @task_database_id
+        }
+      }
+    ]
+  end
+  
+  # 元のメソッドを削除
+  def _old_has_task_database?
     @task_database_id && !@task_database_id.empty?
   end
   

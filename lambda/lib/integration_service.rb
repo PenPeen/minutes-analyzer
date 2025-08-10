@@ -1,5 +1,5 @@
-require_relative 'slack_client'
-require_relative 'notion_client'
+require_relative 'slack_notification_service'
+require_relative 'notion_integration_service'
 
 class IntegrationService
   def initialize(logger)
@@ -22,10 +22,10 @@ class IntegrationService
     return nil unless slack_configured?(slack_bot_token, slack_channel_id)
     
     @logger.info("Sending Slack notification via Web API with mentions")
-    slack_client = SlackClient.new(slack_bot_token, slack_channel_id, @logger)
+    slack_service = SlackNotificationService.new(slack_bot_token, slack_channel_id, @logger)
     
     result_with_mentions = enrich_with_slack_mentions(analysis_result, user_mappings)
-    slack_client.send_notification(result_with_mentions)
+    slack_service.send_notification(result_with_mentions)
   rescue StandardError => e
     handle_integration_error('Slack', e)
   end
@@ -38,8 +38,8 @@ class IntegrationService
     return nil unless notion_configured?(notion_api_key, notion_database_id)
     
     @logger.info("Creating meeting page in Notion with user mapping")
-    notion_client = NotionClient.new(notion_api_key, notion_database_id, notion_task_database_id, @logger)
-    notion_client.create_meeting_page(analysis_result)
+    notion_service = NotionIntegrationService.new(notion_api_key, notion_database_id, notion_task_database_id, @logger)
+    notion_service.create_meeting_page(analysis_result)
   rescue StandardError => e
     handle_integration_error('Notion', e)
   end

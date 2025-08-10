@@ -1,4 +1,5 @@
 require 'date'
+require_relative 'notion_api_client'
 
 class NotionTaskManager
   def initialize(api_key, task_database_id, logger)
