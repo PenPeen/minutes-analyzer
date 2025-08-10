@@ -22,15 +22,11 @@ RSpec.describe NotionClient do
         'decisions' => [
           {
             'content' => '新機能のリリース日を来月15日に決定',
-            'category' => 'schedule',
-            'timestamp' => '00:10:15',
-            'decided_by' => '田中'
+            'category' => 'schedule'
           },
           {
             'content' => '予算を20%増額することを承認',
-            'category' => 'policy',
-            'timestamp' => '00:15:30',
-            'decided_by' => '佐藤'
+            'category' => 'policy'
           }
         ],
         'actions' => [
