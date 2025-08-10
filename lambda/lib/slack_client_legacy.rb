@@ -5,7 +5,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 
-class SlackClient
+class SlackClientLegacy
   def initialize(bot_token, channel_id, logger)
     @bot_token = bot_token
     @channel_id = channel_id
