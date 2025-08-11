@@ -31,12 +31,13 @@ jobs:
 
           # テスト実行（出力をファイルに保存し、終了コードも保持）
           set +e  # 一時的にエラーで停止しないように設定
-          cd analyzer && make test-lambda > ../test_output.log 2>&1
+          cd analyzer && make test-lambda > test_output.log 2>&1
           TEST_EXIT_CODE=$?
+          cd ..
           set -e  # エラーで停止する設定を復元
 
           # 結果を表示
-          cat test_output.log
+          cat analyzer/test_output.log
 
           # 終了コードに基づいて結果を設定
           if [ $TEST_EXIT_CODE -eq 0 ]; then
@@ -58,7 +59,7 @@ jobs:
             // テスト出力を読み込み
             let testOutput = '';
             try {
-              testOutput = fs.readFileSync('test_output.log', 'utf8');
+              testOutput = fs.readFileSync('analyzer/test_output.log', 'utf8');
             } catch (error) {
               testOutput = 'テスト出力の取得に失敗しました。';
             }
@@ -171,5 +172,5 @@ jobs:
         with:
           name: test-results
           path: |
-            test_output.log
+            analyzer/test_output.log
           retention-days: 7
