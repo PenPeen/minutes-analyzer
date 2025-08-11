@@ -93,24 +93,4 @@ resource "aws_iam_role_policy" "lambda_invoke" {
   })
 }
 
-# Policy for KMS (if using encryption)
-resource "aws_iam_role_policy" "kms_access" {
-  count = var.kms_key_arn != "" ? 1 : 0
-  name  = "${var.project_name}-kms-access-${var.environment}"
-  role  = aws_iam_role.lambda_execution_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "kms:Decrypt",
-          "kms:Encrypt",
-          "kms:GenerateDataKey"
-        ]
-        Resource = var.kms_key_arn
-      }
-    ]
-  })
-}
+# KMSは使用しない（DynamoDBとSecrets Managerの標準暗号化機能を利用）
