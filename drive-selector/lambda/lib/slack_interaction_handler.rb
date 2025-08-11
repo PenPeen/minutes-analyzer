@@ -4,11 +4,13 @@ require 'json'
 require_relative 'slack_api_client'
 require_relative 'slack_modal_builder'
 require_relative 'lambda_invoker'
+require_relative 'slack_options_provider'
 
 class SlackInteractionHandler
   def initialize
     @slack_client = SlackApiClient.new
     @lambda_invoker = LambdaInvoker.new
+    @options_provider = SlackOptionsProvider.new
   end
 
   # Slackインタラクションを処理
@@ -118,25 +120,19 @@ class SlackInteractionHandler
     ack_response
   end
 
-  # external_selectのオプションリクエストを処理（T-05で詳細実装）
+  # external_selectのオプションリクエストを処理
   def handle_options_request(payload)
-    # Google Drive検索を実行してオプションを返す
-    # T-05で実装予定
+    # ユーザーIDと検索クエリを取得
+    user_id = payload['user']['id']
+    value = payload['value'] || ''
+    
+    # Google Drive検索を実行
+    result = @options_provider.provide_file_options(user_id, value)
     
     {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.generate({
-        options: [
-          {
-            text: {
-              type: 'plain_text',
-              text: '📄 サンプルファイル.txt'
-            },
-            value: 'sample_file_id'
-          }
-        ]
-      })
+      body: JSON.generate(result)
     }
   end
 
