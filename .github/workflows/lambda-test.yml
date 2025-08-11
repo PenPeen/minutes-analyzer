@@ -3,14 +3,14 @@ name: Lambda Function Tests
 on:
   pull_request:
     paths:
-      - 'lambda/**'
+      - 'analyzer/lambda/**'
       - '.github/workflows/lambda-test.yml'
   push:
     branches:
       - main
       - develop
     paths:
-      - 'lambda/**'
+      - 'analyzer/lambda/**'
 
 jobs:
   test:
@@ -31,7 +31,7 @@ jobs:
 
           # テスト実行（出力をファイルに保存し、終了コードも保持）
           set +e  # 一時的にエラーで停止しないように設定
-          make test-lambda > test_output.log 2>&1
+          cd analyzer && make test-lambda > ../test_output.log 2>&1
           TEST_EXIT_CODE=$?
           set -e  # エラーで停止する設定を復元
 
@@ -107,7 +107,7 @@ jobs:
             </details>
 
             ### 🔧 対応方法
-            1. ローカルで \`make test-lambda\` を実行してテストを確認
+            1. ローカルで \`cd analyzer && make test-lambda\` を実行してテストを確認
             2. 失敗したテストケースを修正
             3. 再度プッシュしてテストを実行
 
