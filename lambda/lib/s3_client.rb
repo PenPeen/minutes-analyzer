@@ -16,7 +16,7 @@ class S3Client
     
     begin
       response = @s3_client.get_object(bucket: @bucket_name, key: key)
-      prompt = response.body.read
+      prompt = response.body.read.force_encoding('UTF-8')
       @logger.info("Successfully retrieved prompt (#{prompt.bytesize} bytes)")
       prompt
     rescue Aws::S3::Errors::ServiceError => e
@@ -32,7 +32,7 @@ class S3Client
     
     begin
       response = @s3_client.get_object(bucket: @bucket_name, key: key)
-      schema_json = response.body.read
+      schema_json = response.body.read.force_encoding('UTF-8')
       schema = JSON.parse(schema_json)
       @logger.info("Successfully retrieved output schema")
       schema

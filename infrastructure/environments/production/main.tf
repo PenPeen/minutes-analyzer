@@ -44,8 +44,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
     variables = {
       ENVIRONMENT                 = var.environment
       APP_SECRETS_NAME            = aws_secretsmanager_secret.app_secrets.name
-      SLACK_INTEGRATION           = var.slack_integration_enabled
-      NOTION_INTEGRATION          = var.notion_integration_enabled
+      PROMPTS_BUCKET_NAME         = aws_s3_bucket.prompts.id
       LOG_LEVEL                   = var.log_level
       AI_MODEL                    = var.ai_model
       GOOGLE_CALENDAR_ENABLED     = var.google_calendar_enabled
@@ -55,6 +54,45 @@ resource "aws_lambda_function" "minutes_analyzer" {
   }
 
   tags = var.common_tags
+}
+
+# S3 Bucket for prompts
+resource "aws_s3_bucket" "prompts" {
+  bucket = "${var.project_name}-prompts-${var.environment}"
+
+  tags = var.common_tags
+}
+
+resource "aws_s3_bucket_versioning" "prompts" {
+  bucket = aws_s3_bucket.prompts.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "prompts" {
+  bucket = aws_s3_bucket.prompts.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# Lambda Function URL for direct access (bypasses API Gateway timeout)
+resource "aws_lambda_function_url" "minutes_analyzer" {
+  function_name      = aws_lambda_function.minutes_analyzer.function_name
+  authorization_type = "NONE"  # You can change to "AWS_IAM" for authentication
+  
+  cors {
+    allow_credentials = false
+    allow_origins     = ["*"]
+    allow_methods     = ["POST"]
+    allow_headers     = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"]
+    expose_headers    = ["Content-Type"]
+    max_age           = 0
+  }
 }
 
 # CloudWatch Log Group
@@ -92,6 +130,29 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 }
 
 # IAM Policy for Secrets Manager
+# IAM Role Policy for S3 Prompts Bucket
+resource "aws_iam_role_policy" "lambda_s3_policy" {
+  name = "${var.project_name}-lambda-s3-policy-${var.environment}"
+  role = aws_iam_role.lambda_execution_role.id
+  
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "s3:GetObject",
+          "s3:ListBucket"
+        ],
+        Resource = [
+          aws_s3_bucket.prompts.arn,
+          "${aws_s3_bucket.prompts.arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy" "lambda_secrets_policy" {
   name = "${var.project_name}-lambda-secrets-policy-${var.environment}"
   role = aws_iam_role.lambda_execution_role.id
@@ -108,109 +169,6 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
   })
 }
 
-# API Gateway
-resource "aws_api_gateway_rest_api" "minutes_analyzer_api" {
-  name        = "${var.project_name}-api-${var.environment}"
-  description = "Minutes Analyzer API"
-
-  endpoint_configuration {
-    types = ["REGIONAL"]
-  }
-
-  tags = var.common_tags
-}
-
-resource "aws_api_gateway_resource" "proxy" {
-  rest_api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  parent_id   = aws_api_gateway_rest_api.minutes_analyzer_api.root_resource_id
-  path_part   = "analyze"
-}
-
-resource "aws_api_gateway_method" "proxy" {
-  rest_api_id   = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  resource_id   = aws_api_gateway_resource.proxy.id
-  http_method   = "POST"
-  authorization = "NONE"
-  api_key_required = true
-}
-
-resource "aws_api_gateway_integration" "lambda" {
-  rest_api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  resource_id = aws_api_gateway_method.proxy.resource_id
-  http_method = aws_api_gateway_method.proxy.http_method
-
-  integration_http_method = "POST"
-  type                   = "AWS_PROXY"
-  uri                    = aws_lambda_function.minutes_analyzer.invoke_arn
-}
-
-resource "aws_api_gateway_deployment" "minutes_analyzer" {
-  depends_on = [
-    aws_api_gateway_integration.lambda,
-  ]
-
-  rest_api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-
-  lifecycle {
-    create_before_destroy = true
-  }
-}
-
-resource "aws_api_gateway_stage" "minutes_analyzer" {
-  deployment_id = aws_api_gateway_deployment.minutes_analyzer.id
-  rest_api_id   = aws_api_gateway_rest_api.minutes_analyzer_api.id
-  stage_name    = var.environment
-
-  tags = {
-    Name        = "${var.project_name}-api-stage-${var.environment}"
-    Environment = var.environment
-  }
-}
-
-resource "aws_lambda_permission" "api_gw" {
-  statement_id  = "AllowExecutionFromAPIGateway"
-  action        = "lambda:InvokeFunction"
-  function_name = aws_lambda_function.minutes_analyzer.function_name
-  principal     = "apigateway.amazonaws.com"
-
-  source_arn = "${aws_api_gateway_rest_api.minutes_analyzer_api.execution_arn}/*/*"
-}
-
-# API Key
-resource "aws_api_gateway_api_key" "minutes_analyzer_key" {
-  name = "${var.project_name}-api-key-${var.environment}"
-
-  tags = var.common_tags
-}
-
-# Usage Plan
-resource "aws_api_gateway_usage_plan" "minutes_analyzer_plan" {
-  name         = "${var.project_name}-usage-plan-${var.environment}"
-  description  = "Usage plan for Minutes Analyzer API"
-
-  api_stages {
-    api_id = aws_api_gateway_rest_api.minutes_analyzer_api.id
-    stage  = aws_api_gateway_stage.minutes_analyzer.stage_name
-  }
-
-  quota_settings {
-    limit  = 10000
-    period = "DAY"
-  }
-
-  throttle_settings {
-    rate_limit  = 100
-    burst_limit = 200
-  }
-
-  tags = var.common_tags
-}
-
-resource "aws_api_gateway_usage_plan_key" "minutes_analyzer_plan_key" {
-  key_id        = aws_api_gateway_api_key.minutes_analyzer_key.id
-  key_type      = "API_KEY"
-  usage_plan_id = aws_api_gateway_usage_plan.minutes_analyzer_plan.id
-}
 
 # CloudWatch Alarms
 resource "aws_cloudwatch_metric_alarm" "lambda_errors" {

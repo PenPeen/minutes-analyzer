@@ -251,27 +251,84 @@ stop: ## 開発環境を停止
 	fi
 	@echo "開発環境が停止しました"
 
-# AWS本番環境用のコマンド
-deploy-production: ## 本番環境にデプロイ
-	@echo "🚀 本番環境にデプロイ中..."
-	@if [ ! -f infrastructure/environments/production/terraform.tfvars ]; then \
-		echo "❌ Error: Please create terraform.tfvars from terraform.tfvars.sample"; \
-		echo "  cp infrastructure/environments/production/terraform.tfvars.sample infrastructure/environments/production/terraform.tfvars"; \
-		echo "  Then edit the file with your production values"; \
+# 本番環境用のterraform.tfvars生成
+generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
+	@echo "📝 本番環境用terraform.tfvarsを生成中..."
+	@if [ -f .env.production ]; then \
+		( \
+			echo "# .env.productionから自動生成されるTerraform変数ファイル"; \
+			echo "# 基本設定"; \
+			echo "aws_region = \"ap-northeast-1\""; \
+			echo "environment = \"production\""; \
+			echo "project_name = \"minutes-analyzer\""; \
+			echo ""; \
+			echo "# Lambda設定"; \
+			echo "lambda_timeout = 900"; \
+			echo "lambda_memory_size = 512"; \
+			echo "log_retention_days = 30"; \
+			echo "log_level = \"INFO\""; \
+			echo "ai_model = \"gemini-2.5-flash\""; \
+			echo ""; \
+			echo "# API Keys (from .env.production)"; \
+			echo "gemini_api_key=\"$$(grep GEMINI_API_KEY .env.production | cut -d '=' -f2-)\""; \
+			echo "slack_bot_token=\"$$(grep SLACK_BOT_TOKEN .env.production | cut -d '=' -f2-)\""; \
+			echo "slack_channel_id=\"$$(grep SLACK_CHANNEL_ID .env.production | cut -d '=' -f2-)\""; \
+			echo "notion_api_key=\"$$(grep NOTION_API_KEY .env.production | cut -d '=' -f2-)\""; \
+			echo "notion_database_id=\"$$(grep NOTION_DATABASE_ID .env.production | cut -d '=' -f2-)\""; \
+			echo "notion_task_database_id=\"$$(grep NOTION_TASK_DATABASE_ID .env.production | cut -d '=' -f2-)\""; \
+		) > infrastructure/environments/production/terraform.tfvars; \
+		if [ -n "$$(grep GOOGLE_SERVICE_ACCOUNT_JSON .env.production | cut -d '=' -f2-)" ]; then \
+			grep GOOGLE_SERVICE_ACCOUNT_JSON .env.production | cut -d '=' -f2- > infrastructure/environments/production/google_service_account.json; \
+			if ! grep -q "google_service_account_json_path" infrastructure/environments/production/terraform.tfvars; then \
+				echo "google_service_account_json_path=\"google_service_account.json\"" >> infrastructure/environments/production/terraform.tfvars; \
+			fi; \
+			echo "✅ google_service_account.jsonを生成しました"; \
+		fi; \
+		echo "✅ terraform.tfvarsを生成しました"; \
+	else \
+		echo "❌ .env.productionが見つかりません。"; \
+		echo "  cp .env.local .env.production でコピーして、本番用の値に編集してください。"; \
 		exit 1; \
 	fi
-	@if [ ! -f infrastructure/environments/production/.env.tfvars ]; then \
-		echo "❌ Error: Please create .env.tfvars from .env.tfvars.sample"; \
-		echo "  cp infrastructure/environments/production/.env.tfvars.sample infrastructure/environments/production/.env.tfvars"; \
-		echo "  Then edit the file with your sensitive values (Slack webhook URL, etc.)"; \
-		exit 1; \
+
+# AWS本番環境用のコマンド
+destroy-production: ## 本番環境のリソースを削除
+	@echo "🗑️  本番環境のリソースを削除中..."
+	@if [ ! -f .env.production ]; then \
+		echo "⚠️  .env.productionが見つかりません。terraform.tfvarsが既に存在する場合はそれを使用します。"; \
+	else \
+		$(MAKE) generate-production-tfvars; \
 	fi
 	@cd infrastructure/environments/production && \
+		terraform destroy -auto-approve
+	@echo "✅ 本番環境のリソースが削除されました"
+
+clean-production: ## 本番環境の設定ファイルをクリーンアップ
+	@echo "🧹 本番環境の設定ファイルをクリーンアップ中..."
+	@cd infrastructure/environments/production && \
+		rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+	@rm -f infrastructure/environments/production/terraform.tfvars
+	@rm -f infrastructure/environments/production/google_service_account.json
+	@echo "✅ クリーンアップが完了しました"
+
+deploy-production: ## 本番環境にデプロイ
+	@echo "🚀 本番環境にデプロイ中..."
+	@if [ ! -f .env.production ]; then \
+		echo "❌ .env.productionが見つかりません。"; \
+		echo "  cp .env.local .env.production でコピーして、本番用の値に編集してください。"; \
+		exit 1; \
+	fi
+	@$(MAKE) generate-production-tfvars
+	@cd infrastructure/environments/production && \
 		terraform init && \
-		terraform plan -var-file=".env.tfvars" && \
+		terraform plan && \
 		echo "⚠️  Review the plan above. Press Enter to continue or Ctrl+C to cancel..." && \
 		read && \
-		terraform apply -var-file=".env.tfvars"
+		terraform apply
+	@echo "🔐 Secrets Managerにシークレットを設定中..."
+	@./scripts/set-production-secrets.sh
+	@echo "📤 プロンプトをS3にアップロード中..."
+	@./scripts/upload_prompts_to_s3.sh production
 	@echo "✅ 本番環境へのデプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/production && terraform output
