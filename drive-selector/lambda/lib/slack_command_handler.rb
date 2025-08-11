@@ -2,10 +2,13 @@
 
 require 'json'
 require_relative 'google_oauth_client'
+require_relative 'slack_api_client'
+require_relative 'slack_modal_builder'
 
 class SlackCommandHandler
   def initialize
     @oauth_client = GoogleOAuthClient.new
+    @slack_client = SlackApiClient.new
   end
 
   # Slackコマンドを処理
@@ -40,16 +43,25 @@ class SlackCommandHandler
     end
   end
 
-  # ファイル選択モーダルを開く（T-04で詳細実装）
+  # ファイル選択モーダルを開く
   def open_file_selector_modal(trigger_id)
+    # モーダルを構築
+    modal = SlackModalBuilder.file_selector_modal
+    
+    # 非同期でモーダルを開く（別スレッドで実行）
+    Thread.new do
+      begin
+        @slack_client.open_modal(trigger_id, modal)
+      rescue => e
+        puts "Failed to open modal: #{e.message}"
+      end
+    end
+    
     # 3秒以内にACKレスポンスを返す
     {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.generate({
-        response_type: 'ephemeral',
-        text: '📂 Google Driveファイル選択画面を準備中...'
-      })
+      body: ''  # ACKレスポンスは空のボディで返す
     }
   end
 

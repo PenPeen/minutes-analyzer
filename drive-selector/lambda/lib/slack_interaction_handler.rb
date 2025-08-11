@@ -1,10 +1,14 @@
 # frozen_string_literal: true
 
 require 'json'
+require_relative 'slack_api_client'
+require_relative 'slack_modal_builder'
+require_relative 'lambda_invoker'
 
 class SlackInteractionHandler
   def initialize
-    # 必要に応じて依存関係を注入
+    @slack_client = SlackApiClient.new
+    @lambda_invoker = LambdaInvoker.new
   end
 
   # Slackインタラクションを処理
@@ -37,16 +41,70 @@ class SlackInteractionHandler
     ack_response
   end
 
-  # モーダルの送信を処理（T-04で詳細実装）
+  # モーダルの送信を処理
   def handle_view_submission(payload)
     view = payload['view']
     values = view['state']['values']
-    user_id = payload['user']['id']
+    user = payload['user']
     
     # 選択されたファイル情報を取得
-    # T-06で既存Lambdaへの連携を実装
+    file_select = values['file_select_block']['file_select']['selected_option']
+    custom_title = values['custom_title_block']['custom_title']['value'] rescue nil
+    options = values['options_block']['analysis_options']['selected_options'] || []
     
-    # 成功レスポンス
+    # ファイルが選択されていない場合はエラー
+    unless file_select
+      return {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.generate({
+          response_action: 'errors',
+          errors: {
+            file_select_block: 'ファイルを選択してください'
+          }
+        })
+      }
+    end
+    
+    file_id = file_select['value']
+    file_name = file_select['text']['text']
+    
+    # オプションを解析
+    detailed_analysis = options.any? { |opt| opt['value'] == 'detailed_analysis' }
+    save_to_notion = options.any? { |opt| opt['value'] == 'save_to_notion' }
+    
+    # 非同期で処理を実行
+    Thread.new do
+      begin
+        # 処理中メッセージを送信
+        @slack_client.post_ephemeral(
+          user['id'],
+          user['id'],
+          "📊 `#{file_name}` の分析を開始しました..."
+        )
+        
+        # Lambda関数を呼び出し（T-06で実装）
+        @lambda_invoker.invoke_analysis_lambda({
+          file_id: file_id,
+          file_name: custom_title || file_name,
+          user_id: user['id'],
+          user_email: @slack_client.get_user_email(user['id']),
+          options: {
+            detailed_analysis: detailed_analysis,
+            save_to_notion: save_to_notion
+          }
+        })
+      rescue => e
+        puts "Failed to invoke lambda: #{e.message}"
+        @slack_client.post_ephemeral(
+          user['id'],
+          user['id'],
+          "❌ 分析処理の開始に失敗しました: #{e.message}"
+        )
+      end
+    end
+    
+    # モーダルを閉じる
     {
       statusCode: 200,
       headers: { 'Content-Type': 'application/json' },
