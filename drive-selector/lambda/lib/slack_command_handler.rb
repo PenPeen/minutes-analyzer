@@ -48,13 +48,14 @@ class SlackCommandHandler
     # モーダルを構築
     modal = SlackModalBuilder.file_selector_modal
     
-    # 非同期でモーダルを開く（別スレッドで実行）
-    Thread.new do
-      begin
-        @slack_client.open_modal(trigger_id, modal)
-      rescue => e
-        puts "Failed to open modal: #{e.message}"
-      end
+    # Lambda環境ではThreadが期待通り動作しないため、
+    # 別のLambda関数を非同期Invokeするか、
+    # ACK後にモーダルを開く処理を同期的に実行
+    begin
+      @slack_client.open_modal(trigger_id, modal)
+    rescue => e
+      puts "Failed to open modal: #{e.message}"
+      # エラーが発生してもACKは返す
     end
     
     # 3秒以内にACKレスポンスを返す
