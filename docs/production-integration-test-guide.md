@@ -25,7 +25,7 @@ Lambda Function URLを使用して直接Lambda関数を呼び出す方式を採�
 
 ```bash
 # デプロイ済みのリソース情報を取得
-cd infrastructure/environments/production
+cd analyzer/infrastructure/environments/production
 terraform output
 
 # 以下の情報をメモ：
@@ -36,7 +36,7 @@ terraform output
 
 ### 2. テストデータの準備
 
-既存のテストファイル `test/sample-data/test_prod_api_gateway_payload.json` を使用します：
+既存のテストファイル `analyzer/sample-data/test_prod_api_gateway_payload.json` を使用します：
 
 ```json
 {
@@ -54,12 +54,12 @@ Lambda Function URLを使用して直接Lambda関数を呼び出します。
 
 ```bash
 # Lambda Function URLを取得
-export LAMBDA_URL=$(cd infrastructure/environments/production && terraform output -raw lambda_function_url)
+export LAMBDA_URL=$(cd analyzer/infrastructure/environments/production && terraform output -raw lambda_function_url)
 
 # Lambda Function URL経由でテスト実行
 curl -X POST "$LAMBDA_URL" \
   -H "Content-Type: application/json" \
-  -d @test/sample-data/test_prod_api_gateway_payload.json \
+  -d @analyzer/sample-data/test_prod_api_gateway_payload.json \
   -o lambda_url_test_result.json
 
 # 結果を整形して表示
@@ -68,7 +68,7 @@ cat lambda_url_test_result.json | jq '.'
 
 ### 4. テストペイロードのカスタマイズ
 
-`test/sample-data/test_prod_api_gateway_payload.json` の `file_id` を実際のGoogle DriveファイルIDに変更して使用してください：
+`analyzer/sample-data/test_prod_api_gateway_payload.json` の `file_id` を実際のGoogle DriveファイルIDに変更して使用してください：
 
 ```json
 {
@@ -115,13 +115,15 @@ aws logs get-log-events \
 
 ```bash
 # 本番環境へのデプロイ
+cd analyzer
 make deploy-production
 
 # デプロイ状態の確認
-cd infrastructure/environments/production
+cd analyzer/infrastructure/environments/production
 terraform output
 
 # リソースの削除（必要な場合）
+cd analyzer
 make destroy-production
 ```
 

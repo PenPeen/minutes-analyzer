@@ -59,6 +59,8 @@ resource "aws_lambda_function" "minutes_analyzer" {
 # S3 Bucket for prompts
 resource "aws_s3_bucket" "prompts" {
   bucket = "${var.project_name}-prompts-${var.environment}"
+  
+  force_destroy = true  # Allow deletion even when bucket contains objects
 
   tags = var.common_tags
 }
@@ -67,7 +69,7 @@ resource "aws_s3_bucket_versioning" "prompts" {
   bucket = aws_s3_bucket.prompts.id
 
   versioning_configuration {
-    status = "Enabled"
+    status = "Disabled"  # Versioning disabled to simplify bucket deletion
   }
 }
 

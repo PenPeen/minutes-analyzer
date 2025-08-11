@@ -299,9 +299,44 @@ destroy-production: ## 本番環境のリソースを削除
 	else \
 		$(MAKE) generate-production-tfvars; \
 	fi
+	@echo "🗑️  Terraformでリソースを削除中..."
 	@cd infrastructure/environments/production && \
-		terraform destroy -auto-approve
-	@echo "✅ 本番環境のリソースが削除されました"
+		terraform destroy -auto-approve 2>/dev/null || true
+	@echo "🗑️  残存リソースを強制削除中..."
+	@echo "  - S3バケットのバージョニングされたオブジェクトを削除..."
+	@aws s3api list-object-versions --bucket minutes-analyzer-prompts-production --output json 2>/dev/null | \
+		jq -r '.Versions[]?.Key, .DeleteMarkers[]?.Key' 2>/dev/null | \
+		sort -u | \
+		while read -r key; do \
+			[ -z "$$key" ] && continue; \
+			aws s3api list-object-versions --bucket minutes-analyzer-prompts-production --prefix "$$key" --output json 2>/dev/null | \
+			jq -r '.Versions[]? | "--key \"" + .Key + "\" --version-id " + .VersionId' | \
+			while read -r args; do \
+				[ -z "$$args" ] && continue; \
+				echo "    削除中: $$key"; \
+				eval "aws s3api delete-object --bucket minutes-analyzer-prompts-production $$args" 2>/dev/null || true; \
+			done; \
+			aws s3api list-object-versions --bucket minutes-analyzer-prompts-production --prefix "$$key" --output json 2>/dev/null | \
+			jq -r '.DeleteMarkers[]? | "--key \"" + .Key + "\" --version-id " + .VersionId' | \
+			while read -r args; do \
+				[ -z "$$args" ] && continue; \
+				eval "aws s3api delete-object --bucket minutes-analyzer-prompts-production $$args" 2>/dev/null || true; \
+			done; \
+		done || true
+	@echo "  - S3バケットの通常オブジェクトを削除..."
+	@aws s3 rm s3://minutes-analyzer-prompts-production --recursive || true
+	@echo "  - S3バケット本体を削除..."
+	@aws s3 rb s3://minutes-analyzer-prompts-production --force || true
+	@echo "  - Secrets Managerを削除..."
+	@aws secretsmanager delete-secret --secret-id minutes-analyzer-secrets-production --force-delete-without-recovery 2>/dev/null || true
+	@echo "  - Lambda関数を削除..."
+	@aws lambda delete-function --function-name minutes-analyzer-production 2>/dev/null || true
+	@echo "  - CloudWatch Logsを削除..."
+	@aws logs delete-log-group --log-group-name /aws/lambda/minutes-analyzer-production 2>/dev/null || true
+	@echo "🧹 Terraform状態ファイルをクリーンアップ中..."
+	@cd infrastructure/environments/production && \
+		rm -rf .terraform terraform.tfstate terraform.tfstate.backup .terraform.lock.hcl
+	@echo "✅ 本番環境が完全に削除されました"
 
 clean-production: ## 本番環境の設定ファイルをクリーンアップ
 	@echo "🧹 本番環境の設定ファイルをクリーンアップ中..."

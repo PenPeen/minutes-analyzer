@@ -33,17 +33,18 @@ brew install docker terraform awscli ruby jq
 #### 1. リポジトリクローン
 ```bash
 git clone https://github.com/your-username/minutes-analyzer.git
-cd minutes-analyzer
+cd minutes-analyzer/analyzer
 ```
 
 #### 2. 初期セットアップ
 ```bash
+cd analyzer
 make setup
 ```
 
 #### 3. 環境変数ファイル作成
 ```bash
-cp env.local.sample .env.local
+cp analyzer/env.local.sample analyzer/.env.local
 ```
 
 `.env.local`で以下の設定を必ず変更してください：
@@ -68,12 +69,14 @@ cp env.local.sample .env.local
 
 #### 日常開発フロー
 ```bash
+cd analyzer
 make start        # 環境起動・ビルド・ローカル自動デプロイ
 make stop         # 環境停止
 ```
 
 #### 本番デプロイ
 ```bash
+cd analyzer
 make deploy-production   # 本番環境への手動デプロイ
 ```
 
@@ -81,6 +84,7 @@ make deploy-production   # 本番環境への手動デプロイ
 ## 📋 使用可能なコマンド
 
 ```bash
+cd analyzer
 make help                    # 利用可能なコマンドを表示
 make setup                   # 初期セットアップ
 make dev-setup              # 開発環境完全セットアップ
@@ -135,16 +139,20 @@ Lambda関数内でGoogle Drive APIを使用してファイルを取得し、Gemi
 
 ```
 minutes-analyzer/
-├── 📁 infrastructure/        # Terraform + LocalStack
-│   ├── 📁 environments/      # 環境別設定
-│   │   ├── 📁 local/         # LocalStack設定
-│   │   └── 📁 production/    # 本番環境設定
-│   ├── 📁 modules/           # 再利用可能なTerraformモジュール
-│   └── 📁 scripts/           # デプロイスクリプト
-├── 📁 lambda/               # Ruby Lambda関数
-├── 📁 gas/                  # Google Apps Script
+├── 📁 analyzer/             # メインアプリケーション
+│   ├── 📁 infrastructure/   # Terraform + LocalStack
+│   │   ├── 📁 environments/  # 環境別設定
+│   │   │   ├── 📁 local/     # LocalStack設定
+│   │   │   └── 📁 production/# 本番環境設定
+│   │   ├── 📁 modules/       # 再利用可能なTerraformモジュール
+│   │   └── 📁 scripts/       # デプロイスクリプト
+│   ├── 📁 lambda/           # Ruby Lambda関数
+│   ├── 📁 prompts/          # AIプロンプト
+│   ├── 📁 scripts/          # ユーティリティスクリプト
+│   └── 📁 sample-data/      # テストデータ
+├── 📁 drive-selector/       # SlackBot（GoogleDrive上のファイルを選択）
 ├── 📁 docs/                 # ドキュメント
-└── 📁 tests/                # 統合テスト
+└── 📁 test/                 # 統合テスト
 ```
 
 ## 🔐 環境変数
@@ -187,6 +195,7 @@ minutes-analyzer/
 
 ```bash
 # ヘルスチェック
+cd analyzer
 make health-check
 ```
 
@@ -198,13 +207,14 @@ make health-check
 docker ps
 
 # 完全クリーンアップ
+cd analyzer
 make clean
 ```
 
 ### GEMINI_API_KEYエラー
 ```bash
 # APIキーが正しく設定されているか確認
-grep GEMINI_API_KEY .env.local
+grep GEMINI_API_KEY analyzer/.env.local
 
 # Google AI Studioでキーを再生成
 # https://makersuite.google.com/app/apikey
