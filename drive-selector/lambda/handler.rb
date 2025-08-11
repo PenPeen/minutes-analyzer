@@ -79,7 +79,7 @@ end
 def health_check
   {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: default_headers,
     body: JSON.generate({
       status: 'healthy',
       timestamp: Time.now.iso8601
@@ -120,7 +120,7 @@ end
 def not_found_response
   {
     statusCode: 404,
-    headers: { 'Content-Type': 'application/json' },
+    headers: default_headers,
     body: JSON.generate({
       error: 'Not Found'
     })
@@ -131,7 +131,7 @@ end
 def unauthorized_response
   {
     statusCode: 401,
-    headers: { 'Content-Type': 'application/json' },
+    headers: default_headers,
     body: JSON.generate({
       error: 'Unauthorized'
     })
@@ -142,10 +142,19 @@ end
 def error_response(message)
   {
     statusCode: 500,
-    headers: { 'Content-Type': 'application/json' },
+    headers: default_headers,
     body: JSON.generate({
       error: 'Internal Server Error',
       message: message
     })
+  }
+end
+
+# デフォルトヘッダー（CORS対応）
+def default_headers
+  {
+    'Content-Type' => 'application/json',
+    'X-Content-Type-Options' => 'nosniff',
+    'X-Frame-Options' => 'DENY'
   }
 end
