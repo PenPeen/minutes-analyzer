@@ -26,26 +26,28 @@
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
 
-## 利用可能なMakefileコマンド
-  - make help - ヘルプ表示
-  - make setup - 初期セットアップ
-  - make start - 開発環境起動・デプロイ
-  - make test - テスト実行
-  - make clean - 環境クリーンアップ
-  - make deploy-production - 本番デプロイ
+## 利用可能なMakefileコマンド（analyzerディレクトリ内で実行）
+  - cd analyzer && make help - ヘルプ表示
+  - cd analyzer && make setup - 初期セットアップ
+  - cd analyzer && make start - 開発環境起動・デプロイ
+  - cd analyzer && make test - テスト実行
+  - cd analyzer && make clean - 環境クリーンアップ
+  - cd analyzer && make deploy-production - 本番デプロイ
 
 ## トラブルシューティング情報
 - LocalStack起動問題の対処法
 - APIキーエラーの解決方法
 
 ## プロジェクト構成の説明
-- 主要ディレクトリの役割
-- アーキテクチャの概要
+- analyzer/ - メインアプリケーションディレクトリ
+- drive-selector/ - SlackBot（Google Drive上のファイル選択）  
+- docs/ - ドキュメント
+- test/ - 統合テスト
 
 制約
 - 実装方針に変更が生じる場合は、必ず確認すること。承認を得てから作業するようにしてください。
 - 本環境はDockerで構築されています。
-- 開発環境の起動やテストは Makefile のスクリプトで実行すること
+- 開発環境の起動やテストは analyzerディレクトリ内の Makefile のスクリプトで実行すること
 - コードのレビューを依頼された場合は、以下に記載されているGoogle コードレビューガイドを参考に行うこと
 
 ```

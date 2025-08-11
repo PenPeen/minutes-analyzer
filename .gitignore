@@ -20,12 +20,13 @@ terraform.tfplan
 # Lambda関数ビルド成果物
 lambda.zip
 *.zip
-lambda/vendor/
-lambda/.bundle/
-lambda/vendor/bundle/.timestamp
+analyzer/lambda/vendor/
+analyzer/lambda/.bundle/
+analyzer/lambda/vendor/bundle/.timestamp
 
 # LocalStack
-infrastructure/volume/
+analyzer/infrastructure/volume/
+analyzer/infrastructure/infrastructure/volume/
 .localstack/
 
 # Ruby
@@ -45,6 +46,7 @@ infrastructure/volume/
 /vendor/bundle
 /.bundle/
 /Gemfile.lock
+analyzer/lambda/Gemfile.lock
 
 # Node.js (GAS開発時)
 node_modules/
@@ -64,7 +66,7 @@ google_service_account.json
 *_service_account.json
 
 # Cache
-infrastructure/infrastructure/volume/cache/*
+analyzer/infrastructure/infrastructure/volume/cache/*
 
 # IDEs
 .vscode/

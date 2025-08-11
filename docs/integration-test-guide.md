@@ -23,13 +23,14 @@
 
 ```bash
 # 開発環境の起動（LocalStack、ビルド、デプロイを一括実行）
+cd analyzer
 make start
 ```
 
 ### 2. テストデータの準備
 
 #### テストペイロードファイル
-`test/sample-data/test_integration_payload.json` を使用してください。
+`analyzer/sample-data/test_dev_integration_payload.json` を使用してください。
 
 ```json
 {
@@ -52,7 +53,7 @@ AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
 aws --endpoint-url=http://localhost:4566 --region=ap-northeast-1 \
 lambda invoke \
 --function-name minutes-analyzer-local \
---payload fileb://test/sample-data/test_integration_payload.json \
+--payload fileb://analyzer/sample-data/test_dev_integration_payload.json \
 --cli-read-timeout 120 \
 integration_test_result.json
 
@@ -66,7 +67,7 @@ cat integration_test_result.json | jq '.'
 # 本番環境へのデプロイ後
 aws lambda invoke \
 --function-name minutes-analyzer-production \
---payload fileb://test/sample-data/test_integration_payload.json \
+--payload fileb://analyzer/sample-data/test_prod_api_gateway_payload.json \
 --cli-read-timeout 120 \
 production_test_result.json
 ```
@@ -212,6 +213,7 @@ lambda get-function \
 ### 日次テスト
 ```bash
 # Makefile コマンドで簡単実行（今後実装予定）
+cd analyzer
 make integration-test
 ```
 
