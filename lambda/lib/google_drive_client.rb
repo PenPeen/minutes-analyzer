@@ -78,7 +78,7 @@ class GoogleDriveClient
       download_dest: content
     )
     
-    content.string
+    content.string.force_encoding('UTF-8')
   rescue Google::Apis::ClientError => e
     # If export fails, try direct download
     @logger.warn("Export failed, trying direct download: #{e.message}")
@@ -89,6 +89,6 @@ class GoogleDriveClient
       download_dest: content
     )
     
-    content.string
+    content.string.force_encoding('UTF-8')
   end
 end
