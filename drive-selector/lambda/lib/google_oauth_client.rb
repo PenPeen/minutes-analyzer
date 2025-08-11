@@ -4,6 +4,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'base64'
+require 'securerandom'
 require 'aws-sdk-dynamodb'
 require 'aws-sdk-secretsmanager'
 
@@ -163,15 +164,17 @@ class GoogleOAuthClient
     Base64.urlsafe_encode64("#{slack_user_id}:#{SecureRandom.hex(16)}")
   end
 
-  # 簡易的な暗号化（本番環境ではKMSを使用推奨）
+  # トークンの暗号化は行わず、DynamoDBとSecrets Managerの暗号化機能に依存
+  # DynamoDBは server_side_encryption を有効化済み
+  # Secrets Managerも自動的に暗号化される
   def encrypt(text)
-    # 本番環境ではAWS KMSを使用して暗号化
-    Base64.strict_encode64(text)
+    # DynamoDBの暗号化機能を利用するため、プレーンテキストのまま保存
+    # 必要に応じて、アプリケーションレベルの暗号化を追加可能
+    text
   end
 
-  # 簡易的な復号化（本番環境ではKMSを使用推奨）
-  def decrypt(encrypted_text)
-    # 本番環境ではAWS KMSを使用して復号化
-    Base64.strict_decode64(encrypted_text)
+  # 復号化（暗号化していないのでそのまま返す）
+  def decrypt(text)
+    text
   end
 end
