@@ -1,45 +1,49 @@
 # Production Environment
 
-This directory contains Terraform configuration for deploying the Minutes Analyzer to production AWS.
+本番環境へのデプロイ設定
 
-## Setup
+## 必須の事前準備
 
-1. Copy the sample configuration files:
+### 1. S3バケットの作成（必須）
+
+**重要**: Terraformが動作するために、状態ファイル保存用のS3バケットを**必ず最初に**作成してください。
+
 ```bash
-# Copy non-sensitive configuration
-cp terraform.tfvars.sample terraform.tfvars
-
-# Copy sensitive configuration
-cp .env.tfvars.sample .env.tfvars
+# S3バケットを作成
+aws s3api create-bucket \
+  --bucket minutes-analyzer-terraform-state \
+  --region ap-northeast-1 \
+  --create-bucket-configuration LocationConstraint=ap-northeast-1
 ```
 
-2. Edit `terraform.tfvars` with your production configuration:
-- Adjust Lambda memory and timeout if needed
-- Configure feature flags
-- Set other non-sensitive values
+このバケットがないとデプロイは失敗します。
 
-3. Edit `.env.tfvars` with your sensitive values:
-- Add your Slack webhook URL
-- Add any other sensitive configuration
+## デプロイ手順
 
-4. Set up AWS credentials:
+### 1. AWS認証情報の設定
 ```bash
 export AWS_PROFILE=your-production-profile
-# or
+# または
 export AWS_ACCESS_KEY_ID=your-key
 export AWS_SECRET_ACCESS_KEY=your-secret
 ```
 
-5. Initialize and deploy:
+### 2. 設定ファイルの準備
+```bash
+# サンプルファイルからコピー
+cp terraform.tfvars.sample terraform.tfvars
+# 必要に応じて値を編集
+```
+
+### 3. デプロイ実行
 ```bash
 make deploy-production
 ```
 
-## Important Notes
+## 重要事項
 
-- The Gemini API key should be set manually in AWS Secrets Manager after deployment
-- S3 backend for Terraform state is configured but the bucket needs to be created separately
-- CloudWatch alarms are configured for monitoring Lambda errors and throttles
+- Gemini API キーなどの機密情報は、デプロイ後にAWS Secrets Managerで設定
+- CloudWatchアラームが自動設定される
 
 ## Differences from Local Environment
 
