@@ -1,7 +1,6 @@
 source 'https://rubygems.org'
 
 # AWS SDK
-gem 'aws-sdk-dynamodb', '~> 1.0'
 gem 'aws-sdk-lambda', '~> 1.0'
 gem 'aws-sdk-secretsmanager', '~> 1.0'
 
