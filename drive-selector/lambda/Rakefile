@@ -1,0 +1,21 @@
+# frozen_string_literal: true
+
+require 'rspec/core/rake_task'
+
+# RSpec tasks
+RSpec::Core::RakeTask.new(:spec)
+
+# Default task
+task default: :spec
+
+# Coverage report task
+task :coverage do
+  ENV['COVERAGE'] = 'true'
+  Rake::Task[:spec].invoke
+end
+
+desc 'Run RSpec tests'
+task :test => :spec
+
+desc 'Run tests with coverage report'
+task :test_with_coverage => :coverage
