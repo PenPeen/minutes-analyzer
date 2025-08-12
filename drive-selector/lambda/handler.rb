@@ -9,7 +9,7 @@ require_relative 'lib/oauth_callback_handler'
 
 # Lambda関数のメインエントリーポイント
 def lambda_handler(event:, context:)
-  puts "Event: #{JSON.pretty_generate(event)}"
+  safe_log_event(event)
   
   # パスに基づいてルーティング
   path = event['path'] || event['rawPath'] || '/'
@@ -111,7 +111,12 @@ def parse_slack_body(body)
   params = {}
   body.split('&').each do |pair|
     key, value = pair.split('=', 2)
-    params[key] = URI.decode_www_form_component(value || '')
+    begin
+      params[key] = URI.decode_www_form_component(value || '')
+    rescue ArgumentError => e
+      puts "Failed to decode parameter #{key}: #{e.message}"
+      params[key] = value || ''
+    end
   end
   params
 end
@@ -136,6 +141,18 @@ def unauthorized_response
       error: 'Unauthorized'
     })
   }
+end
+
+# 安全なイベントログ出力（機密情報を除外）
+def safe_log_event(event)
+  safe_event = event.dup
+  if safe_event['headers']
+    safe_event['headers'] = safe_event['headers'].dup
+    safe_event['headers'].delete('x-slack-signature')
+    safe_event['headers'].delete('authorization')
+    safe_event['headers'].delete('x-slack-request-timestamp')
+  end
+  puts "Event: #{JSON.pretty_generate(safe_event)}"
 end
 
 # エラーレスポンス
