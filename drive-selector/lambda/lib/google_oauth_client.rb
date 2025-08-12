@@ -4,7 +4,7 @@ require 'net/http'
 require 'uri'
 require 'json'
 require 'base64'
-require 'aws-sdk-dynamodb'
+require 'securerandom'
 require 'aws-sdk-secretsmanager'
 
 class GoogleOAuthClient
@@ -16,8 +16,8 @@ class GoogleOAuthClient
     @client_id = fetch_secret('GOOGLE_CLIENT_ID')
     @client_secret = fetch_secret('GOOGLE_CLIENT_SECRET')
     @redirect_uri = ENV['GOOGLE_REDIRECT_URI'] || 'http://localhost:3000/oauth/callback'
-    @dynamodb = Aws::DynamoDB::Client.new
-    @table_name = ENV['OAUTH_TOKENS_TABLE'] || 'drive-selector-oauth-tokens'
+    # Session-based authentication - tokens stored in-memory only
+    @token_cache = {}
   end
 
   # 認証URLを生成
@@ -78,51 +78,41 @@ class GoogleOAuthClient
     end
   end
 
-  # ユーザーのトークンを保存
+  # ユーザーのトークンを保存（セッション基盤、メモリ内のみ）
   def save_tokens(slack_user_id, tokens)
-    item = {
-      user_id: slack_user_id,
-      access_token: encrypt(tokens['access_token']),
-      refresh_token: encrypt(tokens['refresh_token']) if tokens['refresh_token'],
+    @token_cache[slack_user_id] = {
+      access_token: tokens['access_token'],
+      refresh_token: tokens['refresh_token'],
       expires_at: Time.now.to_i + (tokens['expires_in'] || 3600),
-      created_at: Time.now.to_i,
-      updated_at: Time.now.to_i
+      created_at: Time.now.to_i
     }
-    
-    @dynamodb.put_item(
-      table_name: @table_name,
-      item: item
-    )
   end
 
-  # ユーザーのトークンを取得
+  # ユーザーのトークンを取得（メモリキャッシュから）
   def get_tokens(slack_user_id)
-    response = @dynamodb.get_item(
-      table_name: @table_name,
-      key: { user_id: slack_user_id }
-    )
-    
-    return nil unless response.item
-    
-    item = response.item
+    token_data = @token_cache[slack_user_id]
+    return nil unless token_data
     
     # トークンの有効期限を確認
-    if item['expires_at'] && item['expires_at'] < Time.now.to_i
+    if token_data[:expires_at] && token_data[:expires_at] < Time.now.to_i
       # アクセストークンの有効期限が切れている場合、リフレッシュ
-      if item['refresh_token']
-        new_tokens = refresh_access_token(decrypt(item['refresh_token']))
-        save_tokens(slack_user_id, new_tokens)
-        return get_tokens(slack_user_id) # 更新後のトークンを再取得
+      if token_data[:refresh_token]
+        begin
+          new_tokens = refresh_access_token(token_data[:refresh_token])
+          save_tokens(slack_user_id, new_tokens)
+          return get_tokens(slack_user_id) # 更新後のトークンを再取得
+        rescue => e
+          puts "Token refresh failed: #{e.message}"
+          @token_cache.delete(slack_user_id) # 失敗したトークンを削除
+          return nil
+        end
       else
+        @token_cache.delete(slack_user_id) # 期限切れトークンを削除
         return nil # リフレッシュトークンがない場合は再認証が必要
       end
     end
     
-    {
-      access_token: decrypt(item['access_token']),
-      refresh_token: item['refresh_token'] ? decrypt(item['refresh_token']) : nil,
-      expires_at: item['expires_at']
-    }
+    token_data
   end
 
   # ユーザーが認証済みかチェック
@@ -133,10 +123,7 @@ class GoogleOAuthClient
 
   # トークンを削除（ログアウト）
   def delete_tokens(slack_user_id)
-    @dynamodb.delete_item(
-      table_name: @table_name,
-      key: { user_id: slack_user_id }
-    )
+    @token_cache.delete(slack_user_id)
   end
 
   private
@@ -163,15 +150,5 @@ class GoogleOAuthClient
     Base64.urlsafe_encode64("#{slack_user_id}:#{SecureRandom.hex(16)}")
   end
 
-  # 簡易的な暗号化（本番環境ではKMSを使用推奨）
-  def encrypt(text)
-    # 本番環境ではAWS KMSを使用して暗号化
-    Base64.strict_encode64(text)
-  end
-
-  # 簡易的な復号化（本番環境ではKMSを使用推奨）
-  def decrypt(encrypted_text)
-    # 本番環境ではAWS KMSを使用して復号化
-    Base64.strict_decode64(encrypted_text)
-  end
+  # 暗号化機能は削除 - セッション基盤認証ではトークンをメモリ内にプレーンテキストで保存
 end

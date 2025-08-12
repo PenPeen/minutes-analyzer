@@ -15,8 +15,6 @@ resource "aws_lambda_function" "slack_bot_controller" {
   environment {
     variables = {
       ENVIRONMENT              = var.environment
-      OAUTH_TOKENS_TABLE      = aws_dynamodb_table.oauth_tokens.name
-      USER_PREFERENCES_TABLE  = aws_dynamodb_table.user_preferences.name
       SECRETS_MANAGER_SECRET_ID = aws_secretsmanager_secret.app_secrets.id
       PROCESS_LAMBDA_ARN      = var.process_lambda_arn
       GOOGLE_REDIRECT_URI     = var.environment == "production" ? "https://${var.api_gateway_domain}/oauth/callback" : "http://localhost:3000/oauth/callback"
@@ -38,7 +36,7 @@ resource "aws_lambda_function" "slack_bot_controller" {
 
 # Lambda permission for API Gateway
 resource "aws_lambda_permission" "api_gateway_invoke" {
-  statement_id  = "AllowAPIGatewayInvoke"
+  statement_id  = "AllowAPIGatewayInvoke" 
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.slack_bot_controller.function_name
   principal     = "apigateway.amazonaws.com"
