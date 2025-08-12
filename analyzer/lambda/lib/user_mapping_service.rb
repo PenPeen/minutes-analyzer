@@ -33,7 +33,8 @@ class UserMappingService
     @logger.info("Enriching actions with user mapping data")
     
     analysis_result['actions'].each do |action|
-      next unless action['assignee']
+      assignee = action['assignee']
+      next if assignee.nil? || assignee.empty?
       
       assignee_email = find_email_for_assignee(action['assignee'], user_mappings[:participants])
       next unless assignee_email
@@ -181,7 +182,7 @@ class UserMappingService
     
     action['notion_user_id'] = notion_user[:id]
     action['assignee_email'] = email
-    @logger.debug("Added Notion user ID for #{action['assignee']}: #{notion_user[:id]}") if @logger.level == Logger::DEBUG
+    @logger.debug("Added Notion user ID for #{action['assignee']}: #{notion_user[:id]}")
   end
   
   def enrich_action_with_slack_user(action, email, user_mappings)
@@ -193,6 +194,6 @@ class UserMappingService
     
     action['slack_user_id'] = slack_user[:id]
     action['slack_mention'] = "<@#{slack_user[:id]}>"
-    @logger.debug("Added Slack mention for #{action['assignee']}: <@#{slack_user[:id]}>") if @logger.level == Logger::DEBUG
+    @logger.debug("Added Slack mention for #{action['assignee']}: <@#{slack_user[:id]}>")
   end
 end

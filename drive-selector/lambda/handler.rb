@@ -5,7 +5,7 @@ require 'base64'
 require_relative 'lib/slack_request_validator'
 require_relative 'lib/slack_command_handler'
 require_relative 'lib/slack_interaction_handler'
-# require_relative 'lib/oauth_callback_handler'  # T-05で実装予定
+require_relative 'lib/oauth_callback_handler'
 
 # Lambda関数のメインエントリーポイント
 def lambda_handler(event:, context:)
@@ -83,14 +83,8 @@ end
 
 # OAuthコールバックを処理
 def handle_oauth_callback(event)
-  # GET /oauth/callbackのプレースホルダー実装（T-05で完全実装）
-  {
-    statusCode: 200,
-    headers: { 'Content-Type' => 'application/json' },
-    body: JSON.generate({
-      message: 'OAuth callback - implementation pending'
-    })
-  }
+  handler = OAuthCallbackHandler.new
+  handler.handle_callback(event)
 end
 
 # ヘルスチェック
