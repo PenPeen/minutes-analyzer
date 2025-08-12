@@ -12,8 +12,6 @@ class GoogleOAuthClient
   GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
   GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly'
   
-  # Lambdaメモリ内でのトークンキャッシュ（Lambda実行期間中のみ有効）
-  @@tokens_cache = {}
   MAX_CACHE_SIZE = 100  # キャッシュサイズ制限
   EXPIRY_BUFFER = 300   # トークン期限のバッファ（5分）
   
@@ -21,6 +19,8 @@ class GoogleOAuthClient
     @client_id = fetch_secret('GOOGLE_CLIENT_ID')
     @client_secret = fetch_secret('GOOGLE_CLIENT_SECRET')
     @redirect_uri = ENV['GOOGLE_REDIRECT_URI'] || 'http://localhost:3000/oauth/callback'
+    # Lambdaメモリ内でのトークンキャッシュ（Lambda実行期間中のみ有効）
+    @token_cache = {}
   end
 
   # 認証URLを生成
@@ -84,13 +84,13 @@ class GoogleOAuthClient
   # ユーザーのトークンをメモリキャッシュに保存
   def save_tokens(slack_user_id, tokens)
     # キャッシュサイズ制限（LRU風の簡単な削除）
-    if @@tokens_cache.size >= MAX_CACHE_SIZE
+    if @token_cache.size >= MAX_CACHE_SIZE
       # 最も古いエントリを削除
-      oldest_key = @@tokens_cache.keys.first
-      @@tokens_cache.delete(oldest_key)
+      oldest_key = @token_cache.keys.first
+      @token_cache.delete(oldest_key)
     end
     
-    @@tokens_cache[slack_user_id] = {
+    @token_cache[slack_user_id] = {
       access_token: tokens['access_token'],
       refresh_token: tokens['refresh_token'],
       expires_at: Time.now.to_i + (tokens['expires_in'] || 3600),
@@ -101,7 +101,7 @@ class GoogleOAuthClient
 
   # ユーザーのトークンをメモリキャッシュから取得
   def get_tokens(slack_user_id, refresh_attempted: false)
-    cached_token = @@tokens_cache[slack_user_id]
+    cached_token = @token_cache[slack_user_id]
     return nil unless cached_token
     
     # トークンの有効期限を確認（バッファ付き）
@@ -117,7 +117,7 @@ class GoogleOAuthClient
         rescue => e
           puts "Token refresh failed: #{e.message}"
           # リフレッシュに失敗した場合はキャッシュからトークンを削除
-          @@tokens_cache.delete(slack_user_id)
+          @token_cache.delete(slack_user_id)
           return nil
         end
       else
@@ -140,7 +140,7 @@ class GoogleOAuthClient
 
   # トークンをメモリキャッシュから削除（ログアウト）
   def delete_tokens(slack_user_id)
-    @@tokens_cache.delete(slack_user_id)
+    @token_cache.delete(slack_user_id)
   end
 
   private

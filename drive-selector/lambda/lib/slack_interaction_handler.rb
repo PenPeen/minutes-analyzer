@@ -11,7 +11,7 @@ class SlackInteractionHandler
   def handle_interaction(payload)
     # ユーザー情報の検証
     user = payload['user']
-    return create_error_response('ユーザー情報が不足しています', 400) unless user && user['id']
+    return create_api_response(create_error_response('ユーザー情報が不足しています', 400), 400) unless user && user['id']
     
     user_id = user['id']
     type = payload['type']
@@ -23,19 +23,19 @@ class SlackInteractionHandler
       when 'interactive_message'
         # ボタンクリック等の処理
         actions = payload['actions'] || []
-        process_button_click(actions, user_id)
+        create_api_response(process_button_click(actions, user_id))
       when 'view_submission'
         # モーダル送信の処理
         view_state = payload['view']['state'] rescue nil
-        return create_error_response('無効なモーダルデータです', 400) unless view_state
+        return create_api_response(create_error_response('無効なモーダルデータです', 400), 400) unless view_state
         
-        process_modal_submission(view_state, user_id)
+        create_api_response(process_modal_submission(view_state, user_id))
       else
-        create_error_response("サポートされていないインタラクションタイプ: #{type}", 400)
+        create_api_response(create_error_response("サポートされていないインタラクションタイプ: #{type}", 400), 400)
       end
     rescue => e
       puts "Error processing interaction: #{e.message}"
-      create_error_response('処理中にエラーが発生しました', 500)
+      create_api_response(create_error_response('処理中にエラーが発生しました', 500), 500)
     end
   end
 
@@ -119,6 +119,15 @@ class SlackInteractionHandler
     {
       'response_type' => 'ephemeral',
       'text' => message
+    }
+  end
+
+  # API Gateway レスポンス形式にラップ
+  def create_api_response(content, status_code = 200)
+    {
+      statusCode: status_code,
+      headers: { 'Content-Type' => 'application/json' },
+      body: JSON.generate(content)
     }
   end
 end

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'openssl'
+require 'json'
 require 'aws-sdk-secretsmanager'
 
 class SlackRequestValidator
@@ -12,7 +13,10 @@ class SlackRequestValidator
   end
 
   # Slackからのリクエストを検証
-  def valid_request?(body, headers)
+  def valid_request?(headers, body)
+    # Signing secretが設定されていない場合はfalseを返す
+    return false unless @signing_secret
+    
     timestamp = headers['x-slack-request-timestamp']
     signature = headers['x-slack-signature']
     
@@ -23,6 +27,11 @@ class SlackRequestValidator
     return false unless valid_timestamp?(timestamp)
     
     # 署名を検証
+    valid_signature?(signature, timestamp, body)
+  end
+
+  # 署名の有効性を確認（テスト用に分離）
+  def valid_signature?(signature, timestamp, body)
     expected_signature = calculate_signature(timestamp, body)
     secure_compare(signature, expected_signature)
   end
@@ -44,7 +53,7 @@ class SlackRequestValidator
       secrets['SLACK_SIGNING_SECRET']
     rescue => e
       puts "Failed to fetch signing secret: #{e.message}"
-      raise "Signing secret not available"
+      nil
     end
   end
 
