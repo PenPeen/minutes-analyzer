@@ -60,6 +60,11 @@ RSpec.describe LambdaHandler do
           expect(JSON.parse(result[:body])['integrations']['notion']).to eq('not_created')
         end
 
+        it 'Gemini Client を2回実行する（Issue #125）' do
+          expect(gemini_client).to receive(:analyze_meeting).twice
+          handler.handle(event: event, context: context)
+        end
+
         it 'Slack bot token未設定の警告をログに出力' do
           expect(logger).to receive(:warn).with('Slack bot token or channel ID is not configured')
           handler.handle(event: event, context: context)
