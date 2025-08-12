@@ -5,15 +5,15 @@ require 'base64'
 require_relative 'lib/slack_request_validator'
 require_relative 'lib/slack_command_handler'
 require_relative 'lib/slack_interaction_handler'
-require_relative 'lib/oauth_callback_handler'
+# require_relative 'lib/oauth_callback_handler'  # T-05で実装予定
 
 # Lambda関数のメインエントリーポイント
 def lambda_handler(event:, context:)
-  safe_log_event(event)
-  
-  # パスに基づいてルーティング
   path = event['path'] || event['rawPath'] || '/'
-  http_method = event['httpMethod'] || event['requestContext']['http']['method'] || 'POST'
+  http_method = event['httpMethod'] || event['requestContext']&.dig('http', 'method') || 'POST'
+  
+  puts "Processing request: #{http_method} #{path}"
+  safe_log_event(event)
   
   begin
     case path
@@ -26,10 +26,10 @@ def lambda_handler(event:, context:)
     when '/health'
       health_check
     else
-      not_found_response
+      not_found_response(path)
     end
   rescue => e
-    puts "Error: #{e.message}"
+    puts "Error processing request: #{e.message}"
     puts e.backtrace.join("\n")
     error_response(e.message)
   end
@@ -37,42 +37,60 @@ end
 
 # Slackコマンドを処理
 def handle_slack_command(event)
-  # Slack署名を検証
-  validator = SlackRequestValidator.new
   body = get_body(event)
   headers = get_headers(event)
   
-  unless validator.valid_request?(body, headers)
-    return unauthorized_response
+  # リクエストボディが必要
+  return bad_request_response('Request body is required for Slack commands') if body.nil? || body.empty?
+  
+  # Slack署名を検証
+  validator = SlackRequestValidator.new
+  unless validator.valid_request?(headers, body)
+    return unauthorized_response('Invalid Slack signature')
   end
   
   # コマンドを処理
   handler = SlackCommandHandler.new
-  handler.handle(parse_slack_body(body))
+  handler.handle_command(parse_slack_body(body))
 end
 
 # Slackインタラクションを処理
 def handle_slack_interaction(event)
-  # Slack署名を検証
-  validator = SlackRequestValidator.new
   body = get_body(event)
   headers = get_headers(event)
   
-  unless validator.valid_request?(body, headers)
-    return unauthorized_response
+  # リクエストボディが必要
+  return bad_request_response('Request body is required for Slack interactions') if body.nil? || body.empty?
+  
+  # Slack署名を検証
+  validator = SlackRequestValidator.new
+  unless validator.valid_request?(headers, body)
+    return unauthorized_response('Invalid Slack signature')
   end
   
   # インタラクションを処理
   handler = SlackInteractionHandler.new
   parsed_body = parse_slack_body(body)
-  payload = JSON.parse(parsed_body['payload'] || '{}')
-  handler.handle(payload)
+  
+  begin
+    payload = JSON.parse(parsed_body['payload'] || '{}')
+    handler.handle_interaction(payload)
+  rescue JSON::ParserError => e
+    puts "JSON parse error: #{e.message}"
+    bad_request_response('Invalid JSON payload')
+  end
 end
 
 # OAuthコールバックを処理
 def handle_oauth_callback(event)
-  handler = OAuthCallbackHandler.new
-  handler.handle_callback(event)
+  # GET /oauth/callbackのプレースホルダー実装（T-05で完全実装）
+  {
+    statusCode: 200,
+    headers: { 'Content-Type' => 'application/json' },
+    body: JSON.generate({
+      message: 'OAuth callback - implementation pending'
+    })
+  }
 end
 
 # ヘルスチェック
@@ -122,23 +140,36 @@ def parse_slack_body(body)
 end
 
 # 404レスポンス
-def not_found_response
+def not_found_response(path = nil)
   {
     statusCode: 404,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
-      error: 'Not Found'
-    })
+      error: 'Not Found',
+      path: path
+    }.compact)
   }
 end
 
 # 401レスポンス
-def unauthorized_response
+def unauthorized_response(message = 'Unauthorized')
   {
     statusCode: 401,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
-      error: 'Unauthorized'
+      error: "Unauthorized - #{message}"
+    })
+  }
+end
+
+# 400レスポンス
+def bad_request_response(message = 'Bad Request')
+  {
+    statusCode: 400,
+    headers: { 'Content-Type' => 'application/json' },
+    body: JSON.generate({
+      error: 'Bad Request',
+      message: message
     })
   }
 end
@@ -149,10 +180,10 @@ def safe_log_event(event)
   if safe_event['headers']
     safe_event['headers'] = safe_event['headers'].dup
     safe_event['headers'].delete('x-slack-signature')
-    safe_event['headers'].delete('authorization')
+    safe_event['headers'].delete('authorization') 
     safe_event['headers'].delete('x-slack-request-timestamp')
   end
-  puts "Event: #{JSON.pretty_generate(safe_event)}"
+  puts "Event (sanitized): #{JSON.pretty_generate(safe_event)}"
 end
 
 # エラーレスポンス
