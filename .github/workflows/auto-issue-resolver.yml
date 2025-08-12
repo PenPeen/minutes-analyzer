@@ -71,19 +71,27 @@ jobs:
             });
             
             // Claude Codeへのリクエストコメントを作成
-            const comment = '@claude このIssueを解決してください。\n\n' +
+            const comment = '@claude このIssueを解決して、Pull Requestを作成してください。\n\n' +
               '## Issue詳細\n' +
+              `**Issue番号**: #${selectedIssue.number}\n` +
               `**タイトル**: ${selectedIssue.title}\n` +
               '**説明**: \n' +
               `${selectedIssue.body || '説明なし'}\n\n` +
-              '## 要件\n' +
+              '## 実装要件\n' +
               '1. 問題を分析して、適切な解決策を実装してください\n' +
               '2. 必要に応じてテストコードも作成してください\n' +
-              '3. 変更内容を含むPull Requestを作成してください\n\n' +
+              '3. コードの変更をコミットしてください\n' +
+              '4. **必ず最後にPull Requestを作成してください**\n\n' +
+              '## Pull Request作成時の指示\n' +
+              '- ブランチ名: `fix/issue-' + selectedIssue.number + '`\n' +
+              '- PRタイトル: `fix: #' + selectedIssue.number + ' ' + selectedIssue.title + '`\n' +
+              '- PR本文には変更内容の詳細を記載\n' +
+              '- `Fixes #' + selectedIssue.number + '` を必ず含める\n\n' +
               '## 注意事項\n' +
               '- 既存のコードベースの規約に従ってください\n' +
               '- CLAUDE.mdファイルの指示に従ってください\n' +
-              '- セキュリティとパフォーマンスを考慮してください';
+              '- セキュリティとパフォーマンスを考慮してください\n' +
+              '- 作業完了後は必ずPull Requestを作成してください';
             
             // コメントを投稿
             await github.rest.issues.createComment({
