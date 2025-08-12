@@ -22,6 +22,7 @@ jobs:
       contents: write  # ファイル変更とブランチ作成に必要
       pull-requests: write  # PR作成に必要
       issues: write  # Issue操作に必要
+      workflows: write  # ワークフローファイルの変更に必要
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
