@@ -12,9 +12,8 @@ gem 'googleauth', '~> 1.8'
 # Slack SDK
 gem 'slack-ruby-client', '~> 2.0'
 
-# HTTP Client - using built-in Net::HTTP instead of Faraday for simplicity
-# gem 'faraday', '~> 2.0'
-# gem 'faraday-retry', '~> 2.0'
+# HTTP Client - consistent with analyzer codebase
+gem 'net-http'
 
 # Testing (development group)
 group :development, :test do

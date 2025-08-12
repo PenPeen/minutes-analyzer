@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'faraday'
-require 'faraday/retry'
+require 'net/http'
+require 'uri'
 require 'json'
 require 'base64'
 require 'securerandom'
@@ -42,38 +42,42 @@ class GoogleOAuthClient
 
   # 認証コードをアクセストークンに交換
   def exchange_code_for_token(code)
-    conn = create_faraday_client
+    uri = URI(GOOGLE_TOKEN_URL)
     
-    response = conn.post('', {
+    params = {
       code: code,
       client_id: @client_id,
       client_secret: @client_secret,
       redirect_uri: @redirect_uri,
       grant_type: 'authorization_code'
-    })
+    }
     
-    if response.success?
+    response = make_http_request(uri, params)
+    
+    if response.is_a?(Net::HTTPSuccess)
       JSON.parse(response.body)
     else
-      raise "Token exchange failed: #{response.status} - #{response.body}"
+      raise "Token exchange failed: #{response.code} - #{response.body}"
     end
   end
 
   # リフレッシュトークンを使用してアクセストークンを更新
   def refresh_access_token(refresh_token)
-    conn = create_faraday_client
+    uri = URI(GOOGLE_TOKEN_URL)
     
-    response = conn.post('', {
+    params = {
       refresh_token: refresh_token,
       client_id: @client_id,
       client_secret: @client_secret,
       grant_type: 'refresh_token'
-    })
+    }
     
-    if response.success?
+    response = make_http_request(uri, params)
+    
+    if response.is_a?(Net::HTTPSuccess)
       JSON.parse(response.body)
     else
-      raise "Token refresh failed: #{response.status} - #{response.body}"
+      raise "Token refresh failed: #{response.code} - #{response.body}"
     end
   end
 
@@ -163,13 +167,33 @@ class GoogleOAuthClient
     Base64.urlsafe_encode64("#{slack_user_id}:#{SecureRandom.hex(16)}")
   end
   
-  # Faradayクライアントを作成
-  def create_faraday_client
-    Faraday.new(url: GOOGLE_TOKEN_URL) do |f|
-      f.request :url_encoded
-      f.response :logger if ENV['DEBUG']
-      f.use :retry, max: 2, interval: 1.0
-      f.adapter :net_http
+  # Net::HTTPクライアントでHTTPリクエストを実行
+  def make_http_request(uri, params)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = true
+    http.read_timeout = 30
+    http.open_timeout = 30
+    
+    request = Net::HTTP::Post.new(uri.path)
+    request['Content-Type'] = 'application/x-www-form-urlencoded'
+    request.body = URI.encode_www_form(params)
+    
+    # リトライロジック（Faradayのリトライ機能の代替）
+    max_retries = 2
+    retries = 0
+    
+    begin
+      response = http.request(request)
+      puts "HTTP #{request.method} #{uri} -> #{response.code}" if ENV['DEBUG']
+      response
+    rescue Net::ReadTimeout, Net::OpenTimeout => e
+      if (retries += 1) <= max_retries
+        puts "Retrying HTTP request (#{retries}/#{max_retries}): #{e.message}" if ENV['DEBUG']
+        sleep(1.0 * retries)
+        retry
+      else
+        raise
+      end
     end
   end
 end
