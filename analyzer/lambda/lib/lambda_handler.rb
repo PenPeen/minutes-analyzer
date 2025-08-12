@@ -105,8 +105,17 @@ class LambdaHandler
   def analyze_with_gemini(input_text, secrets)
     api_key = secrets['GEMINI_API_KEY']
     gemini_client = @gemini_client || GeminiClient.new(api_key, @logger, nil, @environment)
-    analysis_result = gemini_client.analyze_meeting(input_text)
-    @logger.info("Successfully received analysis from Gemini API.")
-    analysis_result
+    
+    # 精度向上のためGemini Clientを2回実行
+    @logger.info("Starting first Gemini API analysis call...")
+    first_analysis_result = gemini_client.analyze_meeting(input_text)
+    @logger.info("Successfully received first analysis from Gemini API.")
+
+    @logger.info("Starting second Gemini API analysis call for improved accuracy...")
+    final_analysis_result = gemini_client.analyze_meeting(input_text)
+    @logger.info("Successfully received second analysis from Gemini API.")
+
+    @logger.info("Completed double Gemini Client execution for improved accuracy.")
+    final_analysis_result
   end
 end

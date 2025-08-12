@@ -251,6 +251,14 @@ RSpec.describe LambdaHandler do
         expect(gemini_client).to have_received(:analyze_meeting).with(file_content)
       end
 
+      it 'Gemini Clientを2回実行して精度を向上させる' do
+        result = handler.handle(event: event, context: context)
+
+        expect(result[:statusCode]).to eq(200)
+        # Gemini Clientが2回呼び出されることを検証
+        expect(gemini_client).to have_received(:analyze_meeting).with(file_content).twice
+      end
+
       context 'Google認証情報が不足している場合' do
         let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key' } }
 
