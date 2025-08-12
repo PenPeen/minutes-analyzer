@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require 'net/http'
-require 'uri'
+require 'faraday'
+require 'faraday/retry'
 require 'json'
 require 'base64'
 require 'securerandom'
@@ -42,42 +42,38 @@ class GoogleOAuthClient
 
   # 認証コードをアクセストークンに交換
   def exchange_code_for_token(code)
-    uri = URI(GOOGLE_TOKEN_URL)
+    conn = create_faraday_client
     
-    params = {
+    response = conn.post('', {
       code: code,
       client_id: @client_id,
       client_secret: @client_secret,
       redirect_uri: @redirect_uri,
       grant_type: 'authorization_code'
-    }
+    })
     
-    response = Net::HTTP.post_form(uri, params)
-    
-    if response.code == '200'
+    if response.success?
       JSON.parse(response.body)
     else
-      raise "Token exchange failed: #{response.code} - #{response.body}"
+      raise "Token exchange failed: #{response.status} - #{response.body}"
     end
   end
 
   # リフレッシュトークンを使用してアクセストークンを更新
   def refresh_access_token(refresh_token)
-    uri = URI(GOOGLE_TOKEN_URL)
+    conn = create_faraday_client
     
-    params = {
+    response = conn.post('', {
       refresh_token: refresh_token,
       client_id: @client_id,
       client_secret: @client_secret,
       grant_type: 'refresh_token'
-    }
+    })
     
-    response = Net::HTTP.post_form(uri, params)
-    
-    if response.code == '200'
+    if response.success?
       JSON.parse(response.body)
     else
-      raise "Token refresh failed: #{response.code} - #{response.body}"
+      raise "Token refresh failed: #{response.status} - #{response.body}"
     end
   end
 
@@ -166,7 +162,14 @@ class GoogleOAuthClient
   def generate_state(slack_user_id)
     Base64.urlsafe_encode64("#{slack_user_id}:#{SecureRandom.hex(16)}")
   end
-
-  # Net::HTTPを使用した軽量HTTP実装（Faraday不使用）
-  # セッション基盤認証 - KMS/DynamoDB不使用でシンプル実装
+  
+  # Faradayクライアントを作成
+  def create_faraday_client
+    Faraday.new(url: GOOGLE_TOKEN_URL) do |f|
+      f.request :url_encoded
+      f.response :logger if ENV['DEBUG']
+      f.use :retry, max: 2, interval: 1.0
+      f.adapter :net_http
+    end
+  end
 end
