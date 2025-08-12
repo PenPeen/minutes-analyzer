@@ -248,7 +248,7 @@ RSpec.describe LambdaHandler do
 
         expect(result[:statusCode]).to eq(200)
         expect(google_drive_client).to have_received(:get_file_content).with(file_id)
-        expect(gemini_client).to have_received(:analyze_meeting).with(file_content)
+        expect(gemini_client).to have_received(:analyze_meeting).with(file_content).twice
       end
 
       it 'Gemini Clientを2回実行して精度を向上させる' do
