@@ -12,12 +12,15 @@ class GoogleOAuthClient
   GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
   GOOGLE_DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.metadata.readonly'
   
+  # Lambdaメモリ内でのトークンキャッシュ（Lambda実行期間中のみ有効）
+  @@tokens_cache = {}
+  MAX_CACHE_SIZE = 100  # キャッシュサイズ制限
+  EXPIRY_BUFFER = 300   # トークン期限のバッファ（5分）
+  
   def initialize
     @client_id = fetch_secret('GOOGLE_CLIENT_ID')
     @client_secret = fetch_secret('GOOGLE_CLIENT_SECRET')
     @redirect_uri = ENV['GOOGLE_REDIRECT_URI'] || 'http://localhost:3000/oauth/callback'
-    # Session-based authentication - tokens stored in-memory only
-    @token_cache = {}
   end
 
   # 認証URLを生成
@@ -78,41 +81,55 @@ class GoogleOAuthClient
     end
   end
 
-  # ユーザーのトークンを保存（セッション基盤、メモリ内のみ）
+  # ユーザーのトークンをメモリキャッシュに保存
   def save_tokens(slack_user_id, tokens)
-    @token_cache[slack_user_id] = {
+    # キャッシュサイズ制限（LRU風の簡単な削除）
+    if @@tokens_cache.size >= MAX_CACHE_SIZE
+      # 最も古いエントリを削除
+      oldest_key = @@tokens_cache.keys.first
+      @@tokens_cache.delete(oldest_key)
+    end
+    
+    @@tokens_cache[slack_user_id] = {
       access_token: tokens['access_token'],
       refresh_token: tokens['refresh_token'],
       expires_at: Time.now.to_i + (tokens['expires_in'] || 3600),
-      created_at: Time.now.to_i
+      created_at: Time.now.to_i,
+      updated_at: Time.now.to_i
     }
   end
 
-  # ユーザーのトークンを取得（メモリキャッシュから）
-  def get_tokens(slack_user_id)
-    token_data = @token_cache[slack_user_id]
-    return nil unless token_data
+  # ユーザーのトークンをメモリキャッシュから取得
+  def get_tokens(slack_user_id, refresh_attempted: false)
+    cached_token = @@tokens_cache[slack_user_id]
+    return nil unless cached_token
     
-    # トークンの有効期限を確認
-    if token_data[:expires_at] && token_data[:expires_at] < Time.now.to_i
+    # トークンの有効期限を確認（バッファ付き）
+    if cached_token[:expires_at] && cached_token[:expires_at] < (Time.now.to_i + EXPIRY_BUFFER)
+      return nil if refresh_attempted  # 無限再帰を防止
+      
       # アクセストークンの有効期限が切れている場合、リフレッシュ
-      if token_data[:refresh_token]
+      if cached_token[:refresh_token]
         begin
-          new_tokens = refresh_access_token(token_data[:refresh_token])
+          new_tokens = refresh_access_token(cached_token[:refresh_token])
           save_tokens(slack_user_id, new_tokens)
-          return get_tokens(slack_user_id) # 更新後のトークンを再取得
+          return get_tokens(slack_user_id, refresh_attempted: true)
         rescue => e
           puts "Token refresh failed: #{e.message}"
-          @token_cache.delete(slack_user_id) # 失敗したトークンを削除
+          # リフレッシュに失敗した場合はキャッシュからトークンを削除
+          @@tokens_cache.delete(slack_user_id)
           return nil
         end
       else
-        @token_cache.delete(slack_user_id) # 期限切れトークンを削除
         return nil # リフレッシュトークンがない場合は再認証が必要
       end
     end
     
-    token_data
+    {
+      access_token: cached_token[:access_token],
+      refresh_token: cached_token[:refresh_token],
+      expires_at: cached_token[:expires_at]
+    }
   end
 
   # ユーザーが認証済みかチェック
@@ -121,9 +138,9 @@ class GoogleOAuthClient
     !tokens.nil? && !tokens[:access_token].nil?
   end
 
-  # トークンを削除（ログアウト）
+  # トークンをメモリキャッシュから削除（ログアウト）
   def delete_tokens(slack_user_id)
-    @token_cache.delete(slack_user_id)
+    @@tokens_cache.delete(slack_user_id)
   end
 
   private
@@ -150,5 +167,6 @@ class GoogleOAuthClient
     Base64.urlsafe_encode64("#{slack_user_id}:#{SecureRandom.hex(16)}")
   end
 
-  # 暗号化機能は削除 - セッション基盤認証ではトークンをメモリ内にプレーンテキストで保存
+  # Net::HTTPを使用した軽量HTTP実装（Faraday不使用）
+  # セッション基盤認証 - KMS/DynamoDB不使用でシンプル実装
 end

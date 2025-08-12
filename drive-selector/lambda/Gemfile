@@ -12,7 +12,7 @@ gem 'googleauth', '~> 1.8'
 # Slack SDK
 gem 'slack-ruby-client', '~> 2.0'
 
-# HTTP Client (using built-in Net::HTTP)
+# HTTP Client - using built-in Net::HTTP instead of Faraday for simplicity
 # gem 'faraday', '~> 2.0'
 # gem 'faraday-retry', '~> 2.0'
 
