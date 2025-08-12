@@ -66,22 +66,19 @@ jobs:
             });
             
             // Claude Codeへのリクエストコメントを作成
-            const comment = `@claude このIssueを解決してください。
-
-## Issue詳細
-**タイトル**: ${selectedIssue.title}
-**説明**: 
-${selectedIssue.body || '説明なし'}
-
-## 要件
-1. 問題を分析して、適切な解決策を実装してください
-2. 必要に応じてテストコードも作成してください
-3. 変更内容を含むPull Requestを作成してください
-
-## 注意事項
-- 既存のコードベースの規約に従ってください
-- CLAUDE.mdファイルの指示に従ってください
-- セキュリティとパフォーマンスを考慮してください`;
+            const comment = '@claude このIssueを解決してください。\n\n' +
+              '## Issue詳細\n' +
+              `**タイトル**: ${selectedIssue.title}\n` +
+              '**説明**: \n' +
+              `${selectedIssue.body || '説明なし'}\n\n` +
+              '## 要件\n' +
+              '1. 問題を分析して、適切な解決策を実装してください\n' +
+              '2. 必要に応じてテストコードも作成してください\n' +
+              '3. 変更内容を含むPull Requestを作成してください\n\n' +
+              '## 注意事項\n' +
+              '- 既存のコードベースの規約に従ってください\n' +
+              '- CLAUDE.mdファイルの指示に従ってください\n' +
+              '- セキュリティとパフォーマンスを考慮してください';
             
             // コメントを投稿
             await github.rest.issues.createComment({
