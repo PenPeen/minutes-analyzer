@@ -36,7 +36,7 @@ class UserMappingService
       assignee = action['assignee']
       next if assignee.nil? || assignee.empty?
       
-      assignee_email = find_email_for_assignee(action['assignee'], user_mappings[:participants])
+      assignee_email = find_email_for_assignee(action['assignee'], user_mappings[:participants], user_mappings)
       next unless assignee_email
       
       enrich_action_with_users(action, assignee_email, user_mappings)
@@ -109,8 +109,11 @@ class UserMappingService
     unmapped = []
     
     result[:participants]&.each do |email|
-      slack_mapped = result[:user_mappings][:slack]&.key?(email)
-      notion_mapped = result[:user_mappings][:notion]&.key?(email)
+      slack_user = result[:user_mappings][:slack]&.[](email)
+      notion_user = result[:user_mappings][:notion]&.[](email)
+      
+      slack_mapped = slack_user && !slack_user[:error]
+      notion_mapped = notion_user && !notion_user[:error]
       
       unless slack_mapped && notion_mapped
         unmapped_services = []
@@ -153,14 +156,23 @@ class UserMappingService
     true
   end
   
-  def find_email_for_assignee(assignee_name, participants)
+  def find_email_for_assignee(assignee_name, participants, user_mappings = nil)
     return nil unless assignee_name && participants
     
-    # 完全一致を試みる
+    # 完全なメールアドレス一致を試みる
     participant = participants.find { |p| p&.downcase == assignee_name.downcase }
     return participant if participant
     
-    # 部分一致を試みる
+    # Slackユーザーマッピングでの名前一致を試みる
+    if user_mappings && user_mappings[:user_mappings] && user_mappings[:user_mappings][:slack]
+      slack_users = user_mappings[:user_mappings][:slack]
+      email_by_name = slack_users.find { |email, user_data| 
+        user_data && user_data[:name] && user_data[:name].downcase == assignee_name.downcase 
+      }&.first
+      return email_by_name if email_by_name
+    end
+    
+    # 部分一致を試みる（ユーザー名での一致）
     participants.find do |p|
       next unless p
       p.downcase.include?(assignee_name.downcase) || 

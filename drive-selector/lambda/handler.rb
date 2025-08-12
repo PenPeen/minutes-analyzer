@@ -45,7 +45,7 @@ def handle_slack_command(event)
   
   # Slack署名を検証
   validator = SlackRequestValidator.new
-  unless validator.valid_request?(headers, body)
+  unless validator.valid_request?(body, headers)
     return unauthorized_response('Invalid Slack signature')
   end
   
@@ -64,7 +64,7 @@ def handle_slack_interaction(event)
   
   # Slack署名を検証
   validator = SlackRequestValidator.new
-  unless validator.valid_request?(headers, body)
+  unless validator.valid_request?(body, headers)
     return unauthorized_response('Invalid Slack signature')
   end
   
