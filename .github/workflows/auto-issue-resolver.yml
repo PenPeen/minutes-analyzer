@@ -87,11 +87,17 @@ jobs:
               '- PRタイトル: `fix: #' + selectedIssue.number + ' ' + selectedIssue.title + '`\n' +
               '- PR本文には変更内容の詳細を記載\n' +
               '- `Fixes #' + selectedIssue.number + '` を必ず含める\n\n' +
+              '## 重要な指示\n' +
+              '**もしPull Requestの作成ができない場合（権限エラーなど）は、以下を実行してください：**\n' +
+              '1. 新しいリモートブランチを作成: `git checkout -b fix/issue-' + selectedIssue.number + '`\n' +
+              '2. 変更をコミット: `git add -A && git commit -m "fix: #' + selectedIssue.number + ' ' + selectedIssue.title + '"`\n' +
+              '3. リモートにプッシュ: `git push origin fix/issue-' + selectedIssue.number + '`\n' +
+              '4. このIssueにコメントで「ブランチ `fix/issue-' + selectedIssue.number + '` に変更をプッシュしました。PRは手動で作成してください。」と報告\n\n' +
               '## 注意事項\n' +
               '- 既存のコードベースの規約に従ってください\n' +
               '- CLAUDE.mdファイルの指示に従ってください\n' +
               '- セキュリティとパフォーマンスを考慮してください\n' +
-              '- 作業完了後は必ずPull Requestを作成してください';
+              '- 作業完了後は必ずPull Requestを作成、またはブランチにプッシュしてください';
             
             // コメントを投稿
             await github.rest.issues.createComment({
