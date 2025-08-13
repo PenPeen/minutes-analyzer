@@ -42,6 +42,7 @@ RSpec.describe GoogleDriveClient do
     end
 
     it 'creates OAuth and Drive service clients' do
+      client # trigger lazy loading
       expect(GoogleOAuthClient).to have_received(:new)
       expect(Google::Apis::DriveV3::DriveService).to have_received(:new)
     end

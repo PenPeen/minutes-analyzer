@@ -154,7 +154,7 @@ RSpec.describe SlackOptionsProvider do
       result = provider.send(:truncate_filename, filename, 10)
       
       expect(result.length).to eq(10)
-      expect(result).to eq('short.ver')
+      expect(result).to eq('short.very')
     end
 
     it 'handles Japanese characters correctly' do
