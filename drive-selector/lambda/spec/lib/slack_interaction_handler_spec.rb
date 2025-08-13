@@ -288,6 +288,72 @@ RSpec.describe SlackInteractionHandler do
     end
   end
 
+  describe '#handle_options_request' do
+    let(:options_payload) do
+      {
+        'type' => 'options',
+        'user' => { 'id' => user_id },
+        'value' => 'search query'
+      }
+    end
+
+    let(:mock_options_provider) { instance_double('SlackOptionsProvider') }
+
+    before do
+      allow_any_instance_of(described_class).to receive(:instance_variable_get).with(:@options_provider)
+        .and_return(mock_options_provider)
+    end
+
+    it 'calls options provider with correct parameters' do
+      expected_result = {
+        options: [
+          {
+            text: { type: 'plain_text', text: 'Test File.txt (2025/01/15 10:00)' },
+            value: 'file_123'
+          }
+        ]
+      }
+
+      allow(mock_options_provider).to receive(:provide_file_options)
+        .with(user_id, 'search query')
+        .and_return(expected_result)
+
+      result = handler.send(:handle_options_request, options_payload)
+
+      expect(result).to eq(expected_result)
+      expect(mock_options_provider).to have_received(:provide_file_options)
+        .with(user_id, 'search query')
+    end
+
+    it 'handles empty search query' do
+      payload_with_empty_query = options_payload.dup
+      payload_with_empty_query['value'] = ''
+
+      expected_result = { options: [] }
+      allow(mock_options_provider).to receive(:provide_file_options)
+        .with(user_id, '')
+        .and_return(expected_result)
+
+      result = handler.send(:handle_options_request, payload_with_empty_query)
+
+      expect(result).to eq(expected_result)
+    end
+
+    it 'handles missing value in payload' do
+      payload_without_value = options_payload.dup
+      payload_without_value.delete('value')
+
+      expected_result = { options: [] }
+      allow(mock_options_provider).to receive(:provide_file_options)
+        .with(user_id, '')
+        .and_return(expected_result)
+
+      result = handler.send(:handle_options_request, payload_without_value)
+
+      expect(result).to eq(expected_result)
+    end
+  end
+
   # Helper for deep duplication in tests
   class Hash
     def deep_dup

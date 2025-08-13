@@ -18,6 +18,9 @@ class GoogleDriveClient
   # ファイルを検索
   def search_files(query, limit = 20)
     return [] unless authorized?
+    
+    # 各検索で再試行フラグをリセット
+    @authorization_retried = false
 
     search_query = build_search_query(query)
     
@@ -81,8 +84,8 @@ class GoogleDriveClient
     auth = Signet::OAuth2::Client.new(
       access_token: access_token,
       token_credential_uri: 'https://oauth2.googleapis.com/token',
-      client_id: ENV['GOOGLE_CLIENT_ID'] || fetch_from_secrets('GOOGLE_CLIENT_ID'),
-      client_secret: ENV['GOOGLE_CLIENT_SECRET'] || fetch_from_secrets('GOOGLE_CLIENT_SECRET')
+      client_id: fetch_from_secrets('GOOGLE_CLIENT_ID') || ENV['GOOGLE_CLIENT_ID'],
+      client_secret: fetch_from_secrets('GOOGLE_CLIENT_SECRET') || ENV['GOOGLE_CLIENT_SECRET']
     )
     auth
   end
@@ -94,21 +97,22 @@ class GoogleDriveClient
 
     if tokens[:refresh_token]
       new_tokens = @oauth_client.refresh_access_token(tokens[:refresh_token])
-      @oauth_client.save_tokens(@slack_user_id, new_tokens)
-      setup_authorization
+      if new_tokens && new_tokens[:access_token]
+        @oauth_client.save_tokens(@slack_user_id, new_tokens)
+        setup_authorization
+      else
+        puts "Failed to refresh tokens for user #{@slack_user_id}"
+      end
     end
   end
 
   # 再試行（1回のみ）
   def retry_search_files(query, limit)
-    @retry_count ||= 0
-    @retry_count += 1
+    # 既に再試行済みの場合は空配列を返す
+    return [] if @authorization_retried
     
-    if @retry_count <= 1
-      search_files(query, limit)
-    else
-      []
-    end
+    @authorization_retried = true
+    search_files(query, limit)
   end
 
   # 検索クエリを構築
@@ -146,8 +150,8 @@ class GoogleDriveClient
 
   # クエリのエスケープ
   def escape_query(query)
-    # シングルクォートをエスケープ
-    query.gsub("'", "\\'")
+    # バックスラッシュとクォートを適切にエスケープ
+    query.gsub('\\', '\\\\').gsub("'", "\\'")
   end
 
   # 検索結果をフォーマット
