@@ -196,6 +196,7 @@ RSpec.describe LambdaHandler do
         })
         allow(meeting_processor).to receive(:process_transcript).and_return(mapping_result)
         allow(meeting_processor).to receive(:get_statistics).and_return({})
+        allow(s3_client).to receive(:get_verification_prompt).and_return("Test verification prompt template")
       end
       
       after do
@@ -278,7 +279,7 @@ RSpec.describe LambdaHandler do
         verification_prompt = handler.send(:build_verification_prompt, file_content, summary)
         
         expect(verification_prompt).to include(verification_template)
-        expect(verification_prompt).to include('"original_transcript": "meeting transcript"')
+        expect(verification_prompt).to include('"original_transcript": "2025年1月15日')
         expect(verification_prompt).to include('"initial_analysis":')
         expect(verification_prompt).to include('# 検証対象データ')
         expect(verification_prompt).to include('```json')
