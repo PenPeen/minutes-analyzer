@@ -2,10 +2,13 @@
 
 require 'json'
 require_relative 'google_oauth_client'
+require_relative 'slack_api_client'
+require_relative 'slack_modal_builder'
 
 class SlackCommandHandler
   def initialize
     @oauth_client = GoogleOAuthClient.new
+    @slack_client = SlackApiClient.new
   end
 
   # Slackコマンドを処理
@@ -49,15 +52,33 @@ class SlackCommandHandler
   def handle_meet_transcript(user_id, team_id, trigger_id)
     # ユーザーが認証済みか確認
     if @oauth_client.authenticated?(user_id)
-      # 認証済みの場合、成功レスポンスを返す（T-04でモーダル実装）
-      body_content = create_success_response
-      create_http_response(200, body_content)
+      # 認証済みの場合、モーダルを開く
+      open_file_selector_modal(trigger_id)
     else
       # 未認証の場合、認証URLを返す
       auth_url = @oauth_client.generate_auth_url(user_id)
       body_content = create_auth_required_response(auth_url)
       create_http_response(200, body_content)
     end
+  end
+
+  # ファイル選択モーダルを開く
+  def open_file_selector_modal(trigger_id)
+    # モーダルを構築
+    modal = SlackModalBuilder.file_selector_modal
+    
+    # 非同期でモーダルを開く（別スレッドで実行）
+    Thread.new do
+      begin
+        @slack_client.open_modal(trigger_id, modal)
+      rescue => e
+        puts "Failed to open modal: #{e.message}"
+      end
+    end
+    
+    # 3秒以内にACKレスポンスを返す（成功メッセージ付き）
+    body_content = create_success_response
+    create_http_response(200, body_content)
   end
 
   # 認証が必要な場合のレスポンス
