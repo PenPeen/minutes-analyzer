@@ -11,7 +11,10 @@ class SlackInteractionHandler
   def handle_interaction(payload)
     # ユーザー情報の検証
     user = payload['user']
-    return create_error_response('ユーザー情報が不足しています', 400) unless user && user['id']
+    unless user && user['id']
+      body_content = create_error_response('ユーザー情報が不足しています', 400)
+      return create_http_response(400, body_content)
+    end
     
     user_id = user['id']
     type = payload['type']
@@ -23,19 +26,26 @@ class SlackInteractionHandler
       when 'interactive_message'
         # ボタンクリック等の処理
         actions = payload['actions'] || []
-        process_button_click(actions, user_id)
+        body_content = process_button_click(actions, user_id)
+        create_http_response(200, body_content)
       when 'view_submission'
         # モーダル送信の処理
         view_state = payload['view']['state'] rescue nil
-        return create_error_response('無効なモーダルデータです', 400) unless view_state
+        unless view_state
+          body_content = create_error_response('無効なモーダルデータです', 400)
+          return create_http_response(400, body_content)
+        end
         
-        process_modal_submission(view_state, user_id)
+        body_content = process_modal_submission(view_state, user_id)
+        create_http_response(200, body_content)
       else
-        create_error_response("サポートされていないインタラクションタイプ: #{type}", 400)
+        body_content = create_error_response("サポートされていないインタラクションタイプ: #{type}", 400)
+        create_http_response(400, body_content)
       end
     rescue => e
       puts "Error processing interaction: #{e.message}"
-      create_error_response('処理中にエラーが発生しました', 500)
+      body_content = create_error_response('処理中にエラーが発生しました', 500)
+      create_http_response(500, body_content)
     end
   end
 
@@ -119,6 +129,15 @@ class SlackInteractionHandler
     {
       'response_type' => 'ephemeral',
       'text' => message
+    }
+  end
+
+  # HTTPレスポンス作成
+  def create_http_response(status_code, body_content)
+    {
+      statusCode: status_code,
+      headers: { 'Content-Type' => 'application/json' },
+      body: JSON.generate(body_content)
     }
   end
 end

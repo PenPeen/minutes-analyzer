@@ -100,7 +100,7 @@ class OAuthCallbackHandler
       {
         statusCode: 200,
         headers: {
-          'Content-Type': 'text/html; charset=utf-8'
+          'Content-Type' => 'text/html; charset=utf-8'
         },
         body: success_html
       }

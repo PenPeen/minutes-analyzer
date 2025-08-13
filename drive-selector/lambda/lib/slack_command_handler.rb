@@ -10,7 +10,10 @@ class SlackCommandHandler
 
   # Slackコマンドを処理
   def handle_command(params)
-    return create_error_response('必要なパラメータが不足しています', 400) unless validate_required_params(params)
+    unless validate_required_params(params)
+      body_content = create_error_response('必要なパラメータが不足しています', 400)
+      return create_http_response(400, body_content)
+    end
     
     command = params['command']
     user_id = params['user_id']

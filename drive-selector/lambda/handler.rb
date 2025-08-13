@@ -91,7 +91,7 @@ end
 def health_check
   {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
       status: 'healthy',
       timestamp: Time.now.iso8601
@@ -184,7 +184,7 @@ end
 def error_response(message)
   {
     statusCode: 500,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
       error: 'Internal Server Error',
       message: message

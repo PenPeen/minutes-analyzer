@@ -23,52 +23,59 @@ RSpec.describe SlackRequestValidator do
 
     context 'with valid request' do
       it 'returns true for valid signature and timestamp' do
-        expect(validator.valid_request?(headers, body)).to be true
+        expect(validator.valid_request?(body, headers)).to be true
       end
     end
 
     context 'with invalid signature' do
       it 'returns false for incorrect signature' do
         headers['x-slack-signature'] = 'v0=invalid_signature'
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
 
       it 'returns false for missing signature' do
         headers.delete('x-slack-signature')
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
 
       it 'returns false for signature with wrong version' do
         headers['x-slack-signature'] = 'v1=' + valid_signature.split('=', 2)[1]
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
     end
 
     context 'with invalid timestamp' do
       it 'returns false for missing timestamp' do
         headers.delete('x-slack-request-timestamp')
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
 
       it 'returns false for old timestamp (> 5 minutes)' do
         old_timestamp = (Time.now - 301).to_i
         headers['x-slack-request-timestamp'] = old_timestamp.to_s
         headers['x-slack-signature'] = create_slack_signature(old_timestamp, body, signing_secret)
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
 
       it 'returns false for future timestamp (> 5 minutes)' do
         future_timestamp = (Time.now + 301).to_i
         headers['x-slack-request-timestamp'] = future_timestamp.to_s
         headers['x-slack-signature'] = create_slack_signature(future_timestamp, body, signing_secret)
-        expect(validator.valid_request?(headers, body)).to be false
+        expect(validator.valid_request?(body, headers)).to be false
       end
     end
 
     context 'with missing signing secret' do
       it 'returns false when SLACK_SIGNING_SECRET is not set' do
         ENV.delete('SLACK_SIGNING_SECRET')
-        expect(validator.valid_request?(headers, body)).to be false
+        
+        # Mock AWS Secrets Manager to fail
+        secrets_client = instance_double(Aws::SecretsManager::Client)
+        allow(Aws::SecretsManager::Client).to receive(:new).and_return(secrets_client)
+        allow(secrets_client).to receive(:get_secret_value).and_raise(StandardError.new("No credentials"))
+        
+        # Should raise an exception when trying to create validator
+        expect { described_class.new }.to raise_error(/Signing secret not available/)
       end
     end
   end
