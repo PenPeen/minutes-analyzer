@@ -23,9 +23,9 @@ variable "aws_region" {
 
 # API Gateway configuration
 variable "api_gateway_domain" {
-  description = "Custom domain for API Gateway (optional)"
+  description = "Custom domain for API Gateway (required for production)"
   type        = string
-  default     = ""
+  default     = null
 }
 
 # Lambda configuration
