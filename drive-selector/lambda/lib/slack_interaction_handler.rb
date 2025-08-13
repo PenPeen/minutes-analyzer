@@ -150,41 +150,6 @@ class SlackInteractionHandler
     
     # 新しい処理に委譲
     process_modal_submission(values, user['id'])
-    
-    # 選択されたファイル情報をログ出力
-    puts "Selected file: #{file_info[:file_id]}"
-    puts "File name: #{file_info[:file_name]}"
-    puts "Custom filename: #{file_info[:custom_filename] || '(none)'}"
-    
-    # T-06で既存Lambda連携を実装予定
-    create_success_response
-  end
-
-  # モーダルから選択されたファイル情報を抽出
-  def extract_selected_file(values)
-    return nil unless values
-    
-    file_select_data = values.dig('file_select_block', 'file_select', 'selected_option')
-    return nil unless file_select_data
-    
-    custom_filename = values.dig('filename_block', 'filename_override', 'value')
-    custom_filename = nil if custom_filename && custom_filename.empty?
-    
-    {
-      file_id: file_select_data['value'],
-      file_name: file_select_data.dig('text', 'text'),
-      custom_filename: custom_filename
-    }
-  rescue
-    nil
-  end
-
-  # バリデーションエラーレスポンス
-  def create_validation_error(errors)
-    {
-      'response_action' => 'errors',
-      'errors' => errors
-    }
   end
 
   # バリデーションエラーレスポンス
@@ -216,23 +181,20 @@ class SlackInteractionHandler
       statusCode: 200,
       headers: { 'Content-Type' => 'application/json' },
       body: ''
-  end
-    
-  # 成功レスポンス
-  def create_success_response
-    {
-      'response_action' => 'clear'
     }
   end
 
-  # エラーレスポンス
-  def create_error_response(message, status_code)
+  # options リクエストを処理
+  def handle_options_request(payload)
+    # T-05で実装予定：Google Drive検索のためのexternal_selectオプション提供
     {
-      statusCode: 200,
-      headers: { 'Content-Type' => 'application/json' },
-      body: JSON.generate({}),
-      'response_type' => 'ephemeral',
-      'text' => message
+      'options' => []
     }
+  end
+
+  # モーダルを閉じた時の処理
+  def handle_view_closed(payload)
+    # 特に処理は不要
+    ack_response
   end
 end
