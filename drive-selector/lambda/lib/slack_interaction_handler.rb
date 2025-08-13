@@ -40,7 +40,8 @@ class SlackInteractionHandler
           return create_http_response(400, body_content)
         end
         
-        process_modal_submission(view_state, user_id)
+        body_content = process_modal_submission(view_state, user_id)
+        create_http_response(200, body_content)
       when 'block_actions'
         handle_block_action(payload)
       when 'view_closed'
