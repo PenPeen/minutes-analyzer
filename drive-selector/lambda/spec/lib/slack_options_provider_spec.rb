@@ -161,8 +161,9 @@ RSpec.describe SlackOptionsProvider do
       japanese_filename = '議事録_プロジェクト会議_詳細な内容を含むファイル.txt'
       result = provider.send(:truncate_filename, japanese_filename, 30)
       
-      expect(result.length).to eq(30)
-      expect(result).to end_with('....txt')
+      # Japanese filename is 29 chars, less than max_length 30, so no truncation
+      expect(result.length).to eq(29)
+      expect(result).to eq(japanese_filename)
     end
   end
 
