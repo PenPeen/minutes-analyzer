@@ -49,7 +49,9 @@ class SlackInteractionHandler
       when 'view_closed'
         handle_view_closed(payload)
       when 'options'
-        handle_options_request(payload)
+        # T-05で実装予定：Google Drive検索のためのexternal_selectオプション提供
+        body_content = handle_options_request(payload)
+        create_http_response(200, body_content)
       else
         body_content = create_error_response("サポートされていないインタラクションタイプ: #{type}", 400)
         create_http_response(400, body_content)
@@ -187,13 +189,7 @@ class SlackInteractionHandler
     }
   end
 
-  # モーダルが閉じられた時の処理
-  def handle_view_closed(payload)
-    # 特に処理は不要、ACKレスポンスのみ
-    ack_response
-  end
-
-  # external_selectのオプションリクエストを処理
+  # options リクエストを処理
   def handle_options_request(payload)
     # ユーザーIDと検索クエリを取得
     user_id = payload['user']['id']
@@ -202,11 +198,13 @@ class SlackInteractionHandler
     # Google Drive検索を実行
     result = @options_provider.provide_file_options(user_id, value)
     
-    {
-      statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.generate(result)
-    }
+    result
+  end
+
+  # モーダルを閉じた時の処理
+  def handle_view_closed(payload)
+    # 特に処理は不要
+    ack_response
   end
 
   # エラーレスポンス
