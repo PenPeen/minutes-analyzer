@@ -31,33 +31,22 @@ setup: ## 初期セットアップを実行
 	fi
 	@echo "✅ セットアップが完了しました"
 
-# Lambda関数のビルド
+# Lambda関数のビルド（analyzerのMakefileに準拠）
 build: ## Lambda関数のデプロイパッケージをビルド
-	@echo "🚀 Lambda関数をビルド中..."
-	@$(MAKE) clean-build
-	@echo "📦 ビルドディレクトリ作成中..."
-	@mkdir -p $(BUILD_DIR)
-	@echo "📁 Lambda関数コードをコピー中..."
-	@cp -r $(LAMBDA_DIR)/* $(BUILD_DIR)/
-	@echo "📦 Ruby依存関係をインストール中（Lambda互換環境）..."
-	@if [ -f "$(BUILD_DIR)/Gemfile" ]; then \
-		docker run --rm \
-			-v "$(PWD)/$(BUILD_DIR)":/var/task \
-			-w /var/task \
-			public.ecr.aws/lambda/ruby:3.2 \
-			bash -c "bundle config set --local path 'vendor/bundle' && \
-			         bundle config set --local without 'development test' && \
-			         bundle install && \
-			         rm -rf vendor/bundle/ruby/*/cache"; \
-	fi
-	@echo "📦 デプロイパッケージ作成中..."
-	@cd $(BUILD_DIR) && zip -r ../$(OUTPUT_FILE) . -x "*.git*" "spec/*" "*.md" "Gemfile.lock"
-	@$(MAKE) clean-build
-	@echo "✅ ビルド完了! Output: $(OUTPUT_FILE)"
-	@echo "📊 Package size: $$(du -h $(OUTPUT_FILE) | cut -f1)"
-	@SIZE_IN_MB=$$(du -m $(OUTPUT_FILE) | cut -f1); \
-	if [ $$SIZE_IN_MB -gt 50 ]; then \
-		echo "⚠️  Warning: Package size exceeds 50MB. Consider using Lambda Layers for dependencies."; \
+	@echo "🔨 Lambda関数をビルド中..."
+	@mkdir -p infrastructure/modules/lambda
+	@docker compose run --rm ruby-lambda-builder
+	@if [ -f infrastructure/modules/lambda/lambda.zip ]; then \
+		cp infrastructure/modules/lambda/lambda.zip $(OUTPUT_FILE); \
+		echo "✅ Lambda関数のビルドが完了しました"; \
+		echo "📊 Package size: $$(du -h $(OUTPUT_FILE) | cut -f1)"; \
+		SIZE_IN_MB=$$(du -m $(OUTPUT_FILE) | cut -f1); \
+		if [ $$SIZE_IN_MB -gt 50 ]; then \
+			echo "⚠️  Warning: Package size exceeds 50MB. Consider using Lambda Layers for dependencies."; \
+		fi; \
+	else \
+		echo "❌ ビルドに失敗しました"; \
+		exit 1; \
 	fi
 
 # テスト実行

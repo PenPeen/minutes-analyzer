@@ -2,7 +2,7 @@
 
 ## 概要
 - 目的: Slack上でGoogle Driveファイル（Meet文字起こし）を検索・選択し、既存の議事録分析Lambdaへ起動リクエストを送る機能を実装する
-- 成功基準: ユーザーが /meet-transcript コマンドでDriveファイルを検索・選択し、分析処理を開始できる
+- 成功基準: ユーザーが /meeting-analyzer コマンドでDriveファイルを検索・選択し、分析処理を開始できる
 - スコープ: Slackアプリ設定/Controller Lambda実装/API Gateway設定/Google OAuth認証/既存Lambda連携
 - 非スコープ: ユーザーOAuth認証対応, Meet Recordings配下の絞り込み, 完了通知機能
 - 実装場所: drive-selectorディレクトリ内（analyzerとは独立したマイクロサービスとして実装）
@@ -12,7 +12,7 @@
   - 概要: 既存のSlack Appにcommands、users:read.emailスコープを追加し、Slash CommandとInteractivityを設定
   - 受け入れ条件:
     - 既存のSLACK_BOT_TOKENにcommands、users:read.emailスコープが追加されている（完了）
-    - /meet-transcript コマンドが登録されている
+    - /meeting-analyzer コマンドが登録されている
     - Interactivity機能が有効化されている
     - 設定手順がドキュメント化されている
   - 依存関係: なし
@@ -39,7 +39,7 @@
   - ブランチ: feature/controller-lambda-base
 
 - T-04: モーダルUI実装
-  - 概要: /meet-transcript コマンドでモーダルを表示し、external_select検索UIを実装
+  - 概要: /meeting-analyzer コマンドでモーダルを表示し、external_select検索UIを実装
   - 受け入れ条件:
     - views.openでモーダルが表示される
     - external_selectでDrive検索フィールドが表示される
