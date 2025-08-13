@@ -24,6 +24,12 @@ analyzer/lambda/vendor/
 analyzer/lambda/.bundle/
 analyzer/lambda/vendor/bundle/.timestamp
 
+# drive-selector Lambda関数ビルド成果物
+drive-selector/lambda/vendor/
+drive-selector/lambda/.bundle/
+drive-selector/lambda/lib/
+drive-selector/build/
+
 # LocalStack
 analyzer/infrastructure/volume/
 analyzer/infrastructure/infrastructure/volume/
@@ -48,6 +54,7 @@ coverage/
 /.bundle/
 /Gemfile.lock
 analyzer/lambda/Gemfile.lock
+drive-selector/lambda/Gemfile.lock
 
 # Node.js (GAS開発時)
 node_modules/

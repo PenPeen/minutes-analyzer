@@ -27,8 +27,8 @@ class SlackCommandHandler
     
     begin
       case command
-      when '/meet-transcript'
-        handle_meet_transcript(user_id, team_id, trigger_id)
+      when '/meeting-analyzer'
+        handle_meeting_analyzer(user_id, team_id, trigger_id)
       else
         unknown_command_response(command)
       end
@@ -48,8 +48,8 @@ class SlackCommandHandler
     ['user_id', 'command'].all? { |key| params[key] && !params[key].empty? }
   end
 
-  # /meet-transcript コマンドを処理
-  def handle_meet_transcript(user_id, team_id, trigger_id)
+  # /meeting-analyzer コマンドを処理
+  def handle_meeting_analyzer(user_id, team_id, trigger_id)
     # ユーザーが認証済みか確認
     if @oauth_client.authenticated?(user_id)
       # 認証済みの場合、モーダルを開く

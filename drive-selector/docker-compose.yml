@@ -1,0 +1,15 @@
+services:
+  ruby-lambda-builder:
+    build:
+      context: ./infrastructure/docker/ruby-lambda-builder
+      dockerfile: Dockerfile
+    platform: linux/amd64  # Lambda環境に合わせてx86_64を指定
+    volumes:
+      - ./lambda:/var/task
+      - ./infrastructure/modules/lambda:/output
+      - bundle_cache:/var/task/.bundle
+    working_dir: /var/task
+
+volumes:
+  bundle_cache:
+    driver: local
