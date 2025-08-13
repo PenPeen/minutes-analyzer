@@ -109,6 +109,8 @@ class SlackApiClient
     request.body = params.to_json
     
     response = Net::HTTP.start(uri.hostname, uri.port, use_ssl: true) do |http|
+      http.read_timeout = 30
+      http.open_timeout = 10
       http.request(request)
     end
     
