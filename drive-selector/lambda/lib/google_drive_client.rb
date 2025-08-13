@@ -88,8 +88,13 @@ class GoogleDriveClient
 
   # クエリのエスケープ（public for testing）
   def escape_query(query)
-    # バックスラッシュとクォートを適切にエスケープ
-    query.gsub('\\', '\\\\').gsub("'", "\\'")
+    return query if query.nil? || query.empty?
+    
+    # Step by step escaping to avoid issues
+    result = query.dup
+    result = result.gsub('\\', '\\\\')  # Escape backslashes first
+    result = result.gsub("'", "\\'")   # Then escape single quotes
+    result
   end
 
   private
