@@ -67,6 +67,12 @@ class GoogleDriveClient
     @oauth_client.authenticated?(@slack_user_id)
   end
 
+  # クエリのエスケープ（public for testing）
+  def escape_query(query)
+    # バックスラッシュとクォートを適切にエスケープ
+    query.gsub('\\', '\\\\').gsub("'", "\\'")
+  end
+
   private
 
   # 認証設定
@@ -146,12 +152,6 @@ class GoogleDriveClient
     end
     
     conditions.join(" and ")
-  end
-
-  # クエリのエスケープ
-  def escape_query(query)
-    # バックスラッシュとクォートを適切にエスケープ
-    query.gsub('\\', '\\\\').gsub("'", "\\'")
   end
 
   # 検索結果をフォーマット

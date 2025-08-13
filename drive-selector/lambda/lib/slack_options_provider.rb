@@ -108,10 +108,11 @@ class SlackOptionsProvider
       if extension.length >= max_length
         filename[0...max_length]
       else
-        truncated_length = max_length - extension.length - 4 # "..." + "." の分
+        # "...." (4文字) + extension を考慮
+        available_length = max_length - extension.length - 4
         
-        if truncated_length > 0
-          "#{name_without_ext[0...truncated_length]}...#{extension}"
+        if available_length > 0
+          "#{name_without_ext[0...available_length]}....#{extension}"
         else
           filename[0...max_length]
         end
