@@ -27,7 +27,7 @@ RSpec.describe SlackOptionsProvider do
           },
           {
             id: 'file2',
-            name: '議事録_プロジェクト会議_とても長いファイル名でテストするためのサンプルファイル.pdf',
+            name: '議事録_プロジェクト会議_とても長いファイル名でテストするためのサンプルファイルであり非常に長いファイル名の例です.pdf',
             mime_type: 'application/pdf',
             modified_time: '2025-01-14T15:45:00Z',
             owner: 'Jane Smith',
