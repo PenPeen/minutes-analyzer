@@ -48,6 +48,7 @@ RSpec.describe LambdaHandler do
         allow(gemini_client).to receive(:analyze_meeting).and_return(summary)
         allow(GoogleDriveClient).to receive(:new).and_return(google_drive_client)
         allow(google_drive_client).to receive(:get_file_content).and_return(file_content)
+        allow(s3_client).to receive(:get_verification_prompt).and_return("Test verification prompt template")
       end
 
       context 'Slack Bot Tokenが設定されていない場合' do
@@ -261,10 +262,10 @@ RSpec.describe LambdaHandler do
         result = handler.handle(event: event, context: context)
 
         expect(result[:statusCode]).to eq(200)
-        # 1回目：標準分析
-        expect(gemini_client).to have_received(:analyze_meeting).with(file_content)
-        # 2回目：検証分析（プロンプトが構築される）
-        expect(gemini_client).to have_received(:analyze_meeting).with(kind_of(String))
+        # 1回目：標準分析（元のfile_content）
+        expect(gemini_client).to have_received(:analyze_meeting).with(file_content).once
+        # 2回目：検証分析（検証プロンプト）
+        expect(gemini_client).to have_received(:analyze_meeting).with(kind_of(String)).twice
         # S3から検証プロンプトが取得される
         expect(s3_client).to have_received(:get_verification_prompt)
       end
@@ -277,9 +278,10 @@ RSpec.describe LambdaHandler do
         verification_prompt = handler.send(:build_verification_prompt, file_content, summary)
         
         expect(verification_prompt).to include(verification_template)
-        expect(verification_prompt).to include(file_content)
-        expect(verification_prompt).to include(summary['meeting_summary']['title'])
+        expect(verification_prompt).to include('"original_transcript": "meeting transcript"')
+        expect(verification_prompt).to include('"initial_analysis":')
         expect(verification_prompt).to include('# 検証対象データ')
+        expect(verification_prompt).to include('```json')
       end
 
       context 'Google認証情報が不足している場合' do
