@@ -189,6 +189,23 @@ class SlackInteractionHandler
     }
   end
 
+  # エラーレスポンス
+  def create_error_response(message, status_code)
+    {
+      'response_type' => 'ephemeral',
+      'text' => message
+    }
+  end
+
+  # ACKレスポンス
+  def ack_response
+    {
+      statusCode: 200,
+      headers: { 'Content-Type' => 'application/json' },
+      body: ''
+    }
+  end
+
   # options リクエストを処理
   def handle_options_request(payload)
     # ユーザーIDと検索クエリを取得
@@ -205,23 +222,6 @@ class SlackInteractionHandler
   def handle_view_closed(payload)
     # 特に処理は不要
     ack_response
-  end
-
-  # エラーレスポンス
-  def create_error_response(message, status_code)
-    {
-      'response_type' => 'ephemeral',
-      'text' => message
-    }
-  end
-
-  # ACKレスポンス
-  def ack_response
-    {
-      statusCode: 200,
-      headers: { 'Content-Type' => 'application/json' },
-      body: ''
-    }
   end
 
   # HTTPレスポンス作成
