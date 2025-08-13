@@ -78,3 +78,12 @@ def create_mock_lambda_event(path:, method: 'POST', body: '', headers: {})
     'pathParameters' => nil
   }
 end
+
+# Add deep_dup method for test support
+class Hash
+  def deep_dup
+    each_with_object({}) do |(key, value), hash|
+      hash[key] = value.is_a?(Hash) ? value.deep_dup : value.dup rescue value
+    end
+  end
+end

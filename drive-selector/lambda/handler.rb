@@ -5,7 +5,7 @@ require 'base64'
 require_relative 'lib/slack_request_validator'
 require_relative 'lib/slack_command_handler'
 require_relative 'lib/slack_interaction_handler'
-# require_relative 'lib/oauth_callback_handler'  # T-05で実装予定
+require_relative 'lib/oauth_callback_handler'
 
 # Lambda関数のメインエントリーポイント
 def lambda_handler(event:, context:)
@@ -45,7 +45,7 @@ def handle_slack_command(event)
   
   # Slack署名を検証
   validator = SlackRequestValidator.new
-  unless validator.valid_request?(headers, body)
+  unless validator.valid_request?(body, headers)
     return unauthorized_response('Invalid Slack signature')
   end
   
@@ -64,7 +64,7 @@ def handle_slack_interaction(event)
   
   # Slack署名を検証
   validator = SlackRequestValidator.new
-  unless validator.valid_request?(headers, body)
+  unless validator.valid_request?(body, headers)
     return unauthorized_response('Invalid Slack signature')
   end
   
@@ -83,21 +83,15 @@ end
 
 # OAuthコールバックを処理
 def handle_oauth_callback(event)
-  # GET /oauth/callbackのプレースホルダー実装（T-05で完全実装）
-  {
-    statusCode: 200,
-    headers: { 'Content-Type' => 'application/json' },
-    body: JSON.generate({
-      message: 'OAuth callback - implementation pending'
-    })
-  }
+  handler = OAuthCallbackHandler.new
+  handler.handle_callback(event)
 end
 
 # ヘルスチェック
 def health_check
   {
     statusCode: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
       status: 'healthy',
       timestamp: Time.now.iso8601
@@ -190,7 +184,7 @@ end
 def error_response(message)
   {
     statusCode: 500,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type' => 'application/json' },
     body: JSON.generate({
       error: 'Internal Server Error',
       message: message

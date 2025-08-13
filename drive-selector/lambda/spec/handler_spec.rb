@@ -12,11 +12,17 @@ RSpec.describe 'lambda_handler' do
     allow_any_instance_of(SlackRequestValidator).to receive(:valid_request?).and_return(true)
     allow_any_instance_of(SlackCommandHandler).to receive(:handle_command).and_return({
       statusCode: 200,
+      headers: { 'Content-Type' => 'application/json' },
       body: JSON.generate({ text: 'Command handled successfully' })
     })
     allow_any_instance_of(SlackInteractionHandler).to receive(:handle_interaction).and_return({
       statusCode: 200,
       body: JSON.generate({ text: 'Interaction handled successfully' })
+    })
+    allow_any_instance_of(OAuthCallbackHandler).to receive(:handle_callback).and_return({
+      statusCode: 200,
+      headers: { 'Content-Type' => 'application/json' },
+      body: JSON.generate({ message: 'OAuth callback - implementation pending' })
     })
   end
 
@@ -108,7 +114,8 @@ RSpec.describe 'lambda_handler' do
         expect(response[:statusCode]).to eq(200)
         response_body = JSON.parse(response[:body])
         expect(response_body['status']).to eq('healthy')
-        expect(response_body['timestamp']).to be_present
+        expect(response_body['timestamp']).to be_a(String)
+        expect(response_body['timestamp']).not_to be_empty
       end
     end
 

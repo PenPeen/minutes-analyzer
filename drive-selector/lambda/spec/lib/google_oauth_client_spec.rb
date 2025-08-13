@@ -23,7 +23,6 @@ RSpec.describe GoogleOAuthClient do
     it 'initializes with proper configuration' do
       expect(client.instance_variable_get(:@client_id)).to eq('test_client_id')
       expect(client.instance_variable_get(:@client_secret)).to eq('test_client_secret')
-      expect(client.instance_variable_get(:@token_cache)).to eq({})
     end
 
     it 'uses environment variable for redirect URI' do

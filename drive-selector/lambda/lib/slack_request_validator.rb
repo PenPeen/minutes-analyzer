@@ -23,6 +23,11 @@ class SlackRequestValidator
     return false unless valid_timestamp?(timestamp)
     
     # 署名を検証
+    valid_signature?(signature, timestamp, body)
+  end
+
+  # 署名の有効性を確認
+  def valid_signature?(signature, timestamp, body)
     expected_signature = calculate_signature(timestamp, body)
     secure_compare(signature, expected_signature)
   end
