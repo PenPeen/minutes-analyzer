@@ -6,10 +6,12 @@ require_relative 'environment_config'
 require_relative 'user_mapping_service'
 require_relative 'integration_service'
 require_relative 'response_builder'
+require_relative 's3_client'
 require 'logger'
+require 'json'
 
 class LambdaHandler
-  def initialize(logger: nil, secrets_manager: nil, gemini_client: nil, meeting_processor: nil)
+  def initialize(logger: nil, secrets_manager: nil, gemini_client: nil, meeting_processor: nil, s3_client: nil)
     @logger = logger || Logger.new($stdout)
     @logger.level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
     @secrets_manager = secrets_manager || SecretsManager.new(@logger)
@@ -20,6 +22,7 @@ class LambdaHandler
     @validator = RequestValidator.new(@logger)
     @user_mapping_service = UserMappingService.new(@logger, @config)
     @integration_service = IntegrationService.new(@logger)
+    @s3_client = s3_client || S3Client.new(@logger, @environment)
     
     # 後方互換性のため（テスト用）
     if meeting_processor
@@ -106,16 +109,38 @@ class LambdaHandler
     api_key = secrets['GEMINI_API_KEY']
     gemini_client = @gemini_client || GeminiClient.new(api_key, @logger, nil, @environment)
     
-    # 精度向上のためGemini Clientを2回実行
-    @logger.info("Starting first Gemini API analysis call...")
-    first_analysis_result = gemini_client.analyze_meeting(input_text)
-    @logger.info("Successfully received first analysis from Gemini API.")
+    # 1回目：標準分析
+    @logger.info("Starting first Gemini API analysis call (standard analysis)...")
+    standard_result = gemini_client.analyze_meeting(input_text)
+    @logger.info("Successfully received standard analysis from Gemini API.")
 
-    @logger.info("Starting second Gemini API analysis call for improved accuracy...")
-    final_analysis_result = gemini_client.analyze_meeting(input_text)
-    @logger.info("Successfully received second analysis from Gemini API.")
+    # 2回目：検証・精査分析
+    @logger.info("Starting second Gemini API analysis call (verification analysis)...")
+    verification_prompt = build_verification_prompt(input_text, standard_result)
+    verified_result = gemini_client.analyze_meeting(verification_prompt)
+    @logger.info("Successfully received verification analysis from Gemini API.")
 
-    @logger.info("Completed double Gemini Client execution for improved accuracy.")
-    final_analysis_result
+    @logger.info("Completed 2-phase Gemini analysis for improved accuracy.")
+    verified_result
+  end
+
+  def build_verification_prompt(original_transcript, initial_analysis)
+    @logger.info("Building verification prompt from standard analysis result...")
+    
+    begin
+      verification_prompt_template = @s3_client.get_verification_prompt
+      
+      verification_data = {
+        "original_transcript" => original_transcript,
+        "initial_analysis" => initial_analysis
+      }
+      
+      # テンプレートの末尾に検証データを JSON 形式で追加
+      "#{verification_prompt_template}\n\n# 検証対象データ\n```json\n#{JSON.pretty_generate(verification_data)}\n```"
+      
+    rescue StandardError => e
+      @logger.error("Failed to build verification prompt: #{e.message}")
+      raise "Unable to build verification prompt: #{e.message}"
+    end
   end
 end

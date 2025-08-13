@@ -8,9 +8,10 @@ RSpec.describe LambdaHandler do
   let(:secrets_manager) { instance_double(SecretsManager) }
   let(:gemini_client) { instance_double(GeminiClient) }
   let(:google_drive_client) { instance_double(GoogleDriveClient) }
+  let(:s3_client) { instance_double(S3Client) }
   let(:context) { double(aws_request_id: 'test-request-id') }
   let(:meeting_processor) { instance_double(MeetingTranscriptProcessor) }
-  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client, meeting_processor: meeting_processor) }
+  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client, meeting_processor: meeting_processor, s3_client: s3_client) }
 
   before do
     allow(logger).to receive(:level=)
@@ -240,7 +241,12 @@ RSpec.describe LambdaHandler do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
         allow(GoogleDriveClient).to receive(:new).with(google_credentials, logger).and_return(google_drive_client)
         allow(google_drive_client).to receive(:get_file_content).with(file_id).and_return(file_content)
+        allow(s3_client).to receive(:get_verification_prompt).and_return('Verification prompt template')
+        
+        # 1回目の呼び出し（標準分析）
         allow(gemini_client).to receive(:analyze_meeting).with(file_content).and_return(summary)
+        # 2回目の呼び出し（検証分析）
+        allow(gemini_client).to receive(:analyze_meeting).with(kind_of(String)).and_return(summary)
       end
 
       it 'ファイルを取得して分析を実行' do
@@ -248,15 +254,32 @@ RSpec.describe LambdaHandler do
 
         expect(result[:statusCode]).to eq(200)
         expect(google_drive_client).to have_received(:get_file_content).with(file_id)
-        expect(gemini_client).to have_received(:analyze_meeting).with(file_content).twice
+        expect(gemini_client).to have_received(:analyze_meeting).twice
       end
 
-      it 'Gemini Clientを2回実行して精度を向上させる' do
+      it 'Gemini Clientを2回実行して精度を向上させる（プロンプト工学アプローチ）' do
         result = handler.handle(event: event, context: context)
 
         expect(result[:statusCode]).to eq(200)
-        # Gemini Clientが2回呼び出されることを検証
-        expect(gemini_client).to have_received(:analyze_meeting).with(file_content).twice
+        # 1回目：標準分析
+        expect(gemini_client).to have_received(:analyze_meeting).with(file_content)
+        # 2回目：検証分析（プロンプトが構築される）
+        expect(gemini_client).to have_received(:analyze_meeting).with(kind_of(String))
+        # S3から検証プロンプトが取得される
+        expect(s3_client).to have_received(:get_verification_prompt)
+      end
+
+      it '検証プロンプトが正しく構築される' do
+        verification_template = 'Test verification prompt template'
+        allow(s3_client).to receive(:get_verification_prompt).and_return(verification_template)
+        
+        # build_verification_prompt メソッドを直接テスト
+        verification_prompt = handler.send(:build_verification_prompt, file_content, summary)
+        
+        expect(verification_prompt).to include(verification_template)
+        expect(verification_prompt).to include(file_content)
+        expect(verification_prompt).to include(summary['meeting_summary']['title'])
+        expect(verification_prompt).to include('# 検証対象データ')
       end
 
       context 'Google認証情報が不足している場合' do
