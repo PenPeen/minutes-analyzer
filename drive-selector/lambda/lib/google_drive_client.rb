@@ -37,9 +37,28 @@ class GoogleDriveClient
       format_search_results(response.files || [])
     rescue Google::Apis::AuthorizationError => e
       puts "Authorization error: #{e.message}"
+      # 既に再試行済みの場合は空配列を返す
+      return [] if @authorization_retried
+      
       # トークンをリフレッシュして再試行
+      @authorization_retried = true
       refresh_authorization
-      retry_search_files(query, limit)
+      
+      # 再試行（1回のみ）
+      begin
+        response = @drive_service.list_files(
+          q: search_query,
+          page_size: limit,
+          fields: 'files(id,name,mimeType,modifiedTime,owners,webViewLink)',
+          order_by: 'modifiedTime desc',
+          supports_all_drives: true,
+          include_items_from_all_drives: true
+        )
+        format_search_results(response.files || [])
+      rescue => e
+        puts "Retry failed: #{e.message}"
+        []
+      end
     rescue Google::Apis::Error => e
       puts "Drive API error: #{e.message}"
       []
@@ -110,15 +129,6 @@ class GoogleDriveClient
         puts "Failed to refresh tokens for user #{@slack_user_id}"
       end
     end
-  end
-
-  # 再試行（1回のみ）
-  def retry_search_files(query, limit)
-    # 既に再試行済みの場合は空配列を返す
-    return [] if @authorization_retried
-    
-    @authorization_retried = true
-    search_files(query, limit)
   end
 
   # 検索クエリを構築
