@@ -46,8 +46,8 @@ class SlackInteractionHandler
       when 'view_closed'
         handle_view_closed(payload)
       when 'options'
-        handle_options_request(payload)
-        body_content = process_modal_submission(view_state, user_id)
+        # T-05で実装予定：Google Drive検索のためのexternal_selectオプション提供
+        body_content = handle_options_request(payload)
         create_http_response(200, body_content)
       else
         body_content = create_error_response("サポートされていないインタラクションタイプ: #{type}", 400)
