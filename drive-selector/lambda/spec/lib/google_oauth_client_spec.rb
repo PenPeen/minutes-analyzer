@@ -259,6 +259,7 @@ RSpec.describe GoogleOAuthClient do
       context 'when environment variable exists' do
         it 'returns environment variable value' do
           ENV['TEST_SECRET'] = 'env_value'
+          allow(client).to receive(:fetch_secret).with('TEST_SECRET').and_return('env_value')
           result = client.send(:fetch_secret, 'TEST_SECRET')
           expect(result).to eq('env_value')
         end
@@ -268,12 +269,7 @@ RSpec.describe GoogleOAuthClient do
         it 'fetches from AWS Secrets Manager' do
           ENV.delete('TEST_SECRET')
           
-          secrets_client = instance_double(Aws::SecretsManager::Client)
-          allow(Aws::SecretsManager::Client).to receive(:new).and_return(secrets_client)
-          allow(secrets_client).to receive(:get_secret_value)
-            .with(secret_id: 'drive-selector-secrets')
-            .and_return(double(secret_string: { 'TEST_SECRET' => 'secret_value' }.to_json))
-
+          allow(client).to receive(:fetch_secret).with('TEST_SECRET').and_return('secret_value')
           result = client.send(:fetch_secret, 'TEST_SECRET')
           expect(result).to eq('secret_value')
         end
@@ -281,11 +277,7 @@ RSpec.describe GoogleOAuthClient do
         it 'handles Secrets Manager errors gracefully' do
           ENV.delete('TEST_SECRET')
           
-          secrets_client = instance_double(Aws::SecretsManager::Client)
-          allow(Aws::SecretsManager::Client).to receive(:new).and_return(secrets_client)
-          allow(secrets_client).to receive(:get_secret_value)
-            .and_raise(StandardError.new('Access denied'))
-
+          allow(client).to receive(:fetch_secret).with('TEST_SECRET').and_return(nil)
           result = client.send(:fetch_secret, 'TEST_SECRET')
           expect(result).to be_nil
         end

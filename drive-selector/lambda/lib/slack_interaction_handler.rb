@@ -95,8 +95,7 @@ class SlackInteractionHandler
     file_info = extract_selected_file(view_state['values'])
     
     unless file_info
-      body_content = create_validation_error('file_select' => 'ファイルを選択してください')
-      return create_http_response(400, body_content)
+      return create_validation_error('file_select' => 'ファイルを選択してください')
     end
     
     # 選択されたファイル情報をログ出力
@@ -132,8 +131,7 @@ class SlackInteractionHandler
     end
     
     # T-06で既存Lambda連携を実装予定
-    body_content = create_success_response
-    create_http_response(200, body_content)
+    create_success_response
   end
 
   # モーダルから選択されたファイル情報を抽出
@@ -158,11 +156,19 @@ class SlackInteractionHandler
   # モーダルの送信を処理（レガシー処理）
   def handle_view_submission(payload)
     view = payload['view']
-    values = view['state']['values']
+    view_state = view['state']
     user = payload['user']
     
     # 新しい処理に委譲
-    process_modal_submission(values, user['id'])
+    response_data = process_modal_submission(view_state, user['id'])
+    
+    # テストがHTTPレスポンス形式を期待している場合への対応
+    if response_data.is_a?(Hash) && response_data.key?('response_action')
+      # バリデーションエラーでも200で返す（Slackの要求仕様）
+      create_http_response(200, response_data)
+    else
+      create_http_response(200, response_data)
+    end
   end
 
   # バリデーションエラーレスポンス
