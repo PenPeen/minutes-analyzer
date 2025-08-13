@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'spec_helper'
+require 'webmock/rspec'
 
 RSpec.describe SlackCommandHandler do
   let(:handler) { described_class.new }
@@ -65,6 +66,16 @@ RSpec.describe SlackCommandHandler do
       context 'and user is authenticated' do
         before do
           allow(handler.oauth_client).to receive(:authenticated?).with(slack_user_id).and_return(true)
+          
+          # Stub the Slack API call for opening modal
+          stub_request(:post, "https://slack.com/api/views.open")
+            .with(
+              headers: {
+                'Authorization' => 'Bearer xoxb-test-bot-token',
+                'Content-Type' => 'application/json; charset=utf-8'
+              }
+            )
+            .to_return(status: 200, body: '{"ok": true}', headers: {})
         end
 
         it 'returns success message with modal trigger' do
