@@ -34,6 +34,8 @@ variable "process_lambda_arn" {
   type        = string
 }
 
+# KMS configuration removed - using session-based authentication instead
+
 # Secrets configuration
 variable "slack_signing_secret" {
   description = "Slack signing secret"
