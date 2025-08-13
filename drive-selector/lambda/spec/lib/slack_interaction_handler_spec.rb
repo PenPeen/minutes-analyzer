@@ -300,8 +300,10 @@ RSpec.describe SlackInteractionHandler do
     let(:mock_options_provider) { instance_double('SlackOptionsProvider') }
 
     before do
-      allow_any_instance_of(described_class).to receive(:instance_variable_get).with(:@options_provider)
-        .and_return(mock_options_provider)
+      # Mock the @options_provider instance variable
+      allow_any_instance_of(described_class).to receive(:options_provider).and_return(mock_options_provider)
+      # Also allow access to the instance variable directly
+      handler.instance_variable_set(:@options_provider, mock_options_provider)
     end
 
     it 'calls options provider with correct parameters' do

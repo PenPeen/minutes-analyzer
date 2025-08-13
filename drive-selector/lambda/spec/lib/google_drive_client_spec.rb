@@ -13,6 +13,7 @@ RSpec.describe GoogleDriveClient do
   before do
     # Mock dependencies
     allow(GoogleOAuthClient).to receive(:new).and_return(mock_oauth_client)
+    stub_const("#{described_class}::DRIVE_SERVICE", Google::Apis::DriveV3::DriveService)
     allow(Google::Apis::DriveV3::DriveService).to receive(:new).and_return(mock_drive_service)
     
     # Mock OAuth client methods
@@ -26,11 +27,13 @@ RSpec.describe GoogleDriveClient do
     allow(mock_drive_service).to receive(:authorization=)
     
     # Mock Signet OAuth2 client
-    allow(Signet::OAuth2::Client).to receive(:new).and_return(double('Signet::OAuth2::Client'))
+    mock_signet_client = double('Signet::OAuth2::Client')
+    allow(Signet::OAuth2::Client).to receive(:new).and_return(mock_signet_client)
     
     # Mock secrets fetching to use environment variables in tests
     allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_CLIENT_ID').and_return('test_client_id')
     allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_CLIENT_SECRET').and_return('test_client_secret')
+    allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_REDIRECT_URI').and_return('http://localhost')
   end
 
   describe '#initialize' do
@@ -111,22 +114,17 @@ RSpec.describe GoogleDriveClient do
       it 'handles authorization errors with retry' do
         auth_error = Google::Apis::AuthorizationError.new('Invalid token')
         
-        # First call fails with auth error, second succeeds
-        allow(mock_drive_service).to receive(:list_files)
-          .and_raise(auth_error)
-          .ordered
+        # First call fails with auth error
+        allow(mock_drive_service).to receive(:list_files).and_raise(auth_error)
         
         # Mock refresh_authorization
         allow(mock_oauth_client).to receive(:refresh_access_token).with('test_refresh_token')
           .and_return({ access_token: 'new_access_token', refresh_token: 'test_refresh_token' })
         allow(mock_oauth_client).to receive(:save_tokens)
         
-        # Second call after retry should succeed
-        allow(mock_drive_service).to receive(:list_files).and_return(mock_response)
-
         result = client.search_files('meeting')
 
-        expect(result).to be_empty # Since retry flag prevents actual retry in test
+        expect(result).to be_empty # retry_search_files returns empty when already retried
       end
 
       it 'handles API errors gracefully' do
@@ -326,6 +324,7 @@ RSpec.describe GoogleDriveClient do
 
       context 'when no tokens available' do
         it 'returns early without attempting refresh' do
+          # Override the before block's mock for this specific test
           allow(mock_oauth_client).to receive(:get_tokens).with(user_id).and_return(nil)
 
           client.send(:refresh_authorization)

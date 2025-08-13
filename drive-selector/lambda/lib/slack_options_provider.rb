@@ -97,14 +97,25 @@ class SlackOptionsProvider
     extension_match = filename.match(/(\.[^.]+)$/)
     extension = extension_match ? extension_match[1] : ''
     
-    # 拡張子を除いた部分を切り詰め
-    name_without_ext = filename.sub(/\.[^.]+$/, '')
-    truncated_length = max_length - extension.length - 3 # "..." の分
-    
-    if truncated_length > 0
-      "#{name_without_ext[0...truncated_length]}...#{extension}"
-    else
+    if extension.empty?
+      # 拡張子がない場合は単純に切り詰め
       filename[0...max_length]
+    else
+      # 拡張子がある場合は拡張子を保持して切り詰め
+      name_without_ext = filename.sub(/\.[^.]+$/, '')
+      
+      # 拡張子が長すぎる場合は単純に切り詰め
+      if extension.length >= max_length
+        filename[0...max_length]
+      else
+        truncated_length = max_length - extension.length - 4 # "..." + "." の分
+        
+        if truncated_length > 0
+          "#{name_without_ext[0...truncated_length]}...#{extension}"
+        else
+          filename[0...max_length]
+        end
+      end
     end
   end
 

@@ -7,6 +7,8 @@ require_relative 'lambda_invoker'
 require_relative 'slack_options_provider'
 
 class SlackInteractionHandler
+  attr_reader :options_provider
+
   def initialize
     @slack_client = SlackApiClient.new
     @lambda_invoker = LambdaInvoker.new
