@@ -56,6 +56,11 @@ if [ "$ENVIRONMENT" = "local" ]; then
     -T "${PROMPTS_DIR}/meeting_analysis_prompt.txt" \
     "http://localhost:4566/${BUCKET_NAME}/prompts/meeting_analysis_prompt.txt"
   
+  echo -e "${YELLOW}Uploading meeting_verification_prompt.txt (using LocalStack workaround)...${NC}"
+  curl -s -X PUT \
+    -T "${PROMPTS_DIR}/meeting_verification_prompt.txt" \
+    "http://localhost:4566/${BUCKET_NAME}/prompts/meeting_verification_prompt.txt"
+  
   echo -e "${YELLOW}Uploading output_schema.json (using LocalStack workaround)...${NC}"
   curl -s -X PUT \
     -T "${PROMPTS_DIR}/output_schema.json" \
@@ -67,6 +72,12 @@ else
     --bucket "${BUCKET_NAME}" \
     --key "prompts/meeting_analysis_prompt.txt" \
     --body "${PROMPTS_DIR}/meeting_analysis_prompt.txt" >/dev/null
+  
+  echo -e "${YELLOW}Uploading meeting_verification_prompt.txt...${NC}"
+  aws s3api put-object \
+    --bucket "${BUCKET_NAME}" \
+    --key "prompts/meeting_verification_prompt.txt" \
+    --body "${PROMPTS_DIR}/meeting_verification_prompt.txt" >/dev/null
   
   echo -e "${YELLOW}Uploading output_schema.json...${NC}"
   aws s3api put-object \
