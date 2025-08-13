@@ -88,17 +88,13 @@ class GoogleDriveClient
 
   # クエリのエスケープ（public for testing）  
   def escape_query(query)
-    puts "DEBUG escape_query input: #{query.inspect}" if defined?(RSpec)
-    return query if query.nil? || query.empty?
+    return '' if query.nil? || query.empty?
     
-    # Step by step escaping to avoid issues
-    result = query.dup
-    puts "DEBUG after dup: #{result.inspect}" if defined?(RSpec)
-    result = result.gsub('\\', '\\\\')  # Escape backslashes first
-    puts "DEBUG after backslash escape: #{result.inspect}" if defined?(RSpec)
-    result = result.gsub("'", "\\'")   # Then escape single quotes
-    puts "DEBUG final result: #{result.inspect}" if defined?(RSpec)
-    result
+    # Use simple string replacement with block form to avoid escape issues
+    escaped = query.to_s
+    escaped = escaped.gsub('\\') { '\\\\' }  # Use block form for backslashes
+    escaped = escaped.gsub("'") { "\\'" }   # Use block form for quotes
+    escaped
   end
 
   private
