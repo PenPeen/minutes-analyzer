@@ -115,9 +115,19 @@ class OAuthCallbackHandler
 
   # stateからSlackユーザーIDを抽出
   def extract_user_id_from_state(state)
+    return nil if state.nil? || state.empty?
+    
     decoded = Base64.urlsafe_decode64(state)
     parts = decoded.split(':')
-    parts.first if parts.length >= 2
+    
+    # 厳密な検証: 正確に2要素、2番目は32文字のhex文字列
+    return nil unless parts.length == 2
+    return nil unless parts[1].match?(/\A[a-f0-9]{32}\z/)
+    
+    parts.first
+  rescue ArgumentError => e
+    puts "Invalid base64 state: #{e.message}"
+    nil
   rescue => e
     puts "State decode error: #{e.message}"
     nil

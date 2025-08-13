@@ -23,9 +23,9 @@ variable "aws_region" {
 
 # API Gateway configuration
 variable "api_gateway_domain" {
-  description = "Custom domain for API Gateway (optional)"
+  description = "Custom domain for API Gateway (required for production)"
   type        = string
-  default     = ""
+  default     = null
 }
 
 # Lambda configuration
@@ -34,12 +34,7 @@ variable "process_lambda_arn" {
   type        = string
 }
 
-# KMS configuration (optional)
-variable "kms_key_arn" {
-  description = "KMS key ARN for encryption (optional)"
-  type        = string
-  default     = ""
-}
+# KMS configuration removed - using session-based authentication instead
 
 # Secrets configuration
 variable "slack_signing_secret" {
