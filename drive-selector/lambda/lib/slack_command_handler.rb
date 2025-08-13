@@ -76,12 +76,9 @@ class SlackCommandHandler
       end
     end
     
-    # 3秒以内にACKレスポンスを返す
-    {
-      statusCode: 200,
-      headers: { 'Content-Type' => 'application/json' },
-      body: ''  # ACKレスポンスは空のボディで返す
-    }
+    # 3秒以内にACKレスポンスを返す（成功メッセージ付き）
+    body_content = create_success_response
+    create_http_response(200, body_content)
   end
 
   # 認証が必要な場合のレスポンス

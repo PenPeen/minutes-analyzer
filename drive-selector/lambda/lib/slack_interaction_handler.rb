@@ -95,7 +95,8 @@ class SlackInteractionHandler
     file_info = extract_selected_file(view_state['values'])
     
     unless file_info
-      return create_validation_error('file_select' => 'ファイルを選択してください')
+      body_content = create_validation_error('file_select' => 'ファイルを選択してください')
+      return create_http_response(400, body_content)
     end
     
     # 選択されたファイル情報をログ出力
@@ -131,7 +132,8 @@ class SlackInteractionHandler
     end
     
     # T-06で既存Lambda連携を実装予定
-    create_success_response
+    body_content = create_success_response
+    create_http_response(200, body_content)
   end
 
   # モーダルから選択されたファイル情報を抽出

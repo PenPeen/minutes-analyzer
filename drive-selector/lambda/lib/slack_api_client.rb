@@ -86,10 +86,10 @@ class SlackApiClient
     return ENV['SLACK_BOT_TOKEN'] if ENV['SLACK_BOT_TOKEN']
     
     # Secrets Managerから取得
-    secrets_client = Aws::SecretsManager::Client.new
-    secret_id = ENV['SECRETS_MANAGER_SECRET_ID'] || 'drive-selector-secrets'
-    
     begin
+      secrets_client = Aws::SecretsManager::Client.new
+      secret_id = ENV['SECRETS_MANAGER_SECRET_ID'] || 'drive-selector-secrets'
+      
       response = secrets_client.get_secret_value(secret_id: secret_id)
       secrets = JSON.parse(response.secret_string)
       secrets['SLACK_BOT_TOKEN']

@@ -3,6 +3,8 @@
 require 'rspec'
 require 'webmock/rspec'
 require 'simplecov'
+require 'aws-sdk-secretsmanager'
+require 'aws-sdk-lambda'
 
 # Start SimpleCov for test coverage
 SimpleCov.start do
@@ -46,10 +48,19 @@ RSpec.configure do |config|
   # Clear environment variables before each test
   config.before(:each) do
     ENV['SLACK_SIGNING_SECRET'] = 'test_signing_secret'
+    ENV['SLACK_BOT_TOKEN'] = 'xoxb-test-bot-token'
     ENV['GOOGLE_CLIENT_ID'] = 'test_client_id'
     ENV['GOOGLE_CLIENT_SECRET'] = 'test_client_secret'
     ENV['GOOGLE_REDIRECT_URI'] = 'http://test.example.com/oauth/callback'
     ENV['PROCESS_LAMBDA_ARN'] = 'arn:aws:lambda:us-east-1:123456789012:function:process-lambda'
+    
+    # Mock AWS SDK to prevent actual AWS calls
+    allow(Aws::SecretsManager::Client).to receive(:new).and_return(double('SecretsManagerClient'))
+    allow(Aws::Lambda::Client).to receive(:new).and_return(double('LambdaClient'))
+    
+    # Mock Google OAuth client secrets
+    allow_any_instance_of(GoogleOAuthClient).to receive(:fetch_secret).with('GOOGLE_CLIENT_ID').and_return('test_client_id')
+    allow_any_instance_of(GoogleOAuthClient).to receive(:fetch_secret).with('GOOGLE_CLIENT_SECRET').and_return('test_client_secret')
   end
 
   config.after(:each) do
