@@ -18,6 +18,10 @@ RSpec.describe 'lambda_handler' do
       statusCode: 200,
       body: JSON.generate({ text: 'Interaction handled successfully' })
     })
+    allow_any_instance_of(OAuthCallbackHandler).to receive(:handle_callback).and_return({
+      statusCode: 200,
+      body: JSON.generate({ message: 'OAuth callback - implementation pending' })
+    })
   end
 
   describe 'routing' do

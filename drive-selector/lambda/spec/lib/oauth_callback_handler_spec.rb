@@ -6,11 +6,12 @@ require 'base64'
 
 RSpec.describe OAuthCallbackHandler do
   let(:oauth_client) { instance_double('GoogleOAuthClient') }
-  let(:handler) { OAuthCallbackHandler.new }
-
+  
   before do
     allow(GoogleOAuthClient).to receive(:new).and_return(oauth_client)
   end
+  
+  let(:handler) { OAuthCallbackHandler.new }
 
   describe '#initialize' do
     it 'GoogleOAuthClientを初期化する' do

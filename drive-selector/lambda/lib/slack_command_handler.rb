@@ -36,9 +36,9 @@ class SlackCommandHandler
     end
   end
 
-  private
-
   attr_reader :oauth_client
+
+  private
 
   # 必要なパラメータの検証
   def validate_required_params(params)
