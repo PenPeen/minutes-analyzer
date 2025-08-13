@@ -1,0 +1,118 @@
+name: Auto Issue Resolver
+
+on:
+  schedule:
+    # 日本時間 00:00-07:00 の間、30分ごとに実行 (UTC時間で設定)
+    - cron: '0,30 15-21 * * *'  # UTC 15:00-21:30 = JST 00:00-06:30
+    - cron: '0 22 * * *'        # UTC 22:00 = JST 07:00
+  workflow_dispatch:  # 手動実行も可能にする
+
+permissions:
+  issues: write
+  contents: write  # PRの作成とファイルの変更に必要
+  pull-requests: write  # PRの作成に必要
+
+jobs:
+  process-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Find and process highest priority issue
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.PERSONAL_ACCESS_TOKEN || secrets.GITHUB_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            
+            // 優先度の定義
+            const priorities = ['high', 'middle', 'low'];
+            
+            // claude-code-requestedラベルが付いていないissueを優先度順に検索
+            let selectedIssue = null;
+            
+            for (const priority of priorities) {
+              const issues = await github.rest.issues.listForRepo({
+                owner,
+                repo,
+                labels: priority,
+                state: 'open',
+                sort: 'created',
+                direction: 'asc'
+              });
+              
+              // claude-code-requestedラベルが付いていない最初のissueを探す
+              for (const issue of issues.data) {
+                const hasProcessedLabel = issue.labels.some(
+                  label => label.name === 'claude-code-requested'
+                );
+                
+                if (!hasProcessedLabel) {
+                  selectedIssue = issue;
+                  break;
+                }
+              }
+              
+              if (selectedIssue) break;
+            }
+            
+            // 処理対象のissueが見つからない場合
+            if (!selectedIssue) {
+              console.log('No unprocessed issues found');
+              return;
+            }
+            
+            console.log(`Processing issue #${selectedIssue.number}: ${selectedIssue.title}`);
+            
+            // issueの詳細情報を取得
+            const issueDetails = await github.rest.issues.get({
+              owner,
+              repo,
+              issue_number: selectedIssue.number
+            });
+            
+            // Claude Codeへのリクエストコメントを作成
+            const comment = '@claude このIssueを解決して、Pull Requestを作成してください。\n\n' +
+              '## Issue詳細\n' +
+              `**Issue番号**: #${selectedIssue.number}\n` +
+              `**タイトル**: ${selectedIssue.title}\n` +
+              '**説明**: \n' +
+              `${selectedIssue.body || '説明なし'}\n\n` +
+              '## 実装要件\n' +
+              '1. 問題を分析して、適切な解決策を実装してください\n' +
+              '2. 必要に応じてテストコードも作成してください\n' +
+              '3. コードの変更をコミットしてください\n' +
+              '4. **必ず最後にPull Requestを作成してください**\n\n' +
+              '## Pull Request作成時の指示\n' +
+              '- ブランチ名: `fix/issue-' + selectedIssue.number + '`\n' +
+              '- PRタイトル: `fix: #' + selectedIssue.number + ' ' + selectedIssue.title + '`\n' +
+              '- PR本文には変更内容の詳細を記載\n' +
+              '- `Fixes #' + selectedIssue.number + '` を必ず含める\n\n' +
+              '## 重要な指示\n' +
+              '**もしPull Requestの作成ができない場合（権限エラーなど）は、以下を実行してください：**\n' +
+              '1. 新しいリモートブランチを作成: `git checkout -b fix/issue-' + selectedIssue.number + '`\n' +
+              '2. 変更をコミット: `git add -A && git commit -m "fix: #' + selectedIssue.number + ' ' + selectedIssue.title + '"`\n' +
+              '3. リモートにプッシュ: `git push origin fix/issue-' + selectedIssue.number + '`\n' +
+              '4. このIssueにコメントで「ブランチ `fix/issue-' + selectedIssue.number + '` に変更をプッシュしました。PRは手動で作成してください。」と報告\n\n' +
+              '## 注意事項\n' +
+              '- 既存のコードベースの規約に従ってください\n' +
+              '- CLAUDE.mdファイルの指示に従ってください\n' +
+              '- セキュリティとパフォーマンスを考慮してください\n' +
+              '- 作業完了後は必ずPull Requestを作成、またはブランチにプッシュしてください';
+            
+            // コメントを投稿
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: selectedIssue.number,
+              body: comment
+            });
+            
+            // claude-code-requestedラベルを追加
+            await github.rest.issues.addLabels({
+              owner,
+              repo,
+              issue_number: selectedIssue.number,
+              labels: ['claude-code-requested']
+            });
+            
+            console.log(`Successfully processed issue #${selectedIssue.number}`);

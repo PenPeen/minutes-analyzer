@@ -24,7 +24,7 @@ class RequestValidator
   end
   
   def validate_body(body)
-    unless body
+    if body.nil? || body.empty?
       @logger.error("Request body is missing.")
       raise ValidationError.new("Request body is missing.")
     end
@@ -40,7 +40,8 @@ class RequestValidator
   end
   
   def validate_file_id(parsed_body)
-    unless parsed_body['file_id']
+    file_id = parsed_body['file_id']
+    if file_id.nil? || file_id.empty?
       @logger.error("file_id is missing in request body")
       raise ValidationError.new("Request must include 'file_id' field")
     end
