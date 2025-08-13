@@ -22,6 +22,8 @@ RSpec.describe GoogleDriveClient do
       access_token: 'test_access_token',
       refresh_token: 'test_refresh_token'
     })
+    allow(mock_oauth_client).to receive(:save_tokens)
+    allow(mock_oauth_client).to receive(:refresh_access_token)
     
     # Mock drive service
     allow(mock_drive_service).to receive(:authorization=)
