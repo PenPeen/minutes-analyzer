@@ -63,17 +63,17 @@ class SlackCommandHandler
   # 認証が必要な場合のレスポンス
   def create_auth_required_response(auth_url)
     {
-      response_type: 'ephemeral',
-      text: 'Google Driveにアクセスするための認証が必要です。安全な接続で認証を行います。',
-      attachments: [
+      'response_type' => 'ephemeral',
+      'text' => 'Google Driveにアクセスするための認証が必要です。安全な接続で認証を行います。',
+      'attachments' => [
         {
-          color: 'good',
-          actions: [
+          'color' => 'good',
+          'actions' => [
             {
-              type: 'button',
-              text: 'Google Driveを認証',
-              url: auth_url,
-              style: 'primary'
+              'type' => 'button',
+              'text' => 'Google Driveを認証',
+              'url' => auth_url,
+              'style' => 'primary'
             }
           ]
         }
@@ -84,16 +84,16 @@ class SlackCommandHandler
   # 成功レスポンス
   def create_success_response
     {
-      response_type: 'ephemeral',
-      text: 'Google Drive検索を開始します。検索用のモーダルを表示しますので、しばらくお待ちください。'
+      'response_type' => 'ephemeral',
+      'text' => 'Google Drive検索を開始します。検索用のモーダルを表示しますので、しばらくお待ちください。'
     }
   end
 
   # エラーレスポンス
   def create_error_response(error_message, status_code = 400)
     {
-      response_type: 'ephemeral',
-      text: error_message
+      'response_type' => 'ephemeral',
+      'text' => error_message
     }
   end
 
@@ -109,8 +109,8 @@ class SlackCommandHandler
   # 不明なコマンドの場合のレスポンス
   def unknown_command_response(command)
     body_content = {
-      response_type: 'ephemeral',
-      text: "未対応のコマンド: #{command}"
+      'response_type' => 'ephemeral',
+      'text' => "未対応のコマンド: #{command}"
     }
     create_http_response(200, body_content)
   end

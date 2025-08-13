@@ -15,8 +15,10 @@ RSpec.describe OAuthCallbackHandler do
 
   describe '#initialize' do
     it 'GoogleOAuthClientを初期化する' do
+      # Force handler creation to trigger the mock expectation
+      created_handler = handler
       expect(GoogleOAuthClient).to have_received(:new)
-      expect(handler.instance_variable_get(:@oauth_client)).to eq(oauth_client)
+      expect(created_handler.instance_variable_get(:@oauth_client)).to eq(oauth_client)
     end
   end
 
