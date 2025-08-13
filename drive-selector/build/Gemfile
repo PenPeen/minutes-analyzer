@@ -1,0 +1,26 @@
+source 'https://rubygems.org'
+
+# AWS SDK
+gem 'aws-sdk-lambda', '~> 1.0'
+gem 'aws-sdk-secretsmanager', '~> 1.0'
+# aws-sdk-dynamodb removed - using session-based authentication instead
+
+# Google APIs
+gem 'google-apis-drive_v3', '~> 0.44'
+gem 'googleauth', '~> 1.8'
+gem 'signet', '~> 0.17'
+
+# Slack SDK
+gem 'slack-ruby-client', '~> 2.0'
+
+# HTTP Client - consistent with analyzer codebase
+gem 'net-http'
+
+# Testing (development group)
+group :development, :test do
+  gem 'rspec', '~> 3.0'
+  gem 'webmock', '~> 3.0'
+  gem 'simplecov', '~> 0.22'
+  gem 'rubocop', '~> 1.0'
+  gem 'dotenv', '~> 2.8'
+end
