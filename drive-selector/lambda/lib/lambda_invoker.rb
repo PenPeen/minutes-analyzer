@@ -93,29 +93,9 @@ class LambdaInvoker
 
   # ターゲットLambda関数のARNを取得
   def fetch_target_function_arn
-    # 環境変数から取得
-    arn = ENV['PROCESS_LAMBDA_ARN']
-
-    # 環境変数にない場合はSecrets Managerから取得
-    unless arn
-      arn = fetch_from_secrets('PROCESS_LAMBDA_ARN')
-    end
-
-    # それでもない場合はデフォルト値を使用（開発環境）
-    unless arn
-      environment = ENV['ENVIRONMENT'] || 'local'
-      # 環境に応じたデフォルトARNパターン
-      case environment
-      when 'production'
-        arn = 'arn:aws:lambda:ap-northeast-1:339712736892:function:minutes-analyzer-production'
-      when 'development'
-        arn = 'arn:aws:lambda:ap-northeast-1:YOUR_ACCOUNT:function:minutes-analyzer-development'
-      else
-        # LocalStack環境の場合
-        arn = 'arn:aws:lambda:ap-northeast-1:000000000000:function:minutes-analyzer-local'
-      end
-    end
-
+    # Production固定のARNを使用
+    arn = 'arn:aws:lambda:ap-northeast-1:339712736892:function:minutes-analyzer-production'
+    
     puts "Using target Lambda ARN: #{arn}"
     arn
   end

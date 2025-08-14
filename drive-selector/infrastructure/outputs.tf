@@ -26,15 +26,7 @@ output "lambda_function_arn" {
 }
 
 # DynamoDB outputs
-output "oauth_tokens_table_name" {
-  description = "OAuth tokens DynamoDB table name"
-  value       = aws_dynamodb_table.oauth_tokens.name
-}
-
-output "user_preferences_table_name" {
-  description = "User preferences DynamoDB table name"
-  value       = aws_dynamodb_table.user_preferences.name
-}
+# DynamoDB outputs removed - no longer using DynamoDB for OAuth storage
 
 # Secrets Manager outputs
 output "secrets_manager_secret_id" {

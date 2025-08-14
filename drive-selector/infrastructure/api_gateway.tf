@@ -370,7 +370,7 @@ resource "aws_api_gateway_method_settings" "slack_bot" {
   stage_name  = aws_api_gateway_stage.slack_bot.stage_name
   method_path = "*/*"
 
-  settings = {
+  settings {
     throttling_rate_limit  = 10000
     throttling_burst_limit = 5000
     logging_level          = var.environment == "production" ? "ERROR" : "INFO"

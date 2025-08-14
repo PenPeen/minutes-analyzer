@@ -8,6 +8,7 @@ variable "project_name" {
 variable "environment" {
   description = "Environment name (development, staging, production)"
   type        = string
+  default     = "production"
   validation {
     condition     = contains(["development", "staging", "production"], var.environment)
     error_message = "Environment must be development, staging, or production."
@@ -32,6 +33,7 @@ variable "api_gateway_domain" {
 variable "process_lambda_arn" {
   description = "ARN of the existing minutes analyzer Lambda function"
   type        = string
+  default     = "arn:aws:lambda:ap-northeast-1:339712736892:function:minutes-analyzer-production"
 }
 
 # KMS configuration removed - using session-based authentication instead
