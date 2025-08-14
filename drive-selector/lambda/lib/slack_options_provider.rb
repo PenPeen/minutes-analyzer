@@ -19,8 +19,9 @@ class SlackOptionsProvider
       return format_unauthorized_response
     end
 
-    # ファイルを検索（最大20件）
-    files = drive_client.search_files(query, 20)
+    # クエリが空の場合は最新3件、それ以外は検索結果を最大5件取得
+    limit = (query.nil? || query.empty?) ? 3 : 5
+    files = drive_client.search_files(query, limit)
     
     if files.empty?
       puts "No files found for query: #{query}"

@@ -45,7 +45,7 @@ class SlackModalBuilder
               text: 'ファイル名を入力して検索...',
               emoji: true
             },
-            min_query_length: 2
+            min_query_length: 0
           },
           label: {
             type: 'plain_text',
@@ -54,7 +54,7 @@ class SlackModalBuilder
           },
           hint: {
             type: 'plain_text',
-            text: 'ファイル名の一部を入力すると、Google Driveから候補が表示されます'
+            text: 'Meet Recordingsフォルダから最新順で表示されます'
           }
         },
         {
@@ -115,7 +115,7 @@ class SlackModalBuilder
           elements: [
             {
               type: 'mrkdwn',
-              text: '💡 ヒント: Google Driveで「議事録」「meeting」「minutes」などのキーワードで検索できます'
+              text: '💡 ヒント: Meet Recordingsフォルダのファイルのみが対象です。保存日時の新しい順で表示されます'
             }
           ]
         }
