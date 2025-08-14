@@ -68,7 +68,7 @@ sequenceDiagram
     User->>Slack: /meet-transcript コマンド実行
     Slack->>Lambda: コマンドリクエスト
     Lambda->>Lambda: ユーザーの認証状態確認
-    
+
     alt 未認証の場合
         Lambda->>Slack: 認証URLを含むメッセージ返信
         User->>Google: 認証URLにアクセス
@@ -78,7 +78,7 @@ sequenceDiagram
         Lambda->>Google: アクセストークン取得
         Lambda->>Lambda: トークンを保存
     end
-    
+
     Lambda->>Google: Drive API呼び出し（トークン使用）
     Google->>Lambda: ファイルリスト返却
     Lambda->>Slack: モーダル表示
@@ -107,7 +107,6 @@ sequenceDiagram
 # Google OAuth設定
 GOOGLE_CLIENT_ID=your_client_id_here
 GOOGLE_CLIENT_SECRET=your_client_secret_here
-GOOGLE_REDIRECT_URI=https://your-api-gateway-url/oauth/callback
 
 # オプション（開発環境用）
 GOOGLE_OAUTH_BASE_URL=https://accounts.google.com/o/oauth2/v2

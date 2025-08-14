@@ -1,138 +1,207 @@
 MAKEFLAGS += --silent
-.PHONY: help setup build clean test deploy-package deploy-local deploy-production
+.PHONY: help setup build clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources
 
 # デフォルトターゲット
 help: ## ヘルプを表示
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
 # 環境変数
-AWS_REGION ?= ap-northeast-1
-PROJECT_NAME = slack-bot-drive-selector
-ENVIRONMENT ?= development
-BUILD_DIR = build
-LAMBDA_DIR = lambda
-OUTPUT_FILE = lambda.zip
-TF_DIR = infrastructure
+AWS_REGION = ap-northeast-1
+PROJECT_NAME = drive-selector
+ENVIRONMENT = production
+TF_DIR = infrastructure/environments/production
 
-# セットアップ
+# 初期セットアップ
 setup: ## 初期セットアップを実行
-	@echo "📋 Slack Bot Drive Selector 初期セットアップ"
-	@if [ -f .env.local ]; then \
-		echo "📋 .env.localは既に存在します"; \
+	@echo "📋 Drive Selector 初期セットアップ"
+	@if [ -f .env.production ]; then \
+		echo "📋 .env.productionは既に存在します（保護されています）"; \
+		echo "🔧 その他のセットアップを継続します..."; \
 	else \
-		echo "⚠️  .env.localファイルを作成してください"; \
+		echo "⚠️  .env.productionファイルを作成してください"; \
 		echo "    詳細は README.md を参照してください"; \
 	fi
-	@echo "📦 Ruby依存関係をインストール中..."
+	@echo "📦 依存関係をインストール中..."
 	@if command -v bundle >/dev/null 2>&1; then \
-		cd $(LAMBDA_DIR) && bundle install; \
+		cd lambda && bundle install; \
 	else \
 		echo "⚠️  Bundlerがインストールされていません。Rubyの依存関係はスキップします"; \
 	fi
 	@echo "✅ セットアップが完了しました"
 
-# Lambda関数のビルド（analyzerのMakefileに準拠）
-build: ## Lambda関数のデプロイパッケージをビルド
+build-lambda: ## Lambda関数をビルド
 	@echo "🔨 Lambda関数をビルド中..."
 	@mkdir -p infrastructure/modules/lambda
 	@docker compose run --rm ruby-lambda-builder
-	@if [ -f infrastructure/modules/lambda/lambda.zip ]; then \
-		cp infrastructure/modules/lambda/lambda.zip $(OUTPUT_FILE); \
-		echo "✅ Lambda関数のビルドが完了しました"; \
-		echo "📊 Package size: $$(du -h $(OUTPUT_FILE) | cut -f1)"; \
-		SIZE_IN_MB=$$(du -m $(OUTPUT_FILE) | cut -f1); \
-		if [ $$SIZE_IN_MB -gt 50 ]; then \
-			echo "⚠️  Warning: Package size exceeds 50MB. Consider using Lambda Layers for dependencies."; \
-		fi; \
-	else \
-		echo "❌ ビルドに失敗しました"; \
-		exit 1; \
-	fi
+	@echo "✅ Lambda関数のビルドが完了しました"
 
-# テスト実行
+# 後方互換性のためのエイリアス
+build: build-lambda
+
 test: ## テストを実行
-	@echo "🧪 テストを実行中..."
-	@cd $(LAMBDA_DIR) && \
-		bundle config set --local path 'vendor/bundle' && \
-		bundle install --quiet && \
-		bundle exec rspec spec/ --format documentation
+	@echo "🧪 Lambda関数のテストを実行中..."
+	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
 	@echo "✅ テストが完了しました"
 
-# Terraformの初期化
-tf-init: ## Terraformを初期化
-	@echo "🏗️  Terraform初期化中..."
+tf-init: ensure-terraform-backend-bucket ## Terraformを初期化
+	@echo "Terraform初期化中..."
 	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
 		cd $(TF_DIR) && terraform init; \
 	else \
 		echo "Terraformは既に初期化されています"; \
 	fi
-	@echo "✅ Terraformの初期化が完了しました"
+	@echo "Terraformの初期化が完了しました"
 
 # Terraformプランの実行
-tf-plan: tf-init ## Terraformプランを実行
+tf-plan: tf-init generate-production-tfvars ## Terraformプランを実行
 	@echo "📋 Terraformプランを実行中..."
-	@cd $(TF_DIR) && terraform plan
+	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
+		cd $(TF_DIR) && terraform plan -var-file="terraform.tfvars"; \
+	else \
+		cd $(TF_DIR) && terraform plan; \
+	fi
 	@echo "✅ Terraformプランが完了しました"
 
 # Terraform適用
-tf-apply: tf-init ## Terraformを適用
+tf-apply: ## Terraformを適用
 	@echo "🚀 Terraformを適用中..."
-	@cd $(TF_DIR) && terraform apply -auto-approve
+	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
+		cd $(TF_DIR) && terraform apply -var-file="terraform.tfvars" -auto-approve; \
+	else \
+		cd $(TF_DIR) && terraform apply -auto-approve; \
+	fi
 	@echo "✅ Terraformの適用が完了しました"
 
-# ローカル環境デプロイ
-deploy-local: build tf-apply ## ローカル環境（LocalStack）にデプロイ
-	@echo "🚀 ローカル環境にデプロイ中..."
-	@echo "✅ ローカル環境へのデプロイが完了しました"
-	@echo "📋 デプロイ情報:"
-	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
-
-# 本番環境デプロイ
 deploy-production: ## 本番環境にデプロイ
 	@echo "🚀 本番環境にデプロイ中..."
+	@echo "⚠️  注意: 手動でAWSリソースを作成しないでください。すべてTerraformで管理されます。"
 	@if [ ! -f .env.production ]; then \
-		echo "❌ .env.productionが見つかりません"; \
-		echo "  本番環境用の設定ファイルを作成してください"; \
+		echo "❌ .env.productionが見つかりません。"; \
+		echo "  本番環境用の設定ファイルを作成してください。"; \
 		exit 1; \
 	fi
-	@$(MAKE) build
-	@ENVIRONMENT=production $(MAKE) tf-apply
+	@$(MAKE) generate-production-tfvars
+	@$(MAKE) ensure-terraform-backend-bucket
+	@$(MAKE) build-lambda
+	@cd $(TF_DIR) && \
+		terraform init && \
+		terraform plan -var-file="terraform.tfvars" && \
+		echo "⚠️  Review the plan above. Press Enter to continue or Ctrl+C to cancel..." && \
+		read && \
+		terraform apply -var-file="terraform.tfvars"
+	@echo "🔐 Secrets Managerにシークレットを設定中..."
+	@./scripts/set-production-secrets.sh
 	@echo "✅ 本番環境へのデプロイが完了しました"
 	@echo "📋 デプロイ情報:"
-	@ENVIRONMENT=production cd $(TF_DIR) && terraform output
+	@cd $(TF_DIR) && terraform output
 
-# 環境破棄
-destroy: ## 環境を破棄
-	@echo "🗑️  環境を破棄中..."
-	@cd $(TF_DIR) && terraform destroy -auto-approve
-	@echo "✅ 環境の破棄が完了しました"
+# 本番環境用のterraform.tfvars生成
+generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
+	@echo "📝 本番環境用terraform.tfvarsを生成中..."
+	@if [ -f .env.production ]; then \
+		( \
+			echo "# .env.productionから自動生成されるTerraform変数ファイル"; \
+			echo "# 基本設定"; \
+			echo "aws_region = \"ap-northeast-1\""; \
+			echo "environment = \"production\""; \
+			echo "project_name = \"drive-selector\""; \
+			echo ""; \
+			echo "# Lambda設定"; \
+			echo "lambda_timeout = 30"; \
+			echo "lambda_memory_size = 256"; \
+			echo ""; \
+			echo "# Slack設定 (from .env.production)"; \
+			echo "slack_signing_secret=\"$$(grep SLACK_SIGNING_SECRET .env.production | cut -d '=' -f2-)\""; \
+			echo "slack_bot_token=\"$$(grep SLACK_BOT_TOKEN .env.production | cut -d '=' -f2-)\""; \
+			echo "slack_channel_id=\"$$(grep SLACK_CHANNEL_ID .env.production | cut -d '=' -f2-)\""; \
+			echo ""; \
+			echo "# Google OAuth設定 (from .env.production)"; \
+			echo "google_client_id=\"$$(grep GOOGLE_CLIENT_ID .env.production | cut -d '=' -f2-)\""; \
+			echo "google_client_secret=\"$$(grep GOOGLE_CLIENT_SECRET .env.production | cut -d '=' -f2-)\""; \
+			echo ""; \
+			echo "# Lambda ARN設定"; \
+			echo "process_lambda_arn=\"$$(grep PROCESS_LAMBDA_ARN .env.production | cut -d '=' -f2-)\""; \
+		) > $(TF_DIR)/terraform.tfvars; \
+		echo "✅ terraform.tfvarsを生成しました"; \
+	else \
+		echo "❌ .env.productionが見つかりません。"; \
+		exit 1; \
+	fi
 
-# クリーンアップ
-clean: clean-build clean-terraform ## 全てをクリーンアップ
+ensure-terraform-backend-bucket: ## Terraform backend用S3バケットの存在確認・作成
+	@echo "🪣 Terraform backend用S3バケットを確認中..."
+	@BUCKET_NAME="drive-selector-terraform-state"; \
+	if aws s3api head-bucket --bucket "$$BUCKET_NAME" --region ap-northeast-1 >/dev/null 2>&1; then \
+		echo "✅ S3バケット '$$BUCKET_NAME' は既に存在します"; \
+	else \
+		echo "🔨 S3バケット '$$BUCKET_NAME' を作成中..."; \
+		aws s3api create-bucket \
+			--bucket "$$BUCKET_NAME" \
+			--region ap-northeast-1 \
+			--create-bucket-configuration LocationConstraint=ap-northeast-1; \
+		echo "🔐 S3バケットの暗号化を設定中..."; \
+		aws s3api put-bucket-encryption \
+			--bucket "$$BUCKET_NAME" \
+			--server-side-encryption-configuration '{ \
+				"Rules": [{ \
+					"ApplyServerSideEncryptionByDefault": { \
+						"SSEAlgorithm": "AES256" \
+					}, \
+					"BucketKeyEnabled": true \
+				}] \
+			}'; \
+		echo "🚫 S3バケットのパブリックアクセスをブロック中..."; \
+		aws s3api put-public-access-block \
+			--bucket "$$BUCKET_NAME" \
+			--public-access-block-configuration \
+				"BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"; \
+		echo "✅ S3バケット '$$BUCKET_NAME' を作成しました"; \
+	fi
 
-clean-build: ## ビルド成果物をクリーンアップ
-	@echo "🧹 ビルド成果物をクリーンアップ中..."
-	@rm -rf $(BUILD_DIR)
-	@rm -f $(OUTPUT_FILE)
-	@rm -f $(LAMBDA_DIR)/Gemfile.lock
-	@cd $(LAMBDA_DIR) && rm -rf vendor/ .bundle/
+destroy-production: ## 本番環境のリソースを削除
+	@echo "🗑️  本番環境のリソースを削除中..."
+	@if [ ! -f .env.production ]; then \
+		echo "⚠️  .env.productionが見つかりません。terraform.tfvarsが既に存在する場合はそれを使用します。"; \
+	else \
+		$(MAKE) generate-production-tfvars; \
+	fi
+	@echo "🗑️  Terraformでリソースを削除中..."
+	@cd $(TF_DIR) && \
+		terraform destroy -auto-approve 2>/dev/null || true
+	@echo "✅ 本番環境が削除されました"
 
-clean-terraform: ## Terraform状態をクリーンアップ
-	@echo "🏗️  Terraform状態をクリーンアップ中..."
-	@cd $(TF_DIR) && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+clean-production: ## 本番環境の設定ファイルをクリーンアップ
+	@echo "🧹 本番環境の設定ファイルをクリーンアップ中..."
+	@cd $(TF_DIR) && \
+		rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup
+	@rm -f $(TF_DIR)/terraform.tfvars
+	@echo "✅ クリーンアップが完了しました"
 
-# ヘルスチェック（本番・開発環境対応）
+# ローカル環境のクリーンアップ
+clean: ## ローカル環境をクリーンアップ
+	@echo "🧹 ローカル環境をクリーンアップ中..."
+	@$(MAKE) clean-build-artifacts
+	@$(MAKE) clean-terraform
+	@echo "✅ クリーンアップが完了しました"
+
+clean-build-artifacts:
+	@echo "🗂️  ビルド成果物を削除中..."
+	@rm -f infrastructure/modules/lambda/lambda.zip
+	@rm -f lambda/Gemfile.lock
+	@rm -rf logs/ tmp/
+
+clean-terraform:
+	@echo "🏗️  Terraform状態を削除中..."
+	@cd $(TF_DIR) && rm -rf .terraform .terraform.lock.hcl terraform.tfstate terraform.tfstate.backup terraform.tfvars
+
+# 簡単なヘルスチェック
 health-check: ## APIヘルスチェック
 	@echo "❤️  APIヘルスチェック中..."
-	@if [ -f $(TF_DIR)/terraform.tfstate ]; then \
-		API_URL=$$(cd $(TF_DIR) && terraform output -raw api_gateway_url 2>/dev/null); \
-		if [ -n "$$API_URL" ]; then \
-			curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"; \
-		else \
-			echo "API URLが取得できませんでした"; \
-		fi; \
+	@API_URL=$$(cd $(TF_DIR) && terraform output -raw api_gateway_url 2>/dev/null); \
+	if [ -n "$$API_URL" ]; then \
+		curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"; \
 	else \
-		echo "デプロイされていません。まず 'make deploy-local' または 'make deploy-production' を実行してください"; \
+		echo "API URLが取得できませんでした。デプロイ情報を確認してください。"; \
 	fi
 
 # ログ確認
@@ -141,9 +210,13 @@ logs: ## Lambda関数のログを表示
 	@aws logs describe-log-groups --log-group-name-prefix "/aws/lambda/$(PROJECT_NAME)" --query 'logGroups[0].logGroupName' --output text | \
 	xargs -I {} aws logs tail {} --follow
 
-# 開発サーバー（ローカルテスト用）
-dev-server: ## 開発用サーバーを起動（ローカルテスト用）
-	@echo "🚀 開発サーバーを起動中..."
-	@cd $(LAMBDA_DIR) && \
-		bundle install && \
-		ruby -r './handler.rb' -e "puts 'Development server ready. Use for local testing.'"
+# リソース状態確認
+check-resources: ## AWSリソースとTerraform状態の整合性をチェック
+	@echo "🔍 リソース状態を確認中..."
+	@echo "📋 現在のAPI Gateway一覧:"
+	@aws apigateway get-rest-apis --query 'items[].[id,name,endpointConfiguration.types[0]]' --output table
+	@echo ""
+	@echo "📋 Terraform管理下のリソース:"
+	@cd $(TF_DIR) && terraform state list | grep -E "(api_gateway|lambda)" || echo "Terraform状態が見つかりません"
+	@echo ""
+	@echo "⚠️  手動で作成されたリソースがある場合は、Terraformでimportするか削除してください。"

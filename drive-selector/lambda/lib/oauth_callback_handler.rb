@@ -33,8 +33,8 @@ class OAuthCallbackHandler
     end
 
     begin
-      # 認証コードをトークンに交換
-      tokens = @oauth_client.exchange_code_for_token(code)
+      # 認証コードをトークンに交換（動的リダイレクトURI使用）
+      tokens = @oauth_client.exchange_code_for_token(code, event)
 
       # トークンを保存
       @oauth_client.save_tokens(slack_user_id, tokens)

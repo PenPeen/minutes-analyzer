@@ -70,7 +70,6 @@ RSpec.configure do |config|
     ENV['SLACK_BOT_TOKEN'] = 'xoxb-test-bot-token'
     ENV['GOOGLE_CLIENT_ID'] = 'test_client_id'
     ENV['GOOGLE_CLIENT_SECRET'] = 'test_client_secret'
-    ENV['GOOGLE_REDIRECT_URI'] = 'http://test.example.com/oauth/callback'
     ENV['PROCESS_LAMBDA_ARN'] = 'arn:aws:lambda:us-east-1:123456789012:function:process-lambda'
     
     # Mock AWS SDK to prevent actual AWS calls

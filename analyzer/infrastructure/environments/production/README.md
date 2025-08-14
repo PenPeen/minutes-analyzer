@@ -4,19 +4,6 @@
 
 ## 必須の事前準備
 
-### 1. S3バケットの作成（必須）
-
-**重要**: Terraformが動作するために、状態ファイル保存用のS3バケットを**必ず最初に**作成してください。
-
-```bash
-# S3バケットを作成
-aws s3api create-bucket \
-  --bucket minutes-analyzer-terraform-state \
-  --region ap-northeast-1 \
-  --create-bucket-configuration LocationConstraint=ap-northeast-1
-```
-
-このバケットがないとデプロイは失敗します。
 
 ## デプロイ手順
 

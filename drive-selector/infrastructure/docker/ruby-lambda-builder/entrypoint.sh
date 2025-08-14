@@ -34,11 +34,7 @@ zip -qr "$OUTPUT_PATH" . -x \
     '.bundle/*' \
     'vendor/bundle/ruby/*/cache/*' \
     'vendor/bundle/ruby/*/gems/*/test/*' \
-    'vendor/bundle/ruby/*/gems/*/spec/*' \
-    'coverage/*' \
-    'test*' \
-    '.rspec' \
-    'Rakefile'
+    'vendor/bundle/ruby/*/gems/*/spec/*'
 
 if [ -f "$OUTPUT_PATH" ]; then
     echo "✅ Lambda関数のビルドが完了しました"

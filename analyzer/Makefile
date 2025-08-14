@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda ensure-terraform-backend-bucket
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -291,6 +291,36 @@ generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
 		exit 1; \
 	fi
 
+ensure-terraform-backend-bucket: ## Terraform backend用S3バケットの存在確認・作成
+	@echo "🪣 Terraform backend用S3バケットを確認中..."
+	@BUCKET_NAME="minutes-analyzer-terraform-state"; \
+	if aws s3api head-bucket --bucket "$$BUCKET_NAME" --region ap-northeast-1 >/dev/null 2>&1; then \
+		echo "✅ S3バケット '$$BUCKET_NAME' は既に存在します"; \
+	else \
+		echo "🔨 S3バケット '$$BUCKET_NAME' を作成中..."; \
+		aws s3api create-bucket \
+			--bucket "$$BUCKET_NAME" \
+			--region ap-northeast-1 \
+			--create-bucket-configuration LocationConstraint=ap-northeast-1; \
+		echo "🔐 S3バケットの暗号化を設定中..."; \
+		aws s3api put-bucket-encryption \
+			--bucket "$$BUCKET_NAME" \
+			--server-side-encryption-configuration '{ \
+				"Rules": [{ \
+					"ApplyServerSideEncryptionByDefault": { \
+						"SSEAlgorithm": "AES256" \
+					}, \
+					"BucketKeyEnabled": true \
+				}] \
+			}'; \
+		echo "🚫 S3バケットのパブリックアクセスをブロック中..."; \
+		aws s3api put-public-access-block \
+			--bucket "$$BUCKET_NAME" \
+			--public-access-block-configuration \
+				"BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"; \
+		echo "✅ S3バケット '$$BUCKET_NAME' を作成しました"; \
+	fi
+
 # AWS本番環境用のコマンド
 destroy-production: ## 本番環境のリソースを削除
 	@echo "🗑️  本番環境のリソースを削除中..."
@@ -354,6 +384,7 @@ deploy-production: ## 本番環境にデプロイ
 		exit 1; \
 	fi
 	@$(MAKE) generate-production-tfvars
+	@$(MAKE) ensure-terraform-backend-bucket
 	@cd infrastructure/environments/production && \
 		terraform init && \
 		terraform plan && \
