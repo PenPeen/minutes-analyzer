@@ -46,6 +46,7 @@ resource "aws_lambda_function" "slack_bot_controller" {
       APP_SECRETS_NAME          = aws_secretsmanager_secret.app_secrets.name
       SECRETS_MANAGER_SECRET_ID = aws_secretsmanager_secret.app_secrets.name
       LOG_LEVEL                 = "INFO"
+      SLACK_CHANNEL_ID          = var.slack_channel_id
     }
   }
 
