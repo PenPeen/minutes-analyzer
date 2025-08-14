@@ -23,12 +23,12 @@ class SlackInteractionHandler
       body_content = create_error_response('ユーザー情報が不足しています', 400)
       return create_http_response(400, body_content)
     end
-    
+
     user_id = user['id']
     type = payload['type']
-    
+
     puts "Interaction type: #{type} from user: #{user_id}"
-    
+
     begin
       case type
       when 'interactive_message'
@@ -43,15 +43,15 @@ class SlackInteractionHandler
           body_content = create_error_response('無効なモーダルデータです', 400)
           return create_http_response(400, body_content)
         end
-        
+
         body_content = process_modal_submission(view_state, user_id)
         create_http_response(200, body_content)
       when 'block_actions'
         handle_block_action(payload)
       when 'view_closed'
         handle_view_closed(payload)
-      when 'options'
-        # T-05で実装予定：Google Drive検索のためのexternal_selectオプション提供
+      when 'options', 'block_suggestion'
+        # Google Drive検索のためのexternal_selectオプション提供
         body_content = handle_options_request(payload)
         create_http_response(200, body_content)
       else
@@ -70,10 +70,10 @@ class SlackInteractionHandler
   # ボタンクリック処理
   def process_button_click(actions, user_id)
     return { 'response_type' => 'ephemeral', 'text' => 'アクションが指定されていません' } if actions.empty?
-    
+
     action = actions.first
     action_name = action['name']
-    
+
     case action_name
     when 'file_search'
       {
@@ -98,16 +98,20 @@ class SlackInteractionHandler
   def process_modal_submission(view_state, user_id)
     # ファイル選択情報を抽出
     file_info = extract_selected_file(view_state['values'])
-    
+
     unless file_info
       return create_validation_error('file_select' => 'ファイルを選択してください')
     end
-    
+
+    # Notion保存オプションを抽出
+    save_to_notion = extract_notion_option(view_state['values'])
+
     # 選択されたファイル情報をログ出力
     puts "Selected file: #{file_info[:file_id]}"
     puts "File name: #{file_info[:file_name]}"
     puts "Custom filename: #{file_info[:custom_filename] || '(none)'}"
-    
+    puts "Save to Notion: #{save_to_notion}"
+
     # 非同期で処理を実行
     Thread.new do
       begin
@@ -117,13 +121,14 @@ class SlackInteractionHandler
           user_id,
           "📊 `#{file_info[:file_name]}` の分析を開始しました..."
         )
-        
-        # Lambda関数を呼び出し（T-06で実装）
+
+        # Lambda関数を呼び出し
         @lambda_invoker.invoke_analysis_lambda({
           file_id: file_info[:file_id],
           file_name: file_info[:custom_filename] || file_info[:file_name],
           user_id: user_id,
-          user_email: @slack_client.get_user_email(user_id)
+          user_email: @slack_client.get_user_email(user_id),
+          save_to_notion: save_to_notion
         })
       rescue => e
         puts "Failed to invoke lambda: #{e.message}"
@@ -134,7 +139,7 @@ class SlackInteractionHandler
         )
       end
     end
-    
+
     # T-06で既存Lambda連携を実装予定
     create_success_response
   end
@@ -142,13 +147,13 @@ class SlackInteractionHandler
   # モーダルから選択されたファイル情報を抽出
   def extract_selected_file(values)
     return nil unless values
-    
+
     file_select_data = values.dig('file_select_block', 'file_select', 'selected_option')
     return nil unless file_select_data
-    
-    custom_filename = values.dig('filename_block', 'filename_override', 'value')
+
+    custom_filename = values.dig('custom_title_block', 'custom_title', 'value')
     custom_filename = nil if custom_filename && custom_filename.empty?
-    
+
     {
       file_id: file_select_data['value'],
       file_name: file_select_data.dig('text', 'text'),
@@ -158,15 +163,27 @@ class SlackInteractionHandler
     nil
   end
 
+  # Notion保存オプションを抽出
+  def extract_notion_option(values)
+    return false unless values
+
+    selected_options = values.dig('options_block', 'analysis_options', 'selected_options') || []
+    selected_options.any? { |opt| opt['value'] == 'save_to_notion' }
+  rescue => e
+    puts "Failed to extract Notion option: #{e.message}"
+    false
+  end
+
+
   # モーダルの送信を処理（レガシー処理）
   def handle_view_submission(payload)
     view = payload['view']
     view_state = view['state']
     user = payload['user']
-    
+
     # 新しい処理に委譲
     response_data = process_modal_submission(view_state, user['id'])
-    
+
     # テストがHTTPレスポンス形式を期待している場合への対応
     if response_data.is_a?(Hash) && response_data.key?('response_action')
       # バリデーションエラーでも200で返す（Slackの要求仕様）
@@ -213,10 +230,10 @@ class SlackInteractionHandler
     # ユーザーIDと検索クエリを取得
     user_id = payload['user']['id']
     value = payload['value'] || ''
-    
+
     # Google Drive検索を実行
     result = @options_provider.provide_file_options(user_id, value)
-    
+
     result
   end
 
