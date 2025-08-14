@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup build clean test deploy-package deploy-local deploy-production
+.PHONY: help setup build clean test deploy tf-plan tf-apply destroy
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -7,8 +7,8 @@ help: ## ヘルプを表示
 
 # 環境変数
 AWS_REGION ?= ap-northeast-1
-PROJECT_NAME = slack-bot-drive-selector
-ENVIRONMENT ?= development
+PROJECT_NAME = drive-selector
+ENVIRONMENT = production
 BUILD_DIR = build
 LAMBDA_DIR = lambda
 OUTPUT_FILE = lambda.zip
@@ -31,7 +31,7 @@ setup: ## 初期セットアップを実行
 	fi
 	@echo "✅ セットアップが完了しました"
 
-# Lambda関数のビルド（analyzerのMakefileに準拠）
+# Lambda関数のビルド（共通）
 build: ## Lambda関数のデプロイパッケージをビルド
 	@echo "🔨 Lambda関数をビルド中..."
 	@mkdir -p infrastructure/modules/lambda
@@ -71,41 +71,49 @@ tf-init: ## Terraformを初期化
 # Terraformプランの実行
 tf-plan: tf-init ## Terraformプランを実行
 	@echo "📋 Terraformプランを実行中..."
-	@cd $(TF_DIR) && terraform plan
+	@if [ ! -f $(TF_DIR)/terraform.production.tfvars ]; then \
+		echo "❌ terraform.production.tfvarsが見つかりません"; \
+		echo "  infrastructure/terraform.production.tfvars を作成してください"; \
+		exit 1; \
+	fi
+	@cd $(TF_DIR) && terraform plan -var-file=terraform.production.tfvars
 	@echo "✅ Terraformプランが完了しました"
 
 # Terraform適用
 tf-apply: tf-init ## Terraformを適用
 	@echo "🚀 Terraformを適用中..."
-	@cd $(TF_DIR) && terraform apply -auto-approve
-	@echo "✅ Terraformの適用が完了しました"
-
-# ローカル環境デプロイ
-deploy-local: build tf-apply ## ローカル環境（LocalStack）にデプロイ
-	@echo "🚀 ローカル環境にデプロイ中..."
-	@echo "✅ ローカル環境へのデプロイが完了しました"
-	@echo "📋 デプロイ情報:"
-	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
-
-# 本番環境デプロイ
-deploy-production: ## 本番環境にデプロイ
-	@echo "🚀 本番環境にデプロイ中..."
-	@if [ ! -f .env.production ]; then \
-		echo "❌ .env.productionが見つかりません"; \
-		echo "  本番環境用の設定ファイルを作成してください"; \
+	@if [ ! -f $(TF_DIR)/terraform.production.tfvars ]; then \
+		echo "❌ terraform.production.tfvarsが見つかりません"; \
+		echo "  infrastructure/terraform.production.tfvars を作成してください"; \
 		exit 1; \
 	fi
-	@$(MAKE) build
-	@ENVIRONMENT=production $(MAKE) tf-apply
+	@cd $(TF_DIR) && terraform apply -var-file=terraform.production.tfvars
+	@echo "✅ Terraformの適用が完了しました"
+
+# デプロイ
+deploy: build ## 本番環境にデプロイ
+	@echo "🚀 本番環境にデプロイ中..."
+	@if [ ! -f $(TF_DIR)/terraform.production.tfvars ]; then \
+		echo "❌ terraform.production.tfvarsが見つかりません"; \
+		echo "  infrastructure/terraform.production.tfvars を作成してください"; \
+		exit 1; \
+	fi
+	@$(MAKE) tf-plan
+	@echo "⚠️  上記のプランを確認してください。Enterキーで続行、Ctrl+Cでキャンセル..."
+	@read
+	@$(MAKE) tf-apply
 	@echo "✅ 本番環境へのデプロイが完了しました"
 	@echo "📋 デプロイ情報:"
-	@ENVIRONMENT=production cd $(TF_DIR) && terraform output
+	@cd $(TF_DIR) && terraform output
 
 # 環境破棄
-destroy: ## 環境を破棄
-	@echo "🗑️  環境を破棄中..."
-	@cd $(TF_DIR) && terraform destroy -auto-approve
-	@echo "✅ 環境の破棄が完了しました"
+destroy: ## 本番環境を破棄（要確認）
+	@echo "⚠️  本番環境を破棄しようとしています！"
+	@echo "本当に実行しますか？ 'yes' と入力してください:"
+	@read confirm && [ "$$confirm" = "yes" ] || (echo "キャンセルしました" && exit 1)
+	@echo "🗑️  本番環境を破棄中..."
+	@cd $(TF_DIR) && terraform destroy -var-file=terraform.production.tfvars -auto-approve
+	@echo "✅ 本番環境の破棄が完了しました"
 
 # クリーンアップ
 clean: clean-build clean-terraform ## 全てをクリーンアップ
