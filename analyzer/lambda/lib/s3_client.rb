@@ -25,6 +25,22 @@ class S3Client
     end
   end
 
+  def get_verification_prompt
+    key = 'prompts/meeting_verification_prompt.txt'
+    
+    @logger.info("Fetching verification prompt from S3: #{@bucket_name}/#{key}")
+    
+    begin
+      response = @s3_client.get_object(bucket: @bucket_name, key: key)
+      prompt = response.body.read.force_encoding('UTF-8')
+      @logger.info("Successfully retrieved verification prompt (#{prompt.bytesize} bytes)")
+      prompt
+    rescue Aws::S3::Errors::ServiceError => e
+      @logger.error("Failed to fetch verification prompt from S3: #{e.message}")
+      raise "Unable to retrieve verification prompt from S3: #{e.message}"
+    end
+  end
+
   def get_output_schema
     key = 'schemas/output_schema.json'
     

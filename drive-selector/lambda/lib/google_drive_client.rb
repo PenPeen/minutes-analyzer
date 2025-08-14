@@ -7,7 +7,7 @@ require_relative 'google_oauth_client'
 class GoogleDriveClient
   DRIVE_SERVICE = Google::Apis::DriveV3::DriveService
   SCOPE = Google::Apis::DriveV3::AUTH_DRIVE_METADATA_READONLY
-  
+
   def initialize(slack_user_id)
     @slack_user_id = slack_user_id
     @oauth_client = GoogleOAuthClient.new
@@ -16,11 +16,11 @@ class GoogleDriveClient
   end
 
   # ファイルを検索
-  def search_files(query, limit = 20)
+  def search_files(query, limit = 20, retry_on_auth_error = true)
     return [] unless authorized?
 
     search_query = build_search_query(query)
-    
+
     begin
       response = @drive_service.list_files(
         q: search_query,
@@ -30,13 +30,21 @@ class GoogleDriveClient
         supports_all_drives: true,
         include_items_from_all_drives: true
       )
-      
+
       format_search_results(response.files || [])
     rescue Google::Apis::AuthorizationError => e
       puts "Authorization error: #{e.message}"
-      # トークンをリフレッシュして再試行
-      refresh_authorization
-      retry_search_files(query, limit)
+
+      # retry_on_auth_errorフラグで再試行を制御（ローカル変数として管理）
+      if retry_on_auth_error
+        # トークンをリフレッシュして再試行
+        refresh_authorization
+        # 再帰呼び出しではなく、フラグを変更して再度呼び出し
+        search_files(query, limit, false)
+      else
+        # 再試行済みの場合は空配列を返す
+        []
+      end
     rescue Google::Apis::Error => e
       puts "Drive API error: #{e.message}"
       []
@@ -64,6 +72,18 @@ class GoogleDriveClient
     @oauth_client.authenticated?(@slack_user_id)
   end
 
+  # クエリのエスケープ（public for testing）
+  def escape_query(query)
+    return '' if query.nil? || query.empty?
+
+    # Google Drive APIクエリの仕様に準拠したエスケープ
+    # バックスラッシュ、シングルクォート、ダブルクォートをエスケープ
+    query.to_s
+      .gsub('\\', '\\\\\\\\')  # バックスラッシュを2重エスケープ（4つのバックスラッシュに変換）
+      .gsub("'", "\\\\'")
+      .gsub('"', '\\\\"')
+  end
+
   private
 
   # 認証設定
@@ -81,8 +101,12 @@ class GoogleDriveClient
     auth = Signet::OAuth2::Client.new(
       access_token: access_token,
       token_credential_uri: 'https://oauth2.googleapis.com/token',
-      client_id: ENV['GOOGLE_CLIENT_ID'] || fetch_from_secrets('GOOGLE_CLIENT_ID'),
-      client_secret: ENV['GOOGLE_CLIENT_SECRET'] || fetch_from_secrets('GOOGLE_CLIENT_SECRET')
+      client_id: ENV.fetch('USE_SECRETS_MANAGER', 'true') == 'true' ?
+                   fetch_from_secrets('GOOGLE_CLIENT_ID') :
+                   ENV['GOOGLE_CLIENT_ID'],
+      client_secret: ENV.fetch('USE_SECRETS_MANAGER', 'true') == 'true' ?
+                      fetch_from_secrets('GOOGLE_CLIENT_SECRET') :
+                      ENV['GOOGLE_CLIENT_SECRET']
     )
     auth
   end
@@ -94,20 +118,12 @@ class GoogleDriveClient
 
     if tokens[:refresh_token]
       new_tokens = @oauth_client.refresh_access_token(tokens[:refresh_token])
-      @oauth_client.save_tokens(@slack_user_id, new_tokens)
-      setup_authorization
-    end
-  end
-
-  # 再試行（1回のみ）
-  def retry_search_files(query, limit)
-    @retry_count ||= 0
-    @retry_count += 1
-    
-    if @retry_count <= 1
-      search_files(query, limit)
-    else
-      []
+      if new_tokens && new_tokens[:access_token]
+        @oauth_client.save_tokens(@slack_user_id, new_tokens)
+        setup_authorization
+      else
+        puts "Failed to refresh tokens for user #{@slack_user_id}"
+      end
     end
   end
 
@@ -115,39 +131,31 @@ class GoogleDriveClient
   def build_search_query(query)
     # 基本的な検索条件
     conditions = []
-    
+
     # ゴミ箱のファイルを除外
     conditions << "trashed = false"
-    
-    # Googleドキュメント形式のファイルを検索
+
+    # 議事録として利用される可能性のあるファイル形式（Google Docsのみに制限）
     mime_types = [
-      "application/vnd.google-apps.document",
-      "text/plain",
-      "application/pdf"
+      "application/vnd.google-apps.document",  # Google Docs
     ]
     mime_query = mime_types.map { |type| "mimeType = '#{type}'" }.join(" or ")
     conditions << "(#{mime_query})"
-    
+
     # ユーザーの検索クエリを追加
     if query && !query.empty?
       # ファイル名での検索（部分一致）
       conditions << "name contains '#{escape_query(query)}'"
     end
-    
+
     # 議事録関連のキーワードを含むファイルを優先
     if query.nil? || query.empty?
       meeting_keywords = ['議事録', 'meeting', 'minutes', 'ミーティング', 'MTG']
       keyword_query = meeting_keywords.map { |keyword| "name contains '#{keyword}'" }.join(" or ")
       conditions << "(#{keyword_query})"
     end
-    
-    conditions.join(" and ")
-  end
 
-  # クエリのエスケープ
-  def escape_query(query)
-    # シングルクォートをエスケープ
-    query.gsub("'", "\\'")
+    conditions.join(" and ")
   end
 
   # 検索結果をフォーマット
@@ -167,10 +175,10 @@ class GoogleDriveClient
   # Secrets Managerから値を取得
   def fetch_from_secrets(key)
     require 'aws-sdk-secretsmanager'
-    
+
     secrets_client = Aws::SecretsManager::Client.new
     secret_id = ENV['SECRETS_MANAGER_SECRET_ID'] || 'drive-selector-secrets'
-    
+
     begin
       response = secrets_client.get_secret_value(secret_id: secret_id)
       secrets = JSON.parse(response.secret_string)

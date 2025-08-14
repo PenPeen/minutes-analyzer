@@ -1,60 +1,62 @@
-# ユーザー作業が必要なタスク
+Slack Bot Drive連携機能の統合テストを実施してください。
+以下の手順でお願いします。
 
-## 🔴 必須作業
+# 現在の進捗
+Update Todos
+  ⎿  ☒ Terraformによるデプロイ準備
+     ☒ AWS開発環境へのデプロイ実行
+     ☒ API Gateway設定の確認
+     ☐ Lambda関数の動作確認
+     ☐ Lambda関数のビルドエラー修正
+     ☐ Google OAuth設定の確認
+     ☐ Slack App設定の確認
+     ☐ 疎通確認レポート作成
+  ⎿  Claude usage limit reached. Your limit will reset at 1am
+     (Asia/Tokyo).
 
-### 1. Slack App設定（T-01）
-Slack App管理画面（https://api.slack.com/apps）で以下の設定が必要です：
+# 最重要事項
 
-#### OAuth & Permissions
-- 以下のBot Token Scopesを追加:
-  - `commands` - Slashコマンドの実行権限
-  - `users:read.email` - ユーザーメールアドレスの読み取り権限
-- 設定後、アプリを再インストール
+Lambdaのビルド、 Terraform への展開などは、すでに ./analyzer で実装済みです。
+ビルド等で詰まることがあれば、まずは参考実装がないか確認するようにしてください。
 
-#### Slash Commands
-- 新規コマンドを作成:
-  - Command: `/meet-transcript`
-  - Request URL: `https://[API_GATEWAY_URL]/slack/commands` （後で設定）
-  - Short Description: Google Driveから議事録を選択して分析
-  - Usage Hint: /meet-transcript
+# 対象ディレクトリ
 
-#### Interactivity & Shortcuts
-- Interactivityを有効化
-- Request URL: `https://[API_GATEWAY_URL]/slack/interactions` （後で設定）
+drive-selector
 
-### 2. Google OAuth 2.0設定（T-02）
-Google Cloud Console（https://console.cloud.google.com）で以下の設定が必要です：
+# 環境変数の取得
 
-#### OAuth 2.0クライアントIDの作成
-1. 「APIとサービス」→「認証情報」へ移動
-2. 「認証情報を作成」→「OAuth クライアント ID」を選択
-3. アプリケーションの種類: 「ウェブアプリケーション」
-4. 承認済みのリダイレクトURI:
-   - `https://[API_GATEWAY_URL]/oauth/callback`
-5. 作成後、クライアントIDとクライアントシークレットを保存
+analyzer を同様に、以下のフローで認証情報をセットする
 
-#### 必要なAPIの有効化
-- Google Drive API を有効化
+.env.local => Terraform => Secrets Manager
 
-## 📝 取得が必要な情報
+詳細は ./analyzer を確認してください。
 
-以下の情報を取得して、環境変数またはSecrets Managerに設定してください：
+# デプロイ作業等
 
-1. **Slack関連**
-   - SLACK_SIGNING_SECRET（Slack App Basic Information → App Credentials）
-   - SLACK_BOT_TOKEN（既存のものを流用、スコープ追加後）
+drive-selector/Makefile を利用するようにしてください。
+必要に応じてコマンドを追加してください。
 
-2. **Google OAuth関連**
-   - GOOGLE_CLIENT_ID（OAuth 2.0クライアントIDから取得）
-   - GOOGLE_CLIENT_SECRET（OAuth 2.0クライアントシークレットから取得）
+また、実装方針については、既存の analyzer/Makefile　を参考にしてください。
 
-## ⏰ タイミング
+# 作業手順
 
-### API Gateway URLが決まった後に必要な作業
-T-07（API Gateway設定）完了後に以下の更新が必要：
-1. Slack App設定で Request URL を更新
-2. Google OAuth設定で リダイレクトURI を更新
+1. **Terraformによるデプロイ**
 
-## 📌 注意事項
-- Slack Appの設定変更後は、ワークスペースへの再インストールが必要です
-- Google OAuthの本番環境では、OAuth同意画面の設定も必要になる場合があります
+   * drive-selector配下のインフラ定義に基づき、AWS開発環境へデプロイしてください。
+
+2. **コンソール上での疎通確認**
+
+   * API Gateway、Lambda、Google OAuth、Slack App設定が正しく動作しているか、AWSマネジメントコンソールやSlackアプリの管理画面で確認してください。
+
+3. **最終検証**
+
+   * 疎通確認がすべて取れたら、私がSlackから最終的な動作検証を行います。
+
+4. **不具合対応**
+
+   * テスト中に不具合が発生した場合は、その場で修正を行い、再テスト後に解消報告をしてください。
+
+# 注意点
+
+参照情報やタスク構造、アーキテクチャは `tasks.md` および `architecture.md` に記載されています。
+特に `drive-selector` ディレクトリ内の構成とTerraformの設定を確認しながら進めてください。

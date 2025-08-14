@@ -28,32 +28,7 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Policy for DynamoDB access
-resource "aws_iam_role_policy" "dynamodb_access" {
-  name = "${var.project_name}-dynamodb-access-${var.environment}"
-  role = aws_iam_role.lambda_execution_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "dynamodb:GetItem",
-          "dynamodb:PutItem",
-          "dynamodb:UpdateItem",
-          "dynamodb:DeleteItem",
-          "dynamodb:Query",
-          "dynamodb:Scan"
-        ]
-        Resource = [
-          aws_dynamodb_table.oauth_tokens.arn,
-          aws_dynamodb_table.user_preferences.arn
-        ]
-      }
-    ]
-  })
-}
+# DynamoDB access removed - using session-based authentication instead
 
 # Policy for Secrets Manager access
 resource "aws_iam_role_policy" "secrets_manager_access" {
@@ -93,4 +68,4 @@ resource "aws_iam_role_policy" "lambda_invoke" {
   })
 }
 
-# KMSは使用しない（DynamoDBとSecrets Managerの標準暗号化機能を利用）
+# KMS encryption removed - using session-based authentication instead

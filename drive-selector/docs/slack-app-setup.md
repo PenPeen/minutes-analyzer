@@ -43,7 +43,12 @@
    ```
    https://[後で設定]/slack/interactions
    ```
-4. 「Save Changes」をクリック
+4. **Options Load URL**に**同じURL**を入力（重要！）：
+   ```
+   https://[後で設定]/slack/interactions
+   ```
+   ⚠️ **注意**: Options Load URLはexternal_selectの検索機能に必須です。必ず設定してください。
+5. 「Save Changes」をクリック
 
 **注意**: こちらのURLも後で更新が必要です。
 
