@@ -51,6 +51,12 @@ variable "slack_bot_token" {
   default     = "placeholder"
 }
 
+variable "slack_channel_id" {
+  description = "Slack channel ID for notifications"
+  type        = string
+  default     = ""
+}
+
 variable "google_client_id" {
   description = "Google OAuth client ID"
   type        = string

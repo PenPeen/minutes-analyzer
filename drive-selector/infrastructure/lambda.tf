@@ -1,6 +1,6 @@
 # Lambda function for Slack Bot Controller
 resource "aws_lambda_function" "slack_bot_controller" {
-  function_name = "${var.project_name}-controller-${var.environment}"
+  function_name = var.environment == "production" ? "${var.project_name}-${var.environment}" : "${var.project_name}-controller-${var.environment}"
   runtime       = "ruby3.2"
   handler       = "handler.lambda_handler"
   timeout       = 30
@@ -18,6 +18,7 @@ resource "aws_lambda_function" "slack_bot_controller" {
       SECRETS_MANAGER_SECRET_ID = aws_secretsmanager_secret.app_secrets.id
       PROCESS_LAMBDA_ARN      = var.process_lambda_arn
       GOOGLE_REDIRECT_URI     = var.environment == "production" && var.api_gateway_domain != null ? "https://${var.api_gateway_domain}/oauth/callback" : "https://${aws_api_gateway_rest_api.slack_bot.id}.execute-api.${var.aws_region}.amazonaws.com/${var.environment}/oauth/callback"
+      SLACK_CHANNEL_ID        = var.slack_channel_id
     }
   }
 
