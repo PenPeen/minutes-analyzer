@@ -9,10 +9,13 @@ class SlackOptionsProvider
 
   # external_select用のオプションを提供
   def provide_file_options(user_id, query)
+    puts "SlackOptionsProvider: Providing options for user #{user_id} with query: #{query.inspect}"
+    
     # Google Drive検索を実行
     drive_client = GoogleDriveClient.new(user_id)
     
     unless drive_client.authorized?
+      puts "User #{user_id} is not authorized"
       return format_unauthorized_response
     end
 
@@ -20,9 +23,11 @@ class SlackOptionsProvider
     files = drive_client.search_files(query, 20)
     
     if files.empty?
+      puts "No files found for query: #{query}"
       return format_no_results_response(query)
     end
 
+    puts "Found #{files.size} files for query: #{query}"
     # Slack形式にフォーマット
     format_file_options(files)
   end
@@ -32,12 +37,8 @@ class SlackOptionsProvider
   # ファイルオプションをSlack形式にフォーマット
   def format_file_options(files)
     options = files.map do |file|
-      # ファイル名を適切な長さに調整（75文字まで）
-      display_name = truncate_filename(file[:name], 75)
-      
-      # 最終更新日時を追加
-      modified_date = format_date(file[:modified_time])
-      display_text = "#{display_name} (#{modified_date})"
+      # ファイル名をそのまま表示（Slackが自動的に幅調整）
+      display_text = file[:name]
       
       {
         text: {
@@ -120,18 +121,4 @@ class SlackOptionsProvider
     end
   end
 
-  # 日付をフォーマット
-  def format_date(datetime_str)
-    return '不明' unless datetime_str
-    
-    begin
-      datetime = DateTime.parse(datetime_str)
-      # 日本時間に変換（JST = UTC+9）
-      jst_datetime = datetime.new_offset('+09:00')
-      jst_datetime.strftime('%Y/%m/%d %H:%M')
-    rescue => e
-      puts "Date parsing error: #{e.message}"
-      '不明'
-    end
-  end
 end
