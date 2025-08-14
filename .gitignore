@@ -29,6 +29,7 @@ drive-selector/lambda/vendor/
 drive-selector/lambda/.bundle/
 drive-selector/lambda/lib/
 drive-selector/build/
+drive-selector/lambda/coverage/
 
 # LocalStack
 analyzer/infrastructure/volume/
