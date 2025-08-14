@@ -43,9 +43,9 @@ Google Drive APIへのアクセスのために、OAuth 2.0認証を設定しま�
 4. 名前: `Minutes Analyzer Drive Selector`
 5. 承認済みのリダイレクトURIを追加：
    ```
-   開発環境: http://localhost:3000/oauth/callback
-   本番環境: https://[API_GATEWAY_URL]/oauth/callback
+   本番環境: https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/oauth/callback
    ```
+   ※ API_GATEWAY_IDは、デプロイ後に`terraform output`で確認できます
 6. 「作成」をクリック
 
 ### 4. 認証情報の取得と保存
@@ -101,9 +101,9 @@ sequenceDiagram
 
 ## 環境変数設定
 
-以下の環境変数を設定してください：
+以下の環境変数を`infrastructure/terraform.production.tfvars`に設定してください：
 
-```bash
+```hcl
 # Google OAuth設定
 GOOGLE_CLIENT_ID=your_client_id_here
 GOOGLE_CLIENT_SECRET=your_client_secret_here
@@ -112,6 +112,8 @@ GOOGLE_CLIENT_SECRET=your_client_secret_here
 GOOGLE_OAUTH_BASE_URL=https://accounts.google.com/o/oauth2/v2
 GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
 ```
+
+※ `GOOGLE_REDIRECT_URI`はLambda内で自動的に生成されます
 
 ## トラブルシューティング
 

@@ -11,7 +11,7 @@ PROJECT_NAME = drive-selector
 ENVIRONMENT = production
 TF_DIR = infrastructure/environments/production
 
-# 初期セットアップ
+# セットアップ
 setup: ## 初期セットアップを実行
 	@echo "📋 Drive Selector 初期セットアップ"
 	@if [ -f .env.production ]; then \
