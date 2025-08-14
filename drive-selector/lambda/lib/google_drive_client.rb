@@ -127,11 +127,33 @@ class GoogleDriveClient
     end
   end
 
-  # 検索クエリを構築
-  def build_search_query(query)
-    # 基本的な検索条件
-    conditions = []
+  # Meet Recordingsフォルダを検索
+  def find_meet_recordings_folders
+    query = "name contains 'Meet Recordings' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
+    
+    response = @drive_service.list_files(
+      q: query,
+      page_size: 50,  # Meet Recordingsフォルダは複数存在する可能性がある
+      fields: 'files(id,name)',
+      supports_all_drives: true,
+      include_items_from_all_drives: true
+    )
 
+    (response.files || []).map do |folder|
+      {
+        id: folder.id,
+        name: folder.name
+      }
+    end
+  end
+
+  # 特定フォルダ内のファイルを検索
+  def search_files_in_folder(folder_id, query, limit)
+    conditions = []
+    
+    # 指定フォルダの直下またはサブフォルダ内のファイル
+    conditions << "'#{folder_id}' in parents"
+    
     # ゴミ箱のファイルを除外
     conditions << "trashed = false"
 
@@ -144,18 +166,21 @@ class GoogleDriveClient
 
     # ユーザーの検索クエリを追加
     if query && !query.empty?
-      # ファイル名での検索（部分一致）
       conditions << "name contains '#{escape_query(query)}'"
     end
 
-    # 議事録関連のキーワードを含むファイルを優先
-    if query.nil? || query.empty?
-      meeting_keywords = ['議事録', 'meeting', 'minutes', 'ミーティング', 'MTG']
-      keyword_query = meeting_keywords.map { |keyword| "name contains '#{keyword}'" }.join(" or ")
-      conditions << "(#{keyword_query})"
-    end
+    search_query = conditions.join(" and ")
 
-    conditions.join(" and ")
+    response = @drive_service.list_files(
+      q: search_query,
+      page_size: limit,
+      fields: 'files(id,name,mimeType,modifiedTime,owners,webViewLink)',
+      order_by: 'modifiedTime desc',
+      supports_all_drives: true,
+      include_items_from_all_drives: true
+    )
+
+    format_search_results(response.files || [])
   end
 
   # 検索結果をフォーマット
