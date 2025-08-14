@@ -5,10 +5,12 @@ require 'webmock/rspec'
 require 'simplecov'
 require 'aws-sdk-secretsmanager'
 require 'aws-sdk-lambda'
+require 'bundler/setup'
 
 # Start SimpleCov for test coverage
 SimpleCov.start do
   add_filter '/spec/'
+  add_filter '/vendor/'
   # minimum_coverage 85  # Commented out to prevent exit code 2 on low coverage
   minimum_coverage_by_file 0  # Don't fail if individual files have low coverage
   track_files 'lib/**/*.rb'
@@ -20,6 +22,11 @@ SimpleCov.start do
     puts "Line Coverage: #{SimpleCov.result.covered_percent.round(2)}% (#{SimpleCov.result.covered_lines} / #{SimpleCov.result.total_lines})"
   end
 end
+
+Bundler.require(:default, :test)
+
+# プロジェクトのlibディレクトリをロードパスに追加
+$LOAD_PATH.unshift File.expand_path('../lib', __dir__)
 
 # WebMock configuration
 WebMock.disable_net_connect!(allow_localhost: true)
@@ -41,6 +48,8 @@ RSpec.configure do |config|
   end
 
   config.shared_context_metadata_behavior = :apply_to_host_groups
+  config.filter_run_when_matching :focus
+  config.example_status_persistence_file_path = 'spec/examples.txt'
   config.disable_monkey_patching!
   config.warnings = true
 
@@ -54,6 +63,9 @@ RSpec.configure do |config|
 
   # Clear environment variables before each test
   config.before(:each) do
+    # テスト用の環境変数を設定
+    ENV['ENVIRONMENT'] = 'test'
+    ENV['AWS_REGION'] = 'ap-northeast-1'
     ENV['SLACK_SIGNING_SECRET'] = 'test_signing_secret'
     ENV['SLACK_BOT_TOKEN'] = 'xoxb-test-bot-token'
     ENV['GOOGLE_CLIENT_ID'] = 'test_client_id'
