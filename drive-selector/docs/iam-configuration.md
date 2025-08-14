@@ -118,7 +118,6 @@ Lambda関数に直接設定される環境変数：
 | `OAUTH_TOKENS_TABLE` | DynamoDBテーブル名 | `drive-selector-oauth-tokens-dev` |
 | `USER_PREFERENCES_TABLE` | DynamoDBテーブル名 | `drive-selector-user-preferences-dev` |
 | `SECRETS_MANAGER_SECRET_ID` | Secrets Manager ID | `drive-selector-secrets-dev` |
-| `GOOGLE_REDIRECT_URI` | OAuth認証後のリダイレクトURI | `https://api.example.com/oauth/callback` |
 
 ## セットアップ手順
 

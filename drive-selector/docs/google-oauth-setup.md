@@ -68,7 +68,7 @@ sequenceDiagram
     User->>Slack: /meet-transcript コマンド実行
     Slack->>Lambda: コマンドリクエスト
     Lambda->>Lambda: ユーザーの認証状態確認
-    
+
     alt 未認証の場合
         Lambda->>Slack: 認証URLを含むメッセージ返信
         User->>Google: 認証URLにアクセス
@@ -78,7 +78,7 @@ sequenceDiagram
         Lambda->>Google: アクセストークン取得
         Lambda->>Lambda: トークンを保存
     end
-    
+
     Lambda->>Google: Drive API呼び出し（トークン使用）
     Google->>Lambda: ファイルリスト返却
     Lambda->>Slack: モーダル表示
@@ -105,8 +105,12 @@ sequenceDiagram
 
 ```hcl
 # Google OAuth設定
-google_client_id     = "your_client_id_here"
-google_client_secret = "your_client_secret_here"
+GOOGLE_CLIENT_ID=your_client_id_here
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+
+# オプション（開発環境用）
+GOOGLE_OAUTH_BASE_URL=https://accounts.google.com/o/oauth2/v2
+GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
 ```
 
 ※ `GOOGLE_REDIRECT_URI`はLambda内で自動的に生成されます

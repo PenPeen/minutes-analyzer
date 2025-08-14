@@ -35,7 +35,6 @@ RSpec.describe GoogleDriveClient do
     # Mock secrets fetching to use environment variables in tests
     allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_CLIENT_ID').and_return('test_client_id')
     allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_CLIENT_SECRET').and_return('test_client_secret')
-    allow_any_instance_of(described_class).to receive(:fetch_from_secrets).with('GOOGLE_REDIRECT_URI').and_return('http://localhost')
   end
 
   describe '#initialize' do

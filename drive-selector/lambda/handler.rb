@@ -51,7 +51,7 @@ def handle_slack_command(event)
   
   # コマンドを処理
   handler = SlackCommandHandler.new
-  handler.handle_command(parse_slack_body(body))
+  handler.handle_command(parse_slack_body(body), event)
 end
 
 # Slackインタラクションを処理

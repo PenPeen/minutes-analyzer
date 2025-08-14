@@ -12,7 +12,7 @@ class SlackCommandHandler
   end
 
   # Slackコマンドを処理
-  def handle_command(params)
+  def handle_command(params, event = nil)
     unless validate_required_params(params)
       body_content = create_error_response('必要なパラメータが不足しています', 400)
       return create_http_response(400, body_content)
@@ -28,7 +28,7 @@ class SlackCommandHandler
     begin
       case command
       when '/meeting-analyzer'
-        handle_meeting_analyzer(user_id, team_id, trigger_id)
+        handle_meeting_analyzer(user_id, team_id, trigger_id, event)
       else
         unknown_command_response(command)
       end
@@ -49,14 +49,14 @@ class SlackCommandHandler
   end
 
   # /meeting-analyzer コマンドを処理
-  def handle_meeting_analyzer(user_id, team_id, trigger_id)
+  def handle_meeting_analyzer(user_id, team_id, trigger_id, event = nil)
     # ユーザーが認証済みか確認
     if @oauth_client.authenticated?(user_id)
       # 認証済みの場合、モーダルを開く
       open_file_selector_modal(trigger_id)
     else
-      # 未認証の場合、認証URLを返す
-      auth_url = @oauth_client.generate_auth_url(user_id)
+      # 未認証の場合、認証URLを返す（動的リダイレクトURI使用）
+      auth_url = @oauth_client.generate_auth_url(user_id, nil, event)
       body_content = create_auth_required_response(auth_url)
       create_http_response(200, body_content)
     end
