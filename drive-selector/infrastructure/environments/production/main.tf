@@ -47,6 +47,7 @@ resource "aws_lambda_function" "slack_bot_controller" {
       SECRETS_MANAGER_SECRET_ID = aws_secretsmanager_secret.app_secrets.name
       LOG_LEVEL                 = "INFO"
       SLACK_CHANNEL_ID          = var.slack_channel_id
+      OAUTH_TOKENS_TABLE_NAME   = aws_dynamodb_table.oauth_tokens.name
     }
   }
 
@@ -116,6 +117,51 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
         Effect   = "Allow",
         Action   = "lambda:InvokeFunction",
         Resource = "*"
+      }
+    ]
+  })
+}
+
+# DynamoDB table for OAuth tokens
+resource "aws_dynamodb_table" "oauth_tokens" {
+  name           = "${var.project_name}-oauth-tokens-${var.environment}"
+  billing_mode   = "PAY_PER_REQUEST"
+  hash_key       = "user_id"
+
+  attribute {
+    name = "user_id"
+    type = "S"
+  }
+
+  ttl {
+    attribute_name = "expires_at"
+    enabled        = true
+  }
+
+  server_side_encryption {
+    enabled = true
+  }
+
+  tags = var.common_tags
+}
+
+# IAM Policy for DynamoDB access
+resource "aws_iam_role_policy" "lambda_dynamodb_policy" {
+  name = "${var.project_name}-lambda-dynamodb-policy-${var.environment}"
+  role = aws_iam_role.lambda_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ],
+        Resource = aws_dynamodb_table.oauth_tokens.arn
       }
     ]
   })
