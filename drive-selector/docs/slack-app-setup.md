@@ -23,17 +23,17 @@
 ### 2. Slash Commands設定
 
 1. 左メニューから「Slash Commands」を選択
-2. 「Create New Command」をクリック
+2. 「Create New Command」をクリック（既存の場合は編集）
 3. 以下の情報を入力：
    ```
-   Command: /meet-transcript
-   Request URL: https://[後で設定]/slack/commands
+   Command: /meeting-analyzer
+   Request URL: https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/commands
    Short Description: Google Driveから議事録を選択して分析
-   Usage Hint: /meet-transcript
+   Usage Hint: /meeting-analyzer
    ```
 4. 「Save」をクリック
 
-**注意**: Request URLは後でAPI Gatewayのエンドポイントが確定してから更新します。
+**注意**: API_GATEWAY_IDはデプロイ後に`terraform output`で確認し、更新してください。
 
 ### 3. Interactivity設定
 
@@ -41,16 +41,16 @@
 2. 「Interactivity」をONに切り替え
 3. Request URLを入力：
    ```
-   https://[後で設定]/slack/interactions
+   https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/interactions
    ```
 4. **Options Load URL**に**同じURL**を入力（重要！）：
    ```
-   https://[後で設定]/slack/interactions
+   https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/interactions
    ```
    ⚠️ **注意**: Options Load URLはexternal_selectの検索機能に必須です。必ず設定してください。
 5. 「Save Changes」をクリック
 
-**注意**: こちらのURLも後で更新が必要です。
+**注意**: API_GATEWAY_IDはデプロイ後に`terraform output`で確認し、更新してください。
 
 ### 4. アプリの再インストール
 
@@ -76,8 +76,9 @@
 
 - [ ] Bot Token Scopesに `commands` が追加されている
 - [ ] Bot Token Scopesに `users:read.email` が追加されている
-- [ ] `/meet-transcript` コマンドが登録されている
+- [ ] `/meeting-analyzer` コマンドが登録されている
 - [ ] Interactivityが有効になっている
+- [ ] Request URLとOptions Load URLが正しく設定されている
 - [ ] アプリがワークスペースに再インストールされている
 - [ ] SLACK_SIGNING_SECRET を取得済み
 - [ ] SLACK_BOT_TOKEN を取得済み
@@ -92,5 +93,26 @@
 - Bot Token Scopesが正しく設定されているか確認
 - トークンが最新のものか確認（再インストール後のトークン）
 
-## 次のステップ
-T-07（API Gateway設定）完了後に、Request URLを実際のエンドポイントに更新する必要があります。
+## デプロイ後の設定更新手順
+
+1. **デプロイを実行**
+   ```bash
+   make deploy
+   ```
+
+2. **API Gateway URLを取得**
+   ```bash
+   cd infrastructure && terraform output
+   ```
+
+3. **Slack App設定を更新**
+   - Slash CommandsのRequest URLを更新
+   - InteractivityのRequest URLとOptions Load URLを更新
+
+4. **Google OAuth設定を更新**
+   - Google Cloud ConsoleでRedirect URIを追加
+
+5. **動作確認**
+   - Slackで `/meeting-analyzer` コマンドを実行
+   - Google認証が成功するか確認
+   - ファイル検索が動作するか確認
