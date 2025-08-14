@@ -112,35 +112,112 @@ class SlackInteractionHandler
     puts "Custom filename: #{file_info[:custom_filename] || '(none)'}"
     puts "Save to Notion: #{save_to_notion}"
 
-    # 非同期で処理を実行
-    Thread.new do
-      begin
-        # 処理中メッセージを送信
+    begin
+      # チャンネルIDを取得（環境変数から）
+      channel_id = ENV['SLACK_CHANNEL_ID']
+      
+      # チャンネルに分析開始メッセージを送信
+      if channel_id
+        display_filename = file_info[:custom_filename] || file_info[:file_name]
+        
+        # 通知メッセージのブロックを作成
+        blocks = [
+          {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: "🔄 *議事録分析を開始しました*"
+            }
+          },
+          {
+            type: 'section',
+            fields: [
+              {
+                type: 'mrkdwn',
+                text: "*実行者:*\n<@#{user_id}>"
+              },
+              {
+                type: 'mrkdwn',
+                text: "*対象ファイル:*\n#{display_filename}"
+              }
+            ]
+          },
+          {
+            type: 'context',
+            elements: [
+              {
+                type: 'mrkdwn',
+                text: "分析が完了次第、結果を通知します"
+              }
+            ]
+          }
+        ]
+        
+        @slack_client.post_message(
+          channel_id,
+          "議事録分析を開始しました",
+          blocks
+        )
+      else
+        # チャンネルIDが設定されていない場合は、エフェメラルメッセージをユーザーに送信
         @slack_client.post_ephemeral(
           user_id,
           user_id,
           "📊 `#{file_info[:file_name]}` の分析を開始しました..."
         )
+      end
 
-        # Lambda関数を呼び出し
-        @lambda_invoker.invoke_analysis_lambda({
-          file_id: file_info[:file_id],
-          file_name: file_info[:custom_filename] || file_info[:file_name],
-          user_id: user_id,
-          user_email: @slack_client.get_user_email(user_id),
-          save_to_notion: save_to_notion
-        })
-      rescue => e
-        puts "Failed to invoke lambda: #{e.message}"
+      # Lambda関数を呼び出し
+      result = @lambda_invoker.invoke_analysis_lambda({
+        file_id: file_info[:file_id],
+        file_name: file_info[:custom_filename] || file_info[:file_name],
+        user_id: user_id,
+        user_email: @slack_client.get_user_email(user_id),
+        save_to_notion: save_to_notion,
+        slack_channel_id: channel_id
+      })
+      
+      puts "Lambda invocation result: #{result.inspect}"
+      
+      # Lambda呼び出しが失敗した場合
+      if result[:status] == 'error'
+        error_message = "❌ 分析処理の開始に失敗しました: #{result[:message]}"
+        
+        if channel_id
+          @slack_client.post_message(
+            channel_id,
+            error_message
+          )
+        else
+          @slack_client.post_ephemeral(
+            user_id,
+            user_id,
+            error_message
+          )
+        end
+      end
+    rescue => e
+      puts "Failed to invoke lambda: #{e.message}"
+      puts e.backtrace
+      
+      # エラーメッセージを送信
+      error_message = "❌ 分析処理の開始に失敗しました: #{e.message}"
+      
+      if channel_id
+        @slack_client.post_message(
+          channel_id,
+          error_message
+        )
+      else
         @slack_client.post_ephemeral(
           user_id,
           user_id,
-          "❌ 分析処理の開始に失敗しました: #{e.message}"
+          error_message
         )
       end
     end
 
-    # T-06で既存Lambda連携を実装予定
+    # モーダルを閉じる
     create_success_response
   end
 
