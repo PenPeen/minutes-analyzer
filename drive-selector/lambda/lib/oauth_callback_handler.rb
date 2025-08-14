@@ -45,53 +45,146 @@ class OAuthCallbackHandler
         <html>
         <head>
           <meta charset="UTF-8">
-          <title>認証成功</title>
+          <title>認証成功 - Meeting Analyzer</title>
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: white;
+              background: linear-gradient(135deg, #5eb3fa 0%, #3993dd 100%);
               display: flex;
               justify-content: center;
               align-items: center;
               height: 100vh;
               margin: 0;
+              padding: 20px;
             }
             .container {
               text-align: center;
-              padding: 2rem;
-              background: rgba(255, 255, 255, 0.1);
-              border-radius: 10px;
-              backdrop-filter: blur(10px);
-            }
-            h1 { margin-bottom: 1rem; }
-            p { margin-bottom: 2rem; }
-            .close-button {
+              padding: 3rem;
               background: white;
-              color: #667eea;
-              border: none;
-              padding: 12px 24px;
-              border-radius: 6px;
-              font-size: 16px;
-              cursor: pointer;
-              transition: transform 0.2s;
+              border-radius: 20px;
+              box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+              max-width: 500px;
+              animation: slideIn 0.4s ease-out;
             }
-            .close-button:hover {
-              transform: scale(1.05);
+            @keyframes slideIn {
+              from {
+                opacity: 0;
+                transform: translateY(-20px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+            .success-icon {
+              width: 80px;
+              height: 80px;
+              margin: 0 auto 1.5rem;
+              background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+              border-radius: 50%;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              animation: pulse 1.5s ease-in-out infinite;
+            }
+            @keyframes pulse {
+              0%, 100% {
+                transform: scale(1);
+              }
+              50% {
+                transform: scale(1.05);
+              }
+            }
+            .checkmark {
+              color: white;
+              font-size: 40px;
+            }
+            h1 {
+              color: #1e293b;
+              margin-bottom: 1rem;
+              font-size: 28px;
+              font-weight: 600;
+            }
+            p {
+              color: #64748b;
+              margin-bottom: 2rem;
+              line-height: 1.6;
+              font-size: 16px;
+            }
+            .info-box {
+              background: #f0f9ff;
+              border-left: 4px solid #3b82f6;
+              padding: 1rem;
+              border-radius: 8px;
+              margin-bottom: 2rem;
+              text-align: left;
+            }
+            .info-box p {
+              margin: 0;
+              color: #1e40af;
+              font-size: 14px;
+            }
+            .back-button {
+              background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+              color: white;
+              border: none;
+              padding: 14px 32px;
+              border-radius: 10px;
+              font-size: 16px;
+              font-weight: 500;
+              cursor: pointer;
+              transition: all 0.3s ease;
+              box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+            }
+            .back-button:hover {
+              transform: translateY(-2px);
+              box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+            }
+            .slack-logo {
+              width: 24px;
+              height: 24px;
+              vertical-align: middle;
+              margin-right: 8px;
             }
           </style>
         </head>
         <body>
           <div class="container">
-            <h1>✅ 認証成功！</h1>
-            <p>Google Drive との連携が完了しました。<br>Slack に戻って /meet-transcript コマンドをお試しください。</p>
-            <button class="close-button" onclick="window.close()">このウィンドウを閉じる</button>
+            <div class="success-icon">
+              <span class="checkmark">✓</span>
+            </div>
+            <h1>Google Drive 認証が完了しました</h1>
+            <p>Meeting Analyzer が Google Drive にアクセスできるようになりました。</p>
+            
+            <div class="info-box">
+              <p>📝 次のステップ：</p>
+              <p style="margin-top: 8px;">Slack で <strong>/meeting-analyzer</strong> コマンドを実行して、<br>Google Drive から議事録を選択してください。</p>
+            </div>
+            
+            <button class="back-button" onclick="redirectToSlack()">
+              <svg class="slack-logo" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+              </svg>
+              Slack に戻る
+            </button>
           </div>
           <script>
-            // 3秒後に自動的にウィンドウを閉じる
-            setTimeout(() => {
-              window.close();
-            }, 3000);
+            function redirectToSlack() {
+              // Slackアプリを開く（デスクトップアプリがインストールされている場合）
+              window.location.href = 'slack://open';
+              
+              // 1秒後にウィンドウを閉じる試み
+              setTimeout(() => {
+                if (window.opener) {
+                  window.opener = null;
+                }
+                window.open('', '_self', '');
+                window.close();
+              }, 1000);
+            }
+            
+            // 10秒後に自動的にSlackへリダイレクト
+            setTimeout(redirectToSlack, 10000);
           </script>
         </body>
         </html>
@@ -100,7 +193,7 @@ class OAuthCallbackHandler
       {
         statusCode: 200,
         headers: {
-          'Content-Type': 'text/html; charset=utf-8'
+          'Content-Type' => 'text/html; charset=utf-8'
         },
         body: success_html
       }
@@ -115,9 +208,19 @@ class OAuthCallbackHandler
 
   # stateからSlackユーザーIDを抽出
   def extract_user_id_from_state(state)
+    return nil if state.nil? || state.empty?
+    
     decoded = Base64.urlsafe_decode64(state)
     parts = decoded.split(':')
-    parts.first if parts.length >= 2
+    
+    # 厳密な検証: 正確に2要素、2番目は32文字のhex文字列
+    return nil unless parts.length == 2
+    return nil unless parts[1].match?(/\A[a-f0-9]{32}\z/)
+    
+    parts.first
+  rescue ArgumentError => e
+    puts "Invalid base64 state: #{e.message}"
+    nil
   rescue => e
     puts "State decode error: #{e.message}"
     nil
@@ -191,7 +294,7 @@ class OAuthCallbackHandler
     {
       statusCode: 400,
       headers: {
-        'Content-Type': 'text/html; charset=utf-8'
+        'Content-Type' => 'text/html; charset=utf-8'
       },
       body: error_html
     }

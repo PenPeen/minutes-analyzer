@@ -28,28 +28,33 @@ class SlackModalBuilder
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: '*Google Driveから議事録ファイルを選択してください*\n\n検索ボックスにファイル名の一部を入力すると、候補が表示されます。'
+            text: 'Google Driveから議事録ファイルを選択してください。検索ボックスにファイル名の一部を入力すると、候補が表示されます。'
           }
         },
         {
           type: 'divider'
         },
         {
-          type: 'section',
+          type: 'input',
           block_id: 'file_select_block',
-          text: {
-            type: 'mrkdwn',
-            text: '*ファイルを選択* 📄'
-          },
-          accessory: {
+          element: {
             type: 'external_select',
             action_id: 'file_select',
             placeholder: {
               type: 'plain_text',
-              text: 'ファイル名を入力...',
+              text: 'ファイル名を入力して検索...',
               emoji: true
             },
             min_query_length: 2
+          },
+          label: {
+            type: 'plain_text',
+            text: 'ファイルを選択 📄',
+            emoji: true
+          },
+          hint: {
+            type: 'plain_text',
+            text: 'ファイル名の一部を入力すると、Google Driveから候補が表示されます'
           }
         },
         {
@@ -80,7 +85,7 @@ class SlackModalBuilder
           block_id: 'options_block',
           text: {
             type: 'mrkdwn',
-            text: '*追加オプション*'
+            text: '追加オプション'
           },
           accessory: {
             type: 'checkboxes',
@@ -89,14 +94,7 @@ class SlackModalBuilder
               {
                 text: {
                   type: 'mrkdwn',
-                  text: '📊 *詳細分析を実行*\n_参加者の発言分析を含む_'
-                },
-                value: 'detailed_analysis'
-              },
-              {
-                text: {
-                  type: 'mrkdwn',
-                  text: '📝 *Notionに自動保存*\n_分析結果をNotionデータベースに保存_'
+                  text: '📝 Notionに自動保存（分析結果をNotionデータベースに保存）'
                 },
                 value: 'save_to_notion'
               }
@@ -105,7 +103,7 @@ class SlackModalBuilder
               {
                 text: {
                   type: 'mrkdwn',
-                  text: '📝 *Notionに自動保存*\n_分析結果をNotionデータベースに保存_'
+                  text: '📝 Notionに自動保存（分析結果をNotionデータベースに保存）'
                 },
                 value: 'save_to_notion'
               }
@@ -117,7 +115,7 @@ class SlackModalBuilder
           elements: [
             {
               type: 'mrkdwn',
-              text: '💡 *ヒント:* Google Driveで「議事録」「meeting」「minutes」などのキーワードで検索できます'
+              text: '💡 ヒント: Google Driveで「議事録」「meeting」「minutes」などのキーワードで検索できます'
             }
           ]
         }

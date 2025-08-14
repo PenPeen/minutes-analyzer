@@ -1,4 +1,4 @@
-# API Gateway REST API
+# API Gateway for Slack Bot Drive Selector
 resource "aws_api_gateway_rest_api" "slack_bot" {
   name        = "${var.project_name}-api-${var.environment}"
   description = "API Gateway for Slack Bot Drive Selector"
@@ -14,28 +14,49 @@ resource "aws_api_gateway_rest_api" "slack_bot" {
   }
 }
 
-# /slack リソース
+# /slack resource
 resource "aws_api_gateway_resource" "slack" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   parent_id   = aws_api_gateway_rest_api.slack_bot.root_resource_id
   path_part   = "slack"
 }
 
-# /slack/commands リソース
+# /slack/commands resource
 resource "aws_api_gateway_resource" "commands" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   parent_id   = aws_api_gateway_resource.slack.id
   path_part   = "commands"
 }
 
-# /slack/interactions リソース
+# /slack/interactions resource
 resource "aws_api_gateway_resource" "interactions" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   parent_id   = aws_api_gateway_resource.slack.id
   path_part   = "interactions"
 }
 
-# /slack/commands POST メソッド
+# /oauth resource
+resource "aws_api_gateway_resource" "oauth" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  parent_id   = aws_api_gateway_rest_api.slack_bot.root_resource_id
+  path_part   = "oauth"
+}
+
+# /oauth/callback resource
+resource "aws_api_gateway_resource" "oauth_callback" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  parent_id   = aws_api_gateway_resource.oauth.id
+  path_part   = "callback"
+}
+
+# /health resource
+resource "aws_api_gateway_resource" "health" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  parent_id   = aws_api_gateway_rest_api.slack_bot.root_resource_id
+  path_part   = "health"
+}
+
+# POST method for /slack/commands
 resource "aws_api_gateway_method" "commands_post" {
   rest_api_id   = aws_api_gateway_rest_api.slack_bot.id
   resource_id   = aws_api_gateway_resource.commands.id
@@ -43,7 +64,7 @@ resource "aws_api_gateway_method" "commands_post" {
   authorization = "NONE"
 }
 
-# /slack/interactions POST メソッド
+# POST method for /slack/interactions
 resource "aws_api_gateway_method" "interactions_post" {
   rest_api_id   = aws_api_gateway_rest_api.slack_bot.id
   resource_id   = aws_api_gateway_resource.interactions.id
@@ -51,7 +72,23 @@ resource "aws_api_gateway_method" "interactions_post" {
   authorization = "NONE"
 }
 
-# /slack/commands Lambda統合
+# GET method for /oauth/callback
+resource "aws_api_gateway_method" "oauth_callback_get" {
+  rest_api_id   = aws_api_gateway_rest_api.slack_bot.id
+  resource_id   = aws_api_gateway_resource.oauth_callback.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# GET method for /health
+resource "aws_api_gateway_method" "health_get" {
+  rest_api_id   = aws_api_gateway_rest_api.slack_bot.id
+  resource_id   = aws_api_gateway_resource.health.id
+  http_method   = "GET"
+  authorization = "NONE"
+}
+
+# Lambda integration for /slack/commands
 resource "aws_api_gateway_integration" "commands_lambda" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.commands.id
@@ -64,7 +101,7 @@ resource "aws_api_gateway_integration" "commands_lambda" {
   depends_on = [aws_api_gateway_method.commands_post]
 }
 
-# /slack/interactions Lambda統合
+# Lambda integration for /slack/interactions
 resource "aws_api_gateway_integration" "interactions_lambda" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.interactions.id
@@ -77,7 +114,33 @@ resource "aws_api_gateway_integration" "interactions_lambda" {
   depends_on = [aws_api_gateway_method.interactions_post]
 }
 
-# /slack/commands メソッドレスポンス
+# Lambda integration for /oauth/callback
+resource "aws_api_gateway_integration" "oauth_callback_lambda" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.oauth_callback.id
+  http_method = aws_api_gateway_method.oauth_callback_get.http_method
+
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.slack_bot_controller.invoke_arn
+
+  depends_on = [aws_api_gateway_method.oauth_callback_get]
+}
+
+# Lambda integration for /health
+resource "aws_api_gateway_integration" "health_lambda" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.health.id
+  http_method = aws_api_gateway_method.health_get.http_method
+
+  integration_http_method = "POST"
+  type                    = "AWS_PROXY"
+  uri                     = aws_lambda_function.slack_bot_controller.invoke_arn
+
+  depends_on = [aws_api_gateway_method.health_get]
+}
+
+# Method responses for /slack/commands
 resource "aws_api_gateway_method_response" "commands_200" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.commands.id
@@ -91,7 +154,7 @@ resource "aws_api_gateway_method_response" "commands_200" {
   depends_on = [aws_api_gateway_integration.commands_lambda]
 }
 
-# /slack/interactions メソッドレスポンス
+# Method responses for /slack/interactions
 resource "aws_api_gateway_method_response" "interactions_200" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.interactions.id
@@ -105,7 +168,35 @@ resource "aws_api_gateway_method_response" "interactions_200" {
   depends_on = [aws_api_gateway_integration.interactions_lambda]
 }
 
-# /slack/commands 統合レスポンス
+# Method responses for /oauth/callback
+resource "aws_api_gateway_method_response" "oauth_callback_200" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.oauth_callback.id
+  http_method = aws_api_gateway_method.oauth_callback_get.http_method
+  status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  depends_on = [aws_api_gateway_integration.oauth_callback_lambda]
+}
+
+# Method responses for /health
+resource "aws_api_gateway_method_response" "health_200" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.health.id
+  http_method = aws_api_gateway_method.health_get.http_method
+  status_code = "200"
+
+  response_models = {
+    "application/json" = "Empty"
+  }
+
+  depends_on = [aws_api_gateway_integration.health_lambda]
+}
+
+# Integration responses for /slack/commands
 resource "aws_api_gateway_integration_response" "commands_200" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.commands.id
@@ -118,7 +209,7 @@ resource "aws_api_gateway_integration_response" "commands_200" {
   ]
 }
 
-# /slack/interactions 統合レスポンス
+# Integration responses for /slack/interactions
 resource "aws_api_gateway_integration_response" "interactions_200" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   resource_id = aws_api_gateway_resource.interactions.id
@@ -131,7 +222,33 @@ resource "aws_api_gateway_integration_response" "interactions_200" {
   ]
 }
 
-# API Gatewayデプロイメント
+# Integration responses for /oauth/callback
+resource "aws_api_gateway_integration_response" "oauth_callback_200" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.oauth_callback.id
+  http_method = aws_api_gateway_method.oauth_callback_get.http_method
+  status_code = aws_api_gateway_method_response.oauth_callback_200.status_code
+
+  depends_on = [
+    aws_api_gateway_integration.oauth_callback_lambda,
+    aws_api_gateway_method_response.oauth_callback_200
+  ]
+}
+
+# Integration responses for /health
+resource "aws_api_gateway_integration_response" "health_200" {
+  rest_api_id = aws_api_gateway_rest_api.slack_bot.id
+  resource_id = aws_api_gateway_resource.health.id
+  http_method = aws_api_gateway_method.health_get.http_method
+  status_code = aws_api_gateway_method_response.health_200.status_code
+
+  depends_on = [
+    aws_api_gateway_integration.health_lambda,
+    aws_api_gateway_method_response.health_200
+  ]
+}
+
+# API Gateway deployment
 resource "aws_api_gateway_deployment" "slack_bot" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
 
@@ -140,10 +257,17 @@ resource "aws_api_gateway_deployment" "slack_bot" {
       aws_api_gateway_resource.slack.id,
       aws_api_gateway_resource.commands.id,
       aws_api_gateway_resource.interactions.id,
+      aws_api_gateway_resource.oauth.id,
+      aws_api_gateway_resource.oauth_callback.id,
+      aws_api_gateway_resource.health.id,
       aws_api_gateway_method.commands_post.id,
       aws_api_gateway_method.interactions_post.id,
+      aws_api_gateway_method.oauth_callback_get.id,
+      aws_api_gateway_method.health_get.id,
       aws_api_gateway_integration.commands_lambda.id,
       aws_api_gateway_integration.interactions_lambda.id,
+      aws_api_gateway_integration.oauth_callback_lambda.id,
+      aws_api_gateway_integration.health_lambda.id,
     ]))
   }
 
@@ -154,12 +278,16 @@ resource "aws_api_gateway_deployment" "slack_bot" {
   depends_on = [
     aws_api_gateway_integration.commands_lambda,
     aws_api_gateway_integration.interactions_lambda,
+    aws_api_gateway_integration.oauth_callback_lambda,
+    aws_api_gateway_integration.health_lambda,
     aws_api_gateway_integration_response.commands_200,
-    aws_api_gateway_integration_response.interactions_200
+    aws_api_gateway_integration_response.interactions_200,
+    aws_api_gateway_integration_response.oauth_callback_200,
+    aws_api_gateway_integration_response.health_200
   ]
 }
 
-# API Gatewayステージ
+# API Gateway stage
 resource "aws_api_gateway_stage" "slack_bot" {
   deployment_id = aws_api_gateway_deployment.slack_bot.id
   rest_api_id   = aws_api_gateway_rest_api.slack_bot.id
@@ -236,7 +364,7 @@ resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
 }
 
-# API Gatewayのメソッド設定（Slackのタイムアウトに対応）
+# API Gateway method settings (Slack timeout support)
 resource "aws_api_gateway_method_settings" "slack_bot" {
   rest_api_id = aws_api_gateway_rest_api.slack_bot.id
   stage_name  = aws_api_gateway_stage.slack_bot.stage_name
@@ -267,4 +395,16 @@ output "slack_command_endpoint" {
 output "slack_interactions_endpoint" {
   description = "Slack interactions endpoint URL"
   value       = "${aws_api_gateway_stage.slack_bot.invoke_url}/slack/interactions"
+}
+
+# Output: OAuth callback endpoint
+output "oauth_callback_endpoint" {
+  description = "OAuth callback endpoint URL"
+  value       = "${aws_api_gateway_stage.slack_bot.invoke_url}/oauth/callback"
+}
+
+# Output: Health check endpoint
+output "health_endpoint" {
+  description = "Health check endpoint URL"
+  value       = "${aws_api_gateway_stage.slack_bot.invoke_url}/health"
 }
