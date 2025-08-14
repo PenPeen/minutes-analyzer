@@ -20,6 +20,9 @@ GEM
     aws-sdk-secretsmanager (1.119.0)
       aws-sdk-core (~> 3, >= 3.228.0)
       aws-sigv4 (~> 1.5)
+    aws-sdk-sts (1.12.0)
+      aws-sdk-core (~> 3, >= 3.110.0)
+      aws-sigv4 (~> 1.1)
     aws-sigv4 (1.12.1)
       aws-eventstream (~> 1, >= 1.0.2)
     base64 (0.3.0)
@@ -164,6 +167,7 @@ PLATFORMS
 DEPENDENCIES
   aws-sdk-lambda (~> 1.0)
   aws-sdk-secretsmanager (~> 1.0)
+  aws-sdk-sts (~> 1.0)
   dotenv (~> 2.8)
   google-apis-drive_v3 (~> 0.44)
   googleauth (~> 1.8)
