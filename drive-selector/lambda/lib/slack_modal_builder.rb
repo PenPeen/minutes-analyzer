@@ -44,7 +44,8 @@ class SlackModalBuilder
               type: 'plain_text',
               text: 'ファイル名を入力して検索...',
               emoji: true
-            }
+            },
+            min_query_length: 0
           },
           label: {
             type: 'plain_text',
