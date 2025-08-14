@@ -24,9 +24,28 @@ resource "aws_secretsmanager_secret_version" "app_secrets_version" {
     SLACK_BOT_TOKEN     = var.slack_bot_token
     GOOGLE_CLIENT_ID    = var.google_client_id
     GOOGLE_CLIENT_SECRET = var.google_client_secret
+    PROCESS_LAMBDA_ARN  = var.process_lambda_arn
   })
   
   lifecycle {
     ignore_changes = [secret_string]
   }
+}
+
+# Secrets rotation configuration (optional - for production)
+resource "aws_secretsmanager_secret_rotation" "app_secrets" {
+  count = var.environment == "production" ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.app_secrets.id
+
+  rotation_rules {
+    automatically_after_days = 90
+  }
+}
+
+# Output for secret ARN
+output "secret_arn" {
+  description = "ARN of the Secrets Manager secret"
+  value       = aws_secretsmanager_secret.app_secrets.arn
+  sensitive   = true
 }
