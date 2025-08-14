@@ -2,6 +2,7 @@
 
 require 'aws-sdk-lambda'
 require 'aws-sdk-secretsmanager'
+require 'aws-sdk-sts'
 require 'json'
 
 class LambdaInvoker
@@ -93,8 +94,9 @@ class LambdaInvoker
 
   # ターゲットLambda関数のARNを取得
   def fetch_target_function_arn
-    # Production固定のARNを使用
-    arn = 'arn:aws:lambda:ap-northeast-1:339712736892:function:minutes-analyzer-production'
+    # AWS STSを使用して現在のアカウントIDを動的に取得
+    @account_id ||= Aws::STS::Client.new.get_caller_identity.account
+    arn = "arn:aws:lambda:ap-northeast-1:#{@account_id}:function:minutes-analyzer-production"
     
     puts "Using target Lambda ARN: #{arn}"
     arn

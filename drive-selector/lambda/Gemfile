@@ -3,6 +3,7 @@ source 'https://rubygems.org'
 # AWS SDK
 gem 'aws-sdk-lambda', '~> 1.0'
 gem 'aws-sdk-secretsmanager', '~> 1.0'
+gem 'aws-sdk-sts', '~> 1.0'
 # aws-sdk-dynamodb removed - using session-based authentication instead
 
 # Google APIs
