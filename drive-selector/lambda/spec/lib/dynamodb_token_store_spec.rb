@@ -143,14 +143,17 @@ RSpec.describe DynamoDbTokenStore do
         })
       end
 
-      it 'returns nil' do
+      it 'returns tokens even when expired (for refresh handling)' do
         expect(mock_dynamodb).to receive(:get_item).with(
           table_name: table_name,
           key: { user_id: slack_user_id }
         ).and_return(dynamodb_response)
 
         result = token_store.get_tokens(slack_user_id)
-        expect(result).to be_nil
+        expect(result).not_to be_nil
+        expect(result[:access_token]).to eq(tokens['access_token'])
+        expect(result[:refresh_token]).to eq(tokens['refresh_token'])
+        expect(result[:expires_at]).to eq(expired_expires_at)
       end
     end
 
