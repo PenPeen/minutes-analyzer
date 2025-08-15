@@ -116,7 +116,8 @@ class GoogleOAuthClient
 
   # ユーザーが認証済みかチェック
   def authenticated?(slack_user_id)
-    @token_store.authenticated?(slack_user_id)
+    tokens = get_tokens(slack_user_id)
+    !tokens.nil? && !tokens[:access_token].nil?
   end
 
   # トークンをDynamoDBから削除（ログアウト）
