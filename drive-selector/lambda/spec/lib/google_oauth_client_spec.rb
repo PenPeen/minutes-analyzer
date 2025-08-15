@@ -195,55 +195,61 @@ RSpec.describe GoogleOAuthClient do
       expect(client.get_tokens('non_existent_user')).to be_nil
     end
 
-    xit 'automatically refreshes expired tokens' do
-      # Save expired token
-      expired_tokens = tokens.dup
-      expired_tokens['expires_in'] = -1  # Already expired
+    it 'automatically refreshes expired tokens' do
+      # Mock the token store to return an expired token first, then a valid one
+      mock_token_store = double('DynamoDbTokenStore')
+      allow(DynamoDbTokenStore).to receive(:new).and_return(mock_token_store)
+      client.instance_variable_set(:@token_store, mock_token_store)
       
-      # Mock refresh request first
+      # Expired token that will be returned on first call
+      expired_token = {
+        access_token: access_token,
+        refresh_token: refresh_token,
+        expires_at: Time.now.to_i - 1  # Expired 1 second ago
+      }
+      
+      # Refreshed token that will be returned on recursive call
+      refreshed_token = {
+        access_token: 'refreshed_access_token',
+        refresh_token: refresh_token,
+        expires_at: Time.now.to_i + 3600
+      }
+      
+      # Mock token store calls
+      allow(mock_token_store).to receive(:get_tokens)
+        .with(slack_user_id)
+        .and_return(expired_token, refreshed_token)
+      
+      allow(mock_token_store).to receive(:update_tokens)
+        .with(slack_user_id, anything)
+        .and_return(true)
+      
+      # Mock refresh request to return new tokens
       new_token_response = {
-        'access_token' => 'refreshed_token',
+        'access_token' => 'refreshed_access_token',
         'expires_in' => 3600
       }
       
       stub_request(:post, GoogleOAuthClient::GOOGLE_TOKEN_URL)
-        .with(body: hash_including('grant_type' => 'refresh_token'))
+        .with(body: hash_including(
+          'grant_type' => 'refresh_token',
+          'refresh_token' => refresh_token
+        ))
         .to_return(
           status: 200,
           body: new_token_response.to_json,
           headers: { 'Content-Type' => 'application/json' }
         )
       
-      # Mock the token store directly to handle the refresh process
-      mock_token_store = double('DynamoDbTokenStore')
-      allow(DynamoDbTokenStore).to receive(:new).and_return(mock_token_store)
-      client.instance_variable_set(:@token_store, mock_token_store)
-      
-      # Mock get_tokens to return nil first (expired), then valid refreshed token
-      allow(mock_token_store).to receive(:get_tokens)
-        .with(slack_user_id)
-        .and_return(nil)
-      
-      allow(mock_token_store).to receive(:save_tokens)
-      allow(mock_token_store).to receive(:update_tokens)
-      
-      # Mock GoogleOAuthClient's get_tokens to handle the refresh logic
-      original_method = client.method(:get_tokens)
-      allow(client).to receive(:get_tokens) do |user_id, refresh_attempted: false|
-        if refresh_attempted
-          { access_token: 'refreshed_token', refresh_token: refresh_token, expires_at: Time.now.to_i + 3600 }
-        else
-          # Simulate the refresh logic
-          new_tokens = client.refresh_access_token(refresh_token)
-          mock_token_store.update_tokens(user_id, new_tokens)
-          client.get_tokens(user_id, refresh_attempted: true)
-        end
-      end
-      
-      client.save_tokens(slack_user_id, expired_tokens)
-
+      # Should trigger refresh and return refreshed token
       retrieved = client.get_tokens(slack_user_id)
-      expect(retrieved[:access_token]).to eq('refreshed_token')
+      
+      expect(retrieved[:access_token]).to eq('refreshed_access_token')
+      expect(retrieved[:refresh_token]).to eq(refresh_token)
+      expect(retrieved[:expires_at]).to be > Time.now.to_i
+      
+      # Verify that update_tokens was called with the new tokens
+      expect(mock_token_store).to have_received(:update_tokens).once
     end
 
     it 'removes tokens when refresh fails' do
