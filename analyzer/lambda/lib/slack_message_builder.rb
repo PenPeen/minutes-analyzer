@@ -12,6 +12,7 @@ class SlackMessageBuilder
   def build_main_message(analysis_result)
     blocks = []
 
+    blocks << build_mention_message(analysis_result)
     blocks << build_header(analysis_result)
     blocks << build_summary_section(analysis_result)
     blocks << build_decisions_section(analysis_result)
@@ -36,6 +37,19 @@ class SlackMessageBuilder
   end
 
   private
+
+  def build_mention_message(analysis_result)
+    executor_info = analysis_result['executor_info']
+    return nil unless executor_info && executor_info[:user_id]
+
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: "<@#{executor_info[:user_id]}>\n\n議事録の分析と、Notionへのタスク連携が完了しました。\nタスク内容をご確認の上、期限設定や担当アサインを実施してください！"
+      }
+    }
+  end
 
   def create_fallback_text(analysis_result)
     meeting_summary = analysis_result['meeting_summary'] || {}
@@ -79,14 +93,6 @@ class SlackMessageBuilder
       }
     end
 
-    # 実行者のメンションを追加
-    executor_info = analysis_result['executor_info']
-    if executor_info && executor_info[:user_id]
-      fields << {
-        type: "mrkdwn",
-        text: "*🔄 分析実行者:*\n<@#{executor_info[:user_id]}>"
-      }
-    end
 
     {
       type: "section",
