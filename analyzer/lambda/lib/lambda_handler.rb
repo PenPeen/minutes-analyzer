@@ -39,7 +39,10 @@ class LambdaHandler
       parsed_body = @validator.validate_and_parse(event)
       file_id = parsed_body['file_id']
       file_name = parsed_body['file_name'] || 'Unknown'
+      user_id = parsed_body['slack_user_id']
+      user_email = parsed_body['slack_user_email']
       @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
+      @logger.info("Executor user_id: #{user_id}, user_email: #{user_email}") if user_id
       
       # シークレット取得と検証
       secrets = @secrets_manager.get_secrets
@@ -55,8 +58,12 @@ class LambdaHandler
       user_mappings = @user_mapping_service.process_mapping(file_id, secrets)
       analysis_result = @user_mapping_service.enrich_actions_with_assignees(analysis_result, user_mappings)
       
-      # 外部サービス連携
-      integration_results = @integration_service.process_integrations(analysis_result, secrets, user_mappings)
+      # オリジナルファイル名を追加（タイトル整形用）
+      analysis_result['original_file_name'] = file_name
+      
+      # 外部サービス連携（実行者情報を追加）
+      executor_info = { user_id: user_id, user_email: user_email }
+      integration_results = @integration_service.process_integrations(analysis_result, secrets, user_mappings, executor_info)
       
       # レスポンス生成
       ResponseBuilder.success_response(analysis_result, integration_results, user_mappings)
