@@ -82,9 +82,8 @@ RSpec.describe SlackCommandHandler do
           response = handler.handle_command(command_params)
 
           expect(response[:statusCode]).to eq(200)
-          response_body = JSON.parse(response[:body])
-          expect(response_body['response_type']).to eq('ephemeral')
-          expect(response_body['text']).to eq('')
+          expect(response[:body]).to eq('')
+          expect(response[:headers]['Content-Type']).to eq('text/plain')
         end
       end
     end
@@ -171,8 +170,7 @@ RSpec.describe SlackCommandHandler do
       it 'creates proper success response' do
         response = handler.send(:create_success_response)
 
-        expect(response['response_type']).to eq('ephemeral')
-        expect(response['text']).to eq('')
+        expect(response).to be_empty
       end
     end
 
