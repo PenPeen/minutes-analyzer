@@ -8,31 +8,31 @@ class NotionTaskManager
     @logger = logger
     @notion_api = NotionApiClient.new(api_key, logger)
   end
-  
+
   def create_tasks_from_actions(actions, parent_page_id)
     return [] unless actions.is_a?(Array) && actions.any?
-    
+
     @logger.info("Creating #{actions.size} tasks in Notion task database")
-    
+
     actions.map do |action|
       create_single_task(action, parent_page_id)
     end
   end
-  
+
   private
-  
+
   def create_single_task(action, parent_page_id)
     properties = build_task_properties(action, parent_page_id)
     children = build_task_children(action)
-    
+
     request_body = {
       parent: { database_id: @task_database_id },
       properties: properties,
       children: children
     }
-    
+
     response = @notion_api.create_page(request_body)
-    
+
     if response[:success]
       {
         success: true,
@@ -55,7 +55,7 @@ class NotionTaskManager
       error: e.message
     }
   end
-  
+
   def build_task_properties(action, parent_page_id)
     properties = {
       'タスク名' => {
@@ -72,62 +72,61 @@ class NotionTaskManager
       },
       '優先度' => build_priority_property(action['priority'])
     }
-    
+
     # 担当者設定
     if action['notion_user_id']
       properties['担当者'] = {
         'people' => [{ 'id' => action['notion_user_id'] }]
       }
     end
-    
+
     # 期限設定
     if action['deadline']
       properties['期限'] = build_deadline_property(action['deadline'])
     end
-    
+
     # 親ページへのリレーション
     if parent_page_id
       properties['関連議事録'] = {
         'relation' => [{ 'id' => parent_page_id }]
       }
     end
-    
+
     properties
   end
-  
+
   def build_task_children(action)
     page_builder = NotionPageBuilder.new(@task_database_id, @logger)
     page_builder.build_task_content(action)
   end
-  
+
   def build_priority_property(priority)
     priority_map = {
       'high' => '高',
       'medium' => '中',
       'low' => '低'
     }
-    
+
     {
       'select' => { 'name' => priority_map[priority] || '低' }
     }
   end
-  
+
   def build_deadline_property(deadline)
     return { 'date' => nil } unless deadline
-    
+
     begin
       # 相対的な日付表現を処理
       parsed_date = parse_relative_date(deadline)
       { 'date' => { 'start' => parsed_date.to_s } }
     rescue => e
-      @logger.warn("Failed to parse deadline: #{deadline}, Error: #{e.message}")
       { 'date' => nil }
     end
   end
-  
+
   def parse_relative_date(deadline_text)
     today = Date.today
-    
+
     case deadline_text
     when /今週末/
       days_until_sunday = (7 - today.wday) % 7
