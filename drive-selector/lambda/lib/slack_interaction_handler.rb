@@ -109,7 +109,6 @@ class SlackInteractionHandler
     # 選択されたファイル情報をログ出力
     puts "Selected file: #{file_info[:file_id]}"
     puts "File name: #{file_info[:file_name]}"
-    puts "Custom filename: #{file_info[:custom_filename] || '(none)'}"
     puts "Save to Notion: #{save_to_notion}"
 
     begin
@@ -118,7 +117,7 @@ class SlackInteractionHandler
       
       # チャンネルに分析開始メッセージを送信
       if channel_id
-        display_filename = file_info[:custom_filename] || file_info[:file_name]
+        display_filename = file_info[:file_name]
         
         # 通知メッセージのブロックを作成
         blocks = [
@@ -170,7 +169,7 @@ class SlackInteractionHandler
       # Lambda関数を呼び出し
       result = @lambda_invoker.invoke_analysis_lambda({
         file_id: file_info[:file_id],
-        file_name: file_info[:custom_filename] || file_info[:file_name],
+        file_name: file_info[:file_name],
         user_id: user_id,
         user_email: @slack_client.get_user_email(user_id),
         save_to_notion: save_to_notion,
@@ -228,13 +227,10 @@ class SlackInteractionHandler
     file_select_data = values.dig('file_select_block', 'file_select', 'selected_option')
     return nil unless file_select_data
 
-    custom_filename = values.dig('custom_title_block', 'custom_title', 'value')
-    custom_filename = nil if custom_filename && custom_filename.empty?
 
     {
       file_id: file_select_data['value'],
-      file_name: file_select_data.dig('text', 'text'),
-      custom_filename: custom_filename
+      file_name: file_select_data.dig('text', 'text')
     }
   rescue
     nil
