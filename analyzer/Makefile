@@ -383,6 +383,8 @@ deploy-production: ## 本番環境にデプロイ
 		echo "  cp .env.local .env.production でコピーして、本番用の値に編集してください。"; \
 		exit 1; \
 	fi
+	@echo "🔨 Lambda関数をビルド中..."
+	@$(MAKE) build-lambda
 	@$(MAKE) generate-production-tfvars
 	@$(MAKE) ensure-terraform-backend-bucket
 	@cd infrastructure/environments/production && \

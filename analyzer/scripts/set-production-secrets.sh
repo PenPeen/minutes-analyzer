@@ -25,6 +25,11 @@ with open('.env.production', 'r') as f:
         if line and not line.startswith('#'):
             if '=' in line:
                 key, value = line.split('=', 1)
+                # Remove quotes from values
+                if value.startswith("'") and value.endswith("'"):
+                    value = value[1:-1]
+                elif value.startswith('"') and value.endswith('"'):
+                    value = value[1:-1]
                 env_vars[key] = value
 
 # JSONを作成
