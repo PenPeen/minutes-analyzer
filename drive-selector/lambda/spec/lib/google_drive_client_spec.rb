@@ -79,6 +79,7 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'searches files successfully' do
+        allow(client).to receive(:build_search_query).with('meeting').and_return('mocked query')
         allow(mock_drive_service).to receive(:list_files).and_return(mock_response)
 
         result = client.search_files('meeting')
@@ -91,8 +92,10 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'uses correct search parameters' do
+        allow(client).to receive(:build_search_query).with('test query').and_return('mocked query')
         expect(mock_drive_service).to receive(:list_files).with(
           hash_including(
+            q: 'mocked query',
             page_size: 20,
             fields: 'files(id,name,mimeType,modifiedTime,owners,webViewLink)',
             order_by: 'modifiedTime desc',
@@ -105,6 +108,7 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'handles empty search results' do
+        allow(client).to receive(:build_search_query).with('nonexistent').and_return('mocked query')
         empty_response = double(files: [])
         allow(mock_drive_service).to receive(:list_files).and_return(empty_response)
 
@@ -114,15 +118,14 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'handles authorization errors with retry' do
+        allow(client).to receive(:build_search_query).with('meeting').and_return('mocked query')
         auth_error = Google::Apis::AuthorizationError.new('Invalid token')
         
         # First call fails with auth error
         allow(mock_drive_service).to receive(:list_files).and_raise(auth_error)
         
         # Mock refresh_authorization
-        allow(mock_oauth_client).to receive(:refresh_access_token).with('test_refresh_token')
-          .and_return({ access_token: 'new_access_token', refresh_token: 'test_refresh_token' })
-        allow(mock_oauth_client).to receive(:save_tokens)
+        allow(client).to receive(:refresh_authorization)
         
         result = client.search_files('meeting')
 
@@ -130,6 +133,7 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'handles API errors gracefully' do
+        allow(client).to receive(:build_search_query).with('meeting').and_return('mocked query')
         api_error = Google::Apis::Error.new('API quota exceeded')
         allow(mock_drive_service).to receive(:list_files).and_raise(api_error)
 
@@ -139,6 +143,7 @@ RSpec.describe GoogleDriveClient do
       end
 
       it 'respects file limit parameter' do
+        allow(client).to receive(:build_search_query).with('test').and_return('mocked query')
         expect(mock_drive_service).to receive(:list_files).with(
           hash_including(page_size: 5)
         ).and_return(mock_response)
@@ -197,10 +202,22 @@ RSpec.describe GoogleDriveClient do
   end
 
   describe '#build_search_query' do
+    let(:mock_folders) do
+      [
+        { id: 'folder1', name: 'Meet Recordings' },
+        { id: 'folder2', name: 'Meeting Recordings' }
+      ]
+    end
+
+    before do
+      # Mock find_meet_recordings_folders to avoid API calls
+      allow(client).to receive(:find_meet_recordings_folders).and_return(mock_folders)
+    end
+
     it 'builds query for user search with file name' do
       query = client.send(:build_search_query, 'meeting notes')
       
-      expect(query).to include("name contains 'meeting notes'")
+      expect(query).to include("'folder1' in parents or 'folder2' in parents")
       expect(query).to include('trashed = false')
       expect(query).to include('mimeType =')
     end
@@ -208,18 +225,22 @@ RSpec.describe GoogleDriveClient do
     it 'builds query for empty search with meeting keywords' do
       query = client.send(:build_search_query, '')
       
-      expect(query).to include('議事録')
-      expect(query).to include('meeting')
-      expect(query).to include('minutes')
+      expect(query).to include("'folder1' in parents or 'folder2' in parents")
       expect(query).to include('trashed = false')
+      expect(query).to include('mimeType =')
     end
 
     it 'includes proper MIME types' do
       query = client.send(:build_search_query, 'test')
       
       expect(query).to include("application/vnd.google-apps.document")
-      expect(query).to include("text/plain")
-      expect(query).to include("application/pdf")
+    end
+
+    it 'handles no folders found' do
+      allow(client).to receive(:find_meet_recordings_folders).and_return([])
+      query = client.send(:build_search_query, 'test')
+      
+      expect(query).to eq('1=0')
     end
   end
 

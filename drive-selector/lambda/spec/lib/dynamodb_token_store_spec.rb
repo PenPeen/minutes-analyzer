@@ -156,7 +156,7 @@ RSpec.describe DynamoDbTokenStore do
 
     context 'when DynamoDB raises an error' do
       it 'returns nil and logs the error' do
-        expect(mock_dynamodb).to receive(:get_item).and_raise(
+        expect(mock_dynamodb).to receive(:get_item).twice.and_raise(
           Aws::DynamoDB::Errors::ServiceError.new('context', 'Test error')
         )
         expect { token_store.get_tokens(slack_user_id) }.to output(/DynamoDB get_item error/).to_stdout

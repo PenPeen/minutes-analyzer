@@ -18,7 +18,7 @@ RSpec.describe SlackCommandHandler do
       'channel_name' => 'test_channel',
       'user_id' => slack_user_id,
       'user_name' => 'test_user',
-      'command' => '/meet-transcript',
+      'command' => '/meeting-analyzer',
       'text' => '',
       'response_url' => response_url,
       'trigger_id' => 'test_trigger_id'
@@ -34,12 +34,12 @@ RSpec.describe SlackCommandHandler do
     # Default to unauthenticated user
     allow(oauth_client).to receive(:authenticated?).with(slack_user_id).and_return(false)
     allow(oauth_client).to receive(:generate_auth_url)
-      .with(slack_user_id)
+      .with(slack_user_id, nil, nil)
       .and_return('https://accounts.google.com/oauth/authorize?test=params')
   end
 
   describe '#handle_command' do
-    context 'when command is /meet-transcript' do
+    context 'when command is /meeting-analyzer' do
       context 'and user is not authenticated' do
         it 'returns authentication required message' do
           response = handler.handle_command(command_params)
