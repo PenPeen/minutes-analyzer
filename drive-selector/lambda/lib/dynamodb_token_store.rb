@@ -47,10 +47,8 @@ class DynamoDbTokenStore
 
       token_data = response.item
       
-      # トークンの有効期限を確認（バッファ付き）
-      if token_data['expires_at'] && token_data['expires_at'] < (Time.now.to_i + EXPIRY_BUFFER)
-        return nil
-      end
+      # 期限切れチェックを削除 - GoogleOAuthClientで処理する
+      # 期限切れでもリフレッシュトークンが必要なため、データはそのまま返す
 
       {
         access_token: token_data['access_token'],
