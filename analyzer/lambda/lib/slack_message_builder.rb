@@ -45,13 +45,16 @@ class SlackMessageBuilder
 
   def build_header(analysis_result)
     meeting_summary = analysis_result['meeting_summary'] || {}
-    title = meeting_summary['title'] || 'Meeting'
+    original_title = meeting_summary['title'] || 'Meeting'
+    
+    # タイトル整形処理を追加
+    formatted_title = format_meeting_title(original_title, analysis_result)
 
     {
       type: "header",
       text: {
         type: "plain_text",
-        text: "📝 #{title}",
+        text: ":memo: #{formatted_title}",
         emoji: true
       }
     }
@@ -63,7 +66,7 @@ class SlackMessageBuilder
     fields = [
       {
         type: "mrkdwn",
-        text: "*📅 日時:*\n#{meeting_summary['date'] || 'N/A'}"
+        text: "*:calendar: 日時:*\n#{meeting_summary['date'] || 'N/A'}"
       }
     ]
 
@@ -72,7 +75,16 @@ class SlackMessageBuilder
     if participants_text
       fields << {
         type: "mrkdwn",
-        text: "*👥 参加者:*\n#{participants_text}"
+        text: "*:busts_in_silhouette: 参加者:*\n#{participants_text}"
+      }
+    end
+
+    # 実行者のメンションを追加
+    executor_info = analysis_result['executor_info']
+    if executor_info && executor_info[:user_id]
+      fields << {
+        type: "mrkdwn",
+        text: "*🔄 分析実行者:*\n<@#{executor_info[:user_id]}>"
       }
     end
 
@@ -86,7 +98,7 @@ class SlackMessageBuilder
     decisions = analysis_result['decisions'] || []
     return nil if decisions.empty?
 
-    text_lines = ["*🎯 決定事項 (#{decisions.size}件)*"]
+    text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
 
     decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
       text_lines << "#{index + 1}. #{decision['content']}"
@@ -110,7 +122,7 @@ class SlackMessageBuilder
     return nil if actions.empty?
 
     sorted_actions = sort_actions(actions)
-    text_lines = ["*📋 アクション一覧 (#{actions.size}件)*"]
+    text_lines = ["*:clipboard: アクション一覧 (#{actions.size}件)*"]
 
     sorted_actions.first(MAX_ACTIONS).each_with_index do |action, index|
       action_text = build_action_text(action)
@@ -210,5 +222,44 @@ class SlackMessageBuilder
     deadline = action['deadline_formatted'] || '期日未定'
 
     "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
+  end
+
+  # 議事録タイトルを整形するメソッド
+  def format_meeting_title(original_title, analysis_result)
+    # オリジナルファイル名が利用可能な場合はそれを使用
+    if analysis_result['original_file_name']
+      file_name = analysis_result['original_file_name']
+      return looks_like_filename?(file_name) ? shorten_filename_title(file_name) : file_name
+    end
+    
+    # フォールバック: Geminiが生成したタイトルを使用
+    return original_title unless looks_like_filename?(original_title)
+    
+    # ファイル名っぽい場合は短縮処理を実行
+    return shorten_filename_title(original_title)
+  end
+
+  private
+
+  # ファイル名らしい文字列かどうか判定
+  def looks_like_filename?(title)
+    # 日付パターンや拡張子を含む場合はファイル名と判定
+    title.match?(/\d{4}\/\d{1,2}\/\d{1,2}|\d{4}-\d{1,2}-\d{1,2}|\.(txt|docx?|pdf)$|Gemini によるメモ/)
+  end
+
+  # ファイル名を短縮してタイトル化
+  def shorten_filename_title(filename)
+    # "Webチームリファインメント - 2025/08/01 15:00 JST - Gemini によるメモ"
+    # → "Webチームリファインメント - 2025/08/01"
+    
+    # 不要な部分を削除
+    cleaned = filename
+      .gsub(/ - Gemini によるメモ$/, '')  # " - Gemini によるメモ" を削除
+      .gsub(/ \d{1,2}:\d{2}.*$/, '')      # 時刻以降を削除
+      .gsub(/\.txt$|\.docx?$|\.pdf$/, '') # 拡張子を削除
+      .strip
+    
+    # 短縮後も長い場合は、最初の50文字程度に制限
+    cleaned.length > 50 ? "#{cleaned[0,47]}..." : cleaned
   end
 end
