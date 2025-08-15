@@ -70,11 +70,26 @@ RSpec.configure do |config|
     ENV['SLACK_BOT_TOKEN'] = 'xoxb-test-bot-token'
     ENV['GOOGLE_CLIENT_ID'] = 'test_client_id'
     ENV['GOOGLE_CLIENT_SECRET'] = 'test_client_secret'
-    ENV['PROCESS_LAMBDA_ARN'] = 'arn:aws:lambda:us-east-1:123456789012:function:process-lambda'
+    ENV['PROCESS_LAMBDA_ARN'] = 'arn:aws:lambda:ap-northeast-1:123456789012:function:test-function'
+    ENV['OAUTH_TOKENS_TABLE_NAME'] = 'test-oauth-tokens-table'
+    ENV['GOOGLE_OAUTH_REDIRECT_URI'] = 'http://test.example.com/oauth/callback'
     
     # Mock AWS SDK to prevent actual AWS calls
-    allow(Aws::SecretsManager::Client).to receive(:new).and_return(double('SecretsManagerClient'))
-    allow(Aws::Lambda::Client).to receive(:new).and_return(double('LambdaClient'))
+    mock_secrets_client = double('SecretsManagerClient')
+    mock_lambda_client = double('LambdaClient')
+    mock_dynamodb_client = double('DynamoDBClient',
+      put_item: true,
+      get_item: double(item: nil),
+      delete_item: true
+    )
+    mock_sts_client = double('STSClient')
+    mock_caller_identity = double('CallerIdentity', account: '123456789012')
+    
+    allow(Aws::SecretsManager::Client).to receive(:new).and_return(mock_secrets_client)
+    allow(Aws::Lambda::Client).to receive(:new).and_return(mock_lambda_client)
+    allow(Aws::DynamoDB::Client).to receive(:new).and_return(mock_dynamodb_client)
+    allow(Aws::STS::Client).to receive(:new).and_return(mock_sts_client)
+    allow(mock_sts_client).to receive(:get_caller_identity).and_return(mock_caller_identity)
     
     # Mock Google OAuth client secrets
     allow_any_instance_of(GoogleOAuthClient).to receive(:fetch_secret).with('GOOGLE_CLIENT_ID').and_return('test_client_id')

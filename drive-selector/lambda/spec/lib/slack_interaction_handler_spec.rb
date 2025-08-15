@@ -40,8 +40,8 @@ RSpec.describe SlackInteractionHandler do
                 }
               }
             },
-            'filename_block' => {
-              'filename_override' => {
+            'custom_title_block' => {
+              'custom_title' => {
                 'value' => 'Custom Meeting Name'
               }
             }
@@ -49,6 +49,32 @@ RSpec.describe SlackInteractionHandler do
         }
       }
     }
+  end
+
+  before do
+    # Mock dependencies to avoid actual API calls
+    allow_any_instance_of(SlackApiClient).to receive(:post_message)
+    allow_any_instance_of(SlackApiClient).to receive(:post_ephemeral)
+    allow_any_instance_of(SlackApiClient).to receive(:get_user_email).and_return('test@example.com')
+    allow_any_instance_of(LambdaInvoker).to receive(:invoke_analysis_lambda)
+      .and_return({ status: 'success', message: 'Analysis started' })
+    allow_any_instance_of(SlackOptionsProvider).to receive(:provide_file_options)
+      .and_return({ 'options' => [] })
+    
+    # Mock AWS STS client to prevent actual AWS calls
+    mock_sts_client = double('STS Client')
+    mock_identity = double('Identity', account: '123456789012')
+    allow(Aws::STS::Client).to receive(:new).and_return(mock_sts_client)
+    allow(mock_sts_client).to receive(:get_caller_identity).and_return(mock_identity)
+    
+    # Mock AWS Lambda client
+    mock_lambda_client = double('Lambda Client')
+    allow(Aws::Lambda::Client).to receive(:new).and_return(mock_lambda_client)
+    allow(mock_lambda_client).to receive(:invoke)
+    
+    # Mock AWS Secrets Manager client
+    mock_secrets_client = double('Secrets Manager Client')
+    allow(Aws::SecretsManager::Client).to receive(:new).and_return(mock_secrets_client)
   end
 
   describe '#handle_interaction' do
@@ -91,7 +117,7 @@ RSpec.describe SlackInteractionHandler do
 
       context 'when no file is selected' do
         let(:empty_modal_payload) do
-          payload = modal_submission_payload.deep_dup
+          payload = JSON.parse(modal_submission_payload.to_json)
           payload['view']['state']['values']['file_select_block']['file_select'].delete('selected_option')
           payload
         end
@@ -108,7 +134,7 @@ RSpec.describe SlackInteractionHandler do
 
       context 'when modal state is malformed' do
         let(:malformed_modal_payload) do
-          payload = modal_submission_payload.deep_dup
+          payload = JSON.parse(modal_submission_payload.to_json)
           payload['view']['state'] = nil
           payload
         end
@@ -219,8 +245,8 @@ RSpec.describe SlackInteractionHandler do
       end
 
       it 'handles missing filename gracefully' do
-        state = view_state.deep_dup
-        state['values']['filename_block']['filename_override']['value'] = ''
+        state = JSON.parse(view_state.to_json)
+        state['values']['custom_title_block']['custom_title']['value'] = ''
 
         expect { handler.send(:process_modal_submission, state, user_id) }
           .to output(/Custom filename: \(none\)/).to_stdout
@@ -247,8 +273,8 @@ RSpec.describe SlackInteractionHandler do
       end
 
       it 'handles missing custom filename' do
-        values = modal_submission_payload['view']['state']['values'].deep_dup
-        values['filename_block']['filename_override']['value'] = ''
+        values = JSON.parse(modal_submission_payload['view']['state']['values'].to_json)
+        values['custom_title_block']['custom_title']['value'] = ''
 
         file_info = handler.send(:extract_selected_file, values)
         expect(file_info[:custom_filename]).to be_nil
@@ -356,19 +382,4 @@ RSpec.describe SlackInteractionHandler do
     end
   end
 
-  # Helper for deep duplication in tests
-  class Hash
-    def deep_dup
-      hash = dup
-      hash.each_pair do |key, value|
-        if key.frozen? && ::String === key
-          hash[key] = value.is_a?(Hash) ? value.deep_dup : value
-        else
-          hash.delete(key)
-          hash[key.deep_dup] = value.is_a?(Hash) ? value.deep_dup : value
-        end
-      end
-      hash
-    end
-  end
 end

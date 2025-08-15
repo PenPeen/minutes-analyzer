@@ -47,7 +47,7 @@ RSpec.describe OAuthCallbackHandler do
       end
 
       before do
-        allow(oauth_client).to receive(:exchange_code_for_token).with(auth_code).and_return(tokens)
+        allow(oauth_client).to receive(:exchange_code_for_token).with(auth_code, valid_event).and_return(tokens)
         allow(oauth_client).to receive(:save_tokens).with(slack_user_id, tokens)
       end
 
@@ -56,15 +56,15 @@ RSpec.describe OAuthCallbackHandler do
 
         expect(result[:statusCode]).to eq(200)
         expect(result[:headers]['Content-Type']).to eq('text/html; charset=utf-8')
-        expect(result[:body]).to include('認証成功！')
-        expect(result[:body]).to include('Google Drive との連携が完了しました')
-        expect(result[:body]).to include('/meet-transcript コマンドをお試しください')
+        expect(result[:body]).to include('Google Drive 認証が完了しました')
+        expect(result[:body]).to include('Google Drive にアクセスできるようになりました')
+        expect(result[:body]).to include('/meeting-analyzer')
       end
 
       it 'トークン交換とトークン保存を正しく実行' do
         handler.handle_callback(valid_event)
 
-        expect(oauth_client).to have_received(:exchange_code_for_token).with(auth_code)
+        expect(oauth_client).to have_received(:exchange_code_for_token).with(auth_code, valid_event)
         expect(oauth_client).to have_received(:save_tokens).with(slack_user_id, tokens)
       end
 
@@ -73,7 +73,7 @@ RSpec.describe OAuthCallbackHandler do
 
         expect(result[:body]).to include('window.close()')
         expect(result[:body]).to include('setTimeout')
-        expect(result[:body]).to include('3000') # 3秒後の自動クローズ
+        expect(result[:body]).to include('10000') # 10秒後の自動リダイレクト
       end
 
       it '成功HTMLに適切なスタイリングが含まれる' do
@@ -81,7 +81,7 @@ RSpec.describe OAuthCallbackHandler do
 
         expect(result[:body]).to include('font-family:')
         expect(result[:body]).to include('background: linear-gradient')
-        expect(result[:body]).to include('backdrop-filter: blur')
+        expect(result[:body]).to include('box-shadow:')
       end
     end
 
@@ -413,8 +413,8 @@ RSpec.describe OAuthCallbackHandler do
       it 'ユーザーフレンドリーなメッセージが含まれる' do
         result = handler.handle_callback(valid_event)
 
-        expect(result[:body]).to include('✅ 認証成功！')
-        expect(result[:body]).to include('このウィンドウを閉じる')
+        expect(result[:body]).to include('✓')
+        expect(result[:body]).to include('Slack に戻る')
       end
     end
 
@@ -426,9 +426,10 @@ RSpec.describe OAuthCallbackHandler do
 
         expect(result[:statusCode]).to eq(400)
         expect(result[:headers]['Content-Type']).to eq('text/html; charset=utf-8')
-        expect(result[:body]).to include('❌ 認証エラー')
+        expect(result[:body]).to include('×')
+        expect(result[:body]).to include('認証に失敗しました')
         expect(result[:body]).to include(error_message)
-        expect(result[:body]).to include('Slack に戻って再度お試しください')
+        expect(result[:body]).to include('お手数ですが、Slack に戻って再度お試しください')
       end
 
       it 'エラーHTMLに適切なスタイリングが含まれる' do
@@ -442,8 +443,8 @@ RSpec.describe OAuthCallbackHandler do
       it 'ユーザーインタラクション要素が含まれる' do
         result = handler.send(:error_response, error_message)
 
-        expect(result[:body]).to include('onclick="window.close()"')
-        expect(result[:body]).to include('ウィンドウを閉じる')
+        expect(result[:body]).to include('onclick="redirectToSlack()"')
+        expect(result[:body]).to include('Slack に戻る')
       end
     end
   end
