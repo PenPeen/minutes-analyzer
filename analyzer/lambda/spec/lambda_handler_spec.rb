@@ -88,7 +88,9 @@ RSpec.describe LambdaHandler do
         end
 
         it 'Slack通知を送信' do
-          expect(slack_client).to receive(:send_notification).with(summary)
+          expected_summary = summary.dup
+          expected_summary['executor_info'] = { user_id: nil, user_email: nil }
+          expect(slack_client).to receive(:send_notification).with(expected_summary)
           handler.handle(event: event, context: context)
         end
       end

@@ -6,16 +6,16 @@ class IntegrationService
     @logger = logger
   end
   
-  def process_integrations(analysis_result, secrets, user_mappings = {})
+  def process_integrations(analysis_result, secrets, user_mappings = {}, executor_info = nil)
     {
-      slack: process_slack_integration(analysis_result, secrets, user_mappings),
+      slack: process_slack_integration(analysis_result, secrets, user_mappings, executor_info),
       notion: process_notion_integration(analysis_result, secrets)
     }
   end
   
   private
   
-  def process_slack_integration(analysis_result, secrets, user_mappings)
+  def process_slack_integration(analysis_result, secrets, user_mappings, executor_info = nil)
     slack_bot_token = secrets['SLACK_BOT_TOKEN']
     slack_channel_id = secrets['SLACK_CHANNEL_ID']
     
@@ -25,6 +25,12 @@ class IntegrationService
     slack_service = SlackNotificationService.new(slack_bot_token, slack_channel_id, @logger)
     
     result_with_mentions = enrich_with_slack_mentions(analysis_result, user_mappings)
+    
+    # 実行者情報を追加
+    if executor_info
+      result_with_mentions['executor_info'] = executor_info
+    end
+    
     slack_service.send_notification(result_with_mentions)
   rescue StandardError => e
     handle_integration_error('Slack', e)
