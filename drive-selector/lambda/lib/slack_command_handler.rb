@@ -107,7 +107,7 @@ class SlackCommandHandler
   def create_success_response
     {
       'response_type' => 'ephemeral',
-      'text' => 'Google Drive検索を開始します。検索用のモーダルを表示しますので、しばらくお待ちください。'
+      'text' => ''
     }
   end
 

@@ -84,13 +84,7 @@ RSpec.describe SlackCommandHandler do
           expect(response[:statusCode]).to eq(200)
           response_body = JSON.parse(response[:body])
           expect(response_body['response_type']).to eq('ephemeral')
-          expect(response_body['text']).to include('Google Drive検索を開始します')
-        end
-
-        it 'includes instructions for modal interaction' do
-          response = handler.handle_command(command_params)
-          response_body = JSON.parse(response[:body])
-          expect(response_body['text']).to include('検索用のモーダルを表示しますので、しばらくお待ちください')
+          expect(response_body['text']).to eq('')
         end
       end
     end
@@ -178,7 +172,7 @@ RSpec.describe SlackCommandHandler do
         response = handler.send(:create_success_response)
 
         expect(response['response_type']).to eq('ephemeral')
-        expect(response['text']).to include('Google Drive検索を開始します')
+        expect(response['text']).to eq('')
       end
     end
 
