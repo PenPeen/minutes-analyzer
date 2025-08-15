@@ -17,14 +17,14 @@ class SlackCommandHandler
       body_content = create_error_response('必要なパラメータが不足しています', 400)
       return create_http_response(400, body_content)
     end
-    
+
     command = params['command']
     user_id = params['user_id']
     team_id = params['team_id']
     trigger_id = params['trigger_id']
-    
+
     puts "Command: #{command} from user: #{user_id}"
-    
+
     begin
       case command
       when '/meeting-analyzer'
@@ -64,22 +64,23 @@ class SlackCommandHandler
 
   # ファイル選択モーダルを開く
   def open_file_selector_modal(trigger_id)
-    # モーダルを構築
-    modal = SlackModalBuilder.file_selector_modal
-    
-    # Lambda環境ではThreadが期待通り動作しないため、
-    # 別のLambda関数を非同期Invokeするか、
-    # ACK後にモーダルを開く処理を同期的に実行
-    begin
-      @slack_client.open_modal(trigger_id, modal)
-    rescue => e
-      puts "Failed to open modal: #{e.message}"
-      # エラーが発生してもACKは返す
+    # 先に空のACKを返す
+    response = create_empty_response
+
+    # ACK後に非同期でモーダルを開く（Lambdaがスレッド完了を待つよう制御）
+    thread = Thread.new do
+      begin
+        modal = SlackModalBuilder.file_selector_modal
+        @slack_client.open_modal(trigger_id, modal)
+      rescue => e
+        puts "Failed to open modal: #{e.message}"
+      end
     end
-    
-    # 3秒以内にACKレスポンスを返す（成功メッセージ付き）
-    body_content = create_success_response
-    create_http_response(200, body_content)
+
+    # スレッドの完了を待機（Lambdaの早期終了を防ぐ）
+    thread.join(1)
+
+    response
   end
 
   # 認証が必要な場合のレスポンス
@@ -103,11 +104,17 @@ class SlackCommandHandler
     }
   end
 
-  # 成功レスポンス
+  # 成功レスポンス（空のレスポンス）
   def create_success_response
+    {}
+  end
+
+  # 完全に空のレスポンス
+  def create_empty_response
     {
-      'response_type' => 'ephemeral',
-      'text' => 'Google Drive検索を開始します。検索用のモーダルを表示しますので、しばらくお待ちください。'
+      statusCode: 200,
+      headers: { 'Content-Type' => 'text/plain' },
+      body: ''
     }
   end
 
