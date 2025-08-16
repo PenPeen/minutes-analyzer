@@ -66,26 +66,6 @@ class NotionIntegrationService
 
   private
 
-  # 発言統計データを文字列形式にフォーマット
-  # Gemini APIから返される発言統計は配列形式
-  # @param speaker_stats [Array<Hash>] 発言統計データ
-  # @return [String] フォーマット済みの発言統計テキスト
-  def format_speaker_stats(speaker_stats)
-    result = ""
-
-    # 配列形式のデータを処理
-    if speaker_stats.is_a?(Array)
-      speaker_stats.each do |speaker|
-        next unless speaker.is_a?(Hash)
-        name = speaker['name'] || 'Unknown'
-        count = speaker['speaking_count'] || 0
-        ratio = speaker['speaking_ratio'] || '0%'
-        result += "• #{name}: #{count}回 (#{ratio})\n"
-      end
-    end
-
-    result
-  end
 
   def build_meeting_properties(analysis_result)
     # nil安全な値の取得
@@ -142,14 +122,12 @@ class NotionIntegrationService
     decisions = analysis_result['decisions'] || []
     actions = analysis_result['actions'] || []
     health_assessment = analysis_result['health_assessment'] || {}
-    participation_analysis = analysis_result['participation_analysis'] || {}
     atmosphere = analysis_result['atmosphere'] || {}
     improvement_suggestions = analysis_result['improvement_suggestions'] || []
 
     content.concat(build_decisions_section(decisions)) if decisions.any?
     content.concat(build_actions_section(actions)) if actions.any?
     content.concat(build_health_section(health_assessment)) if health_assessment['overall_score']
-    content.concat(build_participation_section(participation_analysis)) if participation_analysis['balance_score']
     content.concat(build_atmosphere_section(atmosphere)) if atmosphere['overall_tone']
     content.concat(build_improvements_section(improvement_suggestions)) if improvement_suggestions.any?
 
@@ -288,41 +266,6 @@ class NotionIntegrationService
     section
   end
 
-  def build_participation_section(participation_analysis)
-    section = []
-    section << {
-      type: "heading_2",
-      heading_2: {
-        rich_text: [
-          {
-            type: "text",
-            text: { content: "👥 参加度分析" }
-          }
-        ]
-      }
-    }
-
-    content = "バランススコア: #{participation_analysis['balance_score']}/100\n\n"
-
-    if participation_analysis['speaker_stats']
-      content += "発言統計:\n"
-      content += format_speaker_stats(participation_analysis['speaker_stats'])
-    end
-
-    section << {
-      type: "paragraph",
-      paragraph: {
-        rich_text: [
-          {
-            type: "text",
-            text: { content: content }
-          }
-        ]
-      }
-    }
-
-    section
-  end
 
   def build_atmosphere_section(atmosphere)
     section = []

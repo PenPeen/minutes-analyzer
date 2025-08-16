@@ -102,16 +102,6 @@
       }
     ]
   },
-  "time_efficiency": {
-    "actual_duration": "XX分",
-    "scheduled_duration": "XX分または「記載なし」",
-    "topic_durations": [
-      {
-        "topic": "トピック名",
-        "duration": "XX分"
-      }
-    ]
-  },
   "atmosphere": {
     "overall_tone": "positive/neutral/negative",
     "evidence": ["根拠となる発言1", "根拠となる発言2"]
