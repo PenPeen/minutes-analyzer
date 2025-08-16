@@ -2,15 +2,10 @@ name: Lambda Function Tests
 
 on:
   pull_request:
-    paths:
-      - 'analyzer/lambda/**'
-      - '.github/workflows/lambda-test.yml'
   push:
     branches:
       - main
       - develop
-    paths:
-      - 'analyzer/lambda/**'
 
 jobs:
   test:
