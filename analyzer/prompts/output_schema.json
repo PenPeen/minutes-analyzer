@@ -90,25 +90,6 @@
       },
       "required": ["overall_score", "contradictions", "unresolved_issues", "undefined_items"]
     },
-    "time_efficiency": {
-      "type": "object",
-      "properties": {
-        "actual_duration": {"type": "string"},
-        "scheduled_duration": {"type": "string"},
-        "topic_durations": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "topic": {"type": "string"},
-              "duration": {"type": "string"}
-            },
-            "required": ["topic", "duration"]
-          }
-        }
-      },
-      "required": ["actual_duration", "scheduled_duration", "topic_durations"]
-    },
     "atmosphere": {
       "type": "object",
       "properties": {
@@ -145,7 +126,6 @@
     "actions",
     "actions_summary",
     "health_assessment",
-    "time_efficiency",
     "atmosphere",
     "improvement_suggestions"
   ]
