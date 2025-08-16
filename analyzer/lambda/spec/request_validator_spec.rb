@@ -320,7 +320,7 @@ RSpec.describe RequestValidator do
         {
           'body' => JSON.generate({
             'file_id' => 'direct-invoke-test-id',
-            'source' => 'google_apps_script'
+            'source' => 'drive_selector'
           })
         }
       end
@@ -328,7 +328,7 @@ RSpec.describe RequestValidator do
       it '直接invoke形式のイベントが正常に処理される' do
         result = validator.validate_and_parse(direct_invoke_event)
         expect(result['file_id']).to eq('direct-invoke-test-id')
-        expect(result['source']).to eq('google_apps_script')
+        expect(result['source']).to eq('drive_selector')
       end
     end
   end

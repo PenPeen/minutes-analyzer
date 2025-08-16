@@ -17,8 +17,3 @@ output "secret_name" {
   description = "Secret name for application secrets"
   value       = aws_secretsmanager_secret.app_secrets.name
 }
-
-output "lambda_function_url" {
-  description = "Lambda Function URL for direct access (no timeout limit)"
-  value       = aws_lambda_function_url.minutes_analyzer.function_url
-}

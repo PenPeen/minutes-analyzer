@@ -19,6 +19,9 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Get current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # Secrets Manager for Application Secrets
 resource "aws_secretsmanager_secret" "app_secrets" {
   name = "${var.project_name}-secrets-${var.environment}"
@@ -105,7 +108,7 @@ resource "aws_iam_role_policy" "lambda_secrets_policy" {
   })
 }
 
-# IAM Policy for Lambda Invoke
+# IAM Policy for Lambda Invoke - minutes-analyzer-productionのみアクセス許可
 resource "aws_iam_role_policy" "lambda_invoke_policy" {
   name = "${var.project_name}-lambda-invoke-policy-${var.environment}"
   role = aws_iam_role.lambda_execution_role.id
@@ -116,7 +119,7 @@ resource "aws_iam_role_policy" "lambda_invoke_policy" {
       {
         Effect   = "Allow",
         Action   = "lambda:InvokeFunction",
-        Resource = "*"
+        Resource = "arn:aws:lambda:${var.aws_region}:${data.aws_caller_identity.current.account_id}:function:minutes-analyzer-production"
       }
     ]
   })
@@ -332,4 +335,40 @@ resource "aws_lambda_permission" "api_gateway_health" {
   function_name = aws_lambda_function.slack_bot_controller.function_name
   principal     = "apigateway.amazonaws.com"
   source_arn    = "${aws_api_gateway_rest_api.slack_bot.execution_arn}/*/*"
+}
+
+# API Key for Rate Limiting
+resource "aws_api_gateway_api_key" "slack_bot_key" {
+  name = "${var.project_name}-api-key-${var.environment}"
+
+  tags = var.common_tags
+}
+
+# Usage Plan for Rate Limiting
+resource "aws_api_gateway_usage_plan" "slack_bot_plan" {
+  name         = "${var.project_name}-usage-plan-${var.environment}"
+  description  = "Usage plan for Slack Bot API with rate limiting"
+
+  api_stages {
+    api_id = aws_api_gateway_rest_api.slack_bot.id
+    stage  = var.environment
+  }
+
+  quota_settings {
+    limit  = 100  # 1日100リクエスト
+    period = "DAY"
+  }
+
+  throttle_settings {
+    rate_limit  = 5   # 秒間5リクエスト
+    burst_limit = 10  # バースト時10リクエスト
+  }
+
+  tags = var.common_tags
+}
+
+resource "aws_api_gateway_usage_plan_key" "slack_bot_plan_key" {
+  key_id        = aws_api_gateway_api_key.slack_bot_key.id
+  key_type      = "API_KEY"
+  usage_plan_id = aws_api_gateway_usage_plan.slack_bot_plan.id
 }

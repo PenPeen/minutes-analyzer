@@ -32,3 +32,19 @@ output "api_gateway_interactions_url" {
   description = "API Gateway URL for Slack interactions"
   value       = "https://${aws_api_gateway_rest_api.slack_bot.id}.execute-api.${var.aws_region}.amazonaws.com/${var.environment}/slack/interactions"
 }
+
+output "lambda_execution_role_arn" {
+  description = "ARN of the Lambda execution role"
+  value       = aws_iam_role.lambda_execution_role.arn
+}
+
+output "api_key_id" {
+  description = "API Gateway API Key ID"
+  value       = aws_api_gateway_api_key.slack_bot_key.id
+}
+
+output "api_key_value" {
+  description = "API Gateway API Key Value"
+  value       = aws_api_gateway_api_key.slack_bot_key.value
+  sensitive   = true
+}

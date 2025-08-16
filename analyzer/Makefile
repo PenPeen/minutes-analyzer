@@ -224,11 +224,6 @@ test-lambda:
 	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
 	@echo "✅ テストが完了しました"
 
-# 簡単なヘルスチェック
-health-check: ## APIヘルスチェック
-	@echo "❤️  APIヘルスチェック中..."
-	@API_URL=$$(cd infrastructure/environments/local && terraform output -raw api_gateway_url); \
-	curl -s "$$API_URL/health" -w "\nHTTP Status: %{http_code}\n" || echo "ヘルスチェックに失敗しました"
 
 # ローカル環境のクリーンアップ
 clean: ## ローカル環境をクリーンアップ
@@ -269,8 +264,7 @@ dev-setup: setup-local build-and-deploy ## 開発環境を完全にセットア�
 	@echo ""
 	@echo "📋 利用可能な情報:"
 	@cd $(TF_DIR) && \
-	echo "API エンドポイント: $$(terraform output -raw api_endpoint_url 2>/dev/null || echo 'N/A')" && \
-	echo "API キー: $$(terraform output -raw api_key_value 2>/dev/null || echo 'N/A')"
+	echo "Lambda Function: $$(terraform output -raw lambda_function_name 2>/dev/null || echo 'N/A')"
 	@echo ""
 	@echo "📋 次のステップ:"
 	@echo "• 環境停止: make stop"

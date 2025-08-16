@@ -96,21 +96,19 @@ make clean                  # ローカル環境をクリーンアップ
 
 ## 🏗️ アーキテクチャ
 
-このプロジェクトは**Google Apps Script + AWS Lambda ハイブリッド型**のアーキテクチャを採用しています：
+このプロジェクトは**Slack Bot + AWS Lambda**のアーキテクチャを採用しています：
 
 ### 管理方針
 
 | コンポーネント | 管理方法 | 理由 |
 |---|---|---|
-| **AWS Lambda, Lambda Function URL, IAM** | 🔵 **Terraform** | Infrastructure as Code、バージョン管理、自動化 |
-| **Google Apps Script, Google Drive** | 🟡 **手動設定** | OAuth複雑性、トークン管理、設定頻度の低さ |
+| **AWS Lambda, IAM** | 🔵 **Terraform** | Infrastructure as Code、バージョン管理、自動化 |
+| **Slack App, Google Drive** | 🟡 **手動設定** | OAuth複雑性、トークン管理、設定頻度の低さ |
 
 ### システム構成
 
-- **Google Apps Script**: Google Driveの監視・前処理
+- **Slack Bot (drive-selector)**: Google Driveファイル選択とトリガー
 - **AWS Lambda (Ruby)**: Gemini 2.5 Flash APIを使用した議事録分析
-- **Lambda Function URL**: 直接Lambda関数を呼び出すHTTPSエンドポイント（最大15分のタイムアウト対応）
-  ※ API Gatewayは デフォルトでは最大29秒でタイムアウトしてしまうため、LLMを使った同期処理には向かない
 - **Slack Integration**: 分析結果の通知
 - **Notion Integration**: 議事録ページとタスクの自動作成
 - **LocalStack**: ローカル開発環境でのAWSサービスエミュレート
@@ -119,7 +117,7 @@ make clean                  # ローカル環境をクリーンアップ
 
 ## 📥 Lambda関数の入力形式
 
-Lambda関数はGoogle DriveのファイルIDを受け取り、ファイルを直接読み取ります：
+drive-selectorからLambda Invokeでファイル情報を受け取り、Google DriveのファイルIDでファイルを直接読み取ります：
 
 ```json
 {
