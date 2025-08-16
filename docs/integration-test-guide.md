@@ -1,7 +1,7 @@
-# 統合テスト実施手順書
+# 統合テスト実施手順書（開発環境）
 
 ## 概要
-本書は、議事録分析システムの統合テストを実施するための手順書です。LocalStack環境でのテストから本番環境でのテストまでを網羅しています。
+LocalStack環境での統合テストを実施するための手順書です。本番環境のテストは [production-integration-test-guide.md](production-integration-test-guide.md) を参照してください。
 
 ## 前提条件
 
@@ -61,16 +61,6 @@ integration_test_result.json
 cat integration_test_result.json | jq '.'
 ```
 
-#### 本番環境でのテスト（オプション）
-
-```bash
-# 本番環境へのデプロイ後
-aws lambda invoke \
---function-name minutes-analyzer-production \
---payload fileb://analyzer/sample-data/test_prod_api_gateway_payload.json \
---cli-read-timeout 120 \
-production_test_result.json
-```
 
 ### 4. テスト結果の確認
 

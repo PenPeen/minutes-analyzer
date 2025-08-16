@@ -31,7 +31,7 @@ echo ""
 echo -e "${YELLOW}2. Testing Slack command endpoint (expecting 401)...${NC}"
 curl -s -X POST "$API_GATEWAY_URL/slack/commands" \
   -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "command=/meet-transcript&user_id=U123456&team_id=T123456" | jq .
+  -d "command=/meeting-analyzer&user_id=U123456&team_id=T123456" | jq .
 echo ""
 
 # 3. Slack インタラクションエンドポイント（署名なしでテスト - 401が期待される）

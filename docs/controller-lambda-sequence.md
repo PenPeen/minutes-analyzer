@@ -12,33 +12,33 @@ sequenceDiagram
     participant CL as Controller Lambda<br/>(drive-selector)
     participant SM as Secrets Manager
     participant GO as Google OAuth
-    
+
     Note over U,GO: T-03: Controller Lambda基本実装で実装された範囲
-    
+
     %% 1. Slackコマンド実行
-    U->>S: /meet-transcript コマンド実行
+    U->>S: /meeting-analyzer コマンド実行
     S->>AG: POST /slack/commands<br/>(Slack署名付きリクエスト)
     AG->>CL: Lambda Invoke
-    
+
     %% 2. リクエスト検証
     CL->>CL: Slack署名検証<br/>(SlackRequestValidator)
     Note over CL: タイムスタンプ検証<br/>リプレイ攻撃対策
-    
+
     %% 3. 設定情報取得
     CL->>SM: Slack/Google認証情報取得
     SM-->>CL: 機密情報返却
-    
+
     %% 4. 認証状態確認
     CL->>CL: OAuth認証状態チェック<br/>(メモリキャッシュ)
     Note over CL: セッション基盤認証<br/>(DynamoDB使用せず)
-    
+
     %% 5. 未認証の場合
     alt 未認証ユーザー
         CL->>GO: 認証URL生成
         GO-->>CL: OAuth認証URL
         CL->>S: 認証を促すメッセージ + 認証URL
         S-->>U: 認証画面案内
-        
+
         %% 6. OAuth認証フロー
         U->>GO: OAuth認証実行
         GO->>AG: GET /oauth/callback?code=xxx
@@ -49,7 +49,7 @@ sequenceDiagram
         CL->>S: 認証完了通知
         S-->>U: 認証完了メッセージ
     end
-    
+
     %% 7. インタラクション処理基盤
     Note over U,CL: Slackインタラクション処理基盤
     U->>S: ボタンクリック・モーダル操作
@@ -57,12 +57,12 @@ sequenceDiagram
     AG->>CL: インタラクション処理
     CL->>CL: 3秒以内ACK応答
     CL->>S: 即座にACK返却
-    
+
     %% 8. ヘルスチェック
     Note over AG,CL: システム監視
     AG->>CL: GET /health
     CL-->>AG: 200 OK (システム正常)
-    
+
     %% エラーハンドリング
     Note over CL: 実装されたエラーハンドリング
     Note over CL: • CloudWatchログ出力<br/>• 不正リクエスト排除<br/>• タイムアウト対応
@@ -73,37 +73,37 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant U as User
-    participant S as Slack  
+    participant S as Slack
     participant CL as Controller Lambda
     participant GD as Google Drive API
     participant PL as Process Lambda<br/>(analyzer)
     participant GM as Gemini API
     participant N as Notion API
-    
+
     Note over U,N: T-04〜T-06で実装予定の機能
-    
+
     %% 認証済みユーザーのフロー
     alt 認証済みユーザー
         CL->>S: ファイル検索モーダル表示<br/>(T-04: モーダルUI実装)
         S-->>U: Drive検索UI表示
-        
+
         U->>S: ファイル名で検索
         S->>CL: 検索クエリ
         CL->>GD: ファイル検索実行<br/>(T-05: Drive検索機能)
         GD-->>CL: 検索結果リスト
         CL->>S: 検索結果をモーダルに表示
         S-->>U: ファイル選択肢表示
-        
+
         U->>S: ファイル選択 + 送信
         S->>CL: 選択されたファイル情報
         CL->>PL: Lambda Invoke<br/>(T-06: 既存Lambda連携)
         Note over CL,PL: {"file_id": "xxx", "file_name": "yyy"}
-        
+
         PL->>GD: ファイル内容取得
         PL->>GM: 議事録分析実行
         PL->>S: 分析結果通知
         PL->>N: 議事録・タスク作成
-        
+
         CL->>S: 処理開始通知
         S-->>U: "分析を開始しました"
     end

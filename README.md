@@ -32,7 +32,7 @@ brew install docker terraform awscli ruby jq
 
 #### 1. リポジトリクローン
 ```bash
-git clone https://github.com/your-username/minutes-analyzer.git
+git clone https://github.com/PenPeen/minutes-analyzer.git
 cd minutes-analyzer/analyzer
 ```
 

@@ -15,7 +15,7 @@
   ```
 
 - スコープ（MVP）
-  - Slackアプリ（/meet-transcript、モーダル、external_select 検索）
+  - Slackアプリ（/meeting-analyzer、モーダル、external_select 検索）
   - AWS API Gateway（HTTP）→ Controller Lambda（Ruby）
   - Google Drive 検索（DWDを推奨初期設定。必要に応じてユーザーOAuthも選択可能）
   - 既存Lambdaの非同期Invoke
@@ -26,7 +26,7 @@
 ## 2. 全体アーキテクチャ
 
 - Slack App
-  - Slashコマンド: /meet-transcript
+  - Slashコマンド: /meeting-analyzer
   - モーダル（Block Kit）
   - external_select によるサーバサイド検索（block_suggestion）
 
@@ -46,7 +46,7 @@
     - 代替: ユーザーOAuth（初回のみ同意、ユーザー権限で検索）
 
 テキストフロー
-1) ユーザー: /meet-transcript
+1) ユーザー: /meeting-analyzer
 2) Controller: モーダル表示（検索欄）
 3) ユーザー: 検索語入力 → external_select発火
 4) Controller: Drive検索 → 候補返却
@@ -58,7 +58,7 @@
 ## 3. Slackアプリ仕様
 
 - 機能
-  - Slashコマンド: /meet-transcript
+  - Slashコマンド: /meeting-analyzer
   - Interactivity: ON（Request URL = /slack/interactions）
   - OAuth & Permissions → Botトークン発行
 
@@ -403,7 +403,7 @@ end
 - アプリ作成 → OAuth & Permissions
   - スコープ: commands, chat:write, users:read.email
 - Interactivity: ON（Request URL = https://<api-domain>/slack/interactions）
-- Slashコマンド: /meet-transcript（Request URL = https://<api-domain>/slack/commands）
+- Slashコマンド: /meeting-analyzer（Request URL = https://<api-domain>/slack/commands）
 - ワークスペースにインストール → Botトークン取得
 
 3) AWS
@@ -418,7 +418,7 @@ end
 - 既存Lambdaは変更不要
 
 4) 動作確認
-- /meet-transcript → モーダルが開く
+- /meeting-analyzer → モーダルが開く
 - 検索語入力 → 候補表示
 - 選択→実行 → 既存LambdaへInvokeされる
 - CloudWatch Logsでpayload確認
@@ -455,7 +455,7 @@ end
 - クォータ
   - Drive APIのクォータを想定し、pageSizeを小さく
 - 告知
-  - 初回展開時に「/meet-transcript → 検索 → 実行」の使い方をガイド
+  - 初回展開時に「/meeting-analyzer → 検索 → 実行」の使い方をガイド
 
 
 ## 14. 将来拡張（次フェーズ）

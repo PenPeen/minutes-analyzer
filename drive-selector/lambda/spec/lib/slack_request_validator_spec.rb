@@ -6,7 +6,7 @@ RSpec.describe SlackRequestValidator do
   let(:validator) { described_class.new }
   let(:signing_secret) { 'test_signing_secret' }
   let(:timestamp) { Time.now.to_i }
-  let(:body) { 'token=test&command=%2Fmeet-transcript&user_id=U1234567890' }
+  let(:body) { 'token=test&command=%2Fmeeting-analyzer&user_id=U1234567890' }
   let(:valid_signature) { create_slack_signature(timestamp, body, signing_secret) }
 
   before do
@@ -68,12 +68,12 @@ RSpec.describe SlackRequestValidator do
     context 'with missing signing secret' do
       it 'returns false when SLACK_SIGNING_SECRET is not set' do
         ENV.delete('SLACK_SIGNING_SECRET')
-        
+
         # Mock AWS Secrets Manager to fail
         secrets_client = instance_double(Aws::SecretsManager::Client)
         allow(Aws::SecretsManager::Client).to receive(:new).and_return(secrets_client)
         allow(secrets_client).to receive(:get_secret_value).and_raise(StandardError.new("No credentials"))
-        
+
         # Should raise an exception when trying to create validator
         expect { described_class.new }.to raise_error(/Signing secret not available/)
       end
