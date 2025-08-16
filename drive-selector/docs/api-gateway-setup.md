@@ -2,7 +2,7 @@
 
 ## 概要
 
-このドキュメントでは、Slack Bot Drive Selectorサービス用のAPI Gateway設定について説明します。
+Drive Selector Slack Bot用のAPI Gateway設定手順です。SlackからのリクエストをLambda関数に転送し、Google Drive APIと連携します。
 
 ## アーキテクチャ
 
@@ -16,7 +16,7 @@ Slack → API Gateway → Lambda → Google Drive API
 
 ### 基本URL
 ```
-https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
+https://{api-id}.execute-api.ap-northeast-1.amazonaws.com/{stage}
 ```
 
 ### エンドポイント一覧
@@ -24,22 +24,23 @@ https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
 | パス | メソッド | 用途 | 認証 |
 |-----|---------|------|-----|
 | `/health` | GET | ヘルスチェック | なし |
-| `/slack/commands` | POST | Slashコマンド処理 | Slack署名 |
-| `/slack/interactions` | POST | インタラクション処理 | Slack署名 |
-| `/oauth/callback` | GET | OAuth認証コールバック | なし |
+| `/slack/commands` | POST | Slashコマンド処理 | Slack署名検証 |
+| `/slack/interactions` | POST | インタラクション処理 | Slack署名検証 |
+| `/oauth/callback` | GET | Google OAuth認証コールバック | なし |
 
 ## デプロイ手順
 
-### 1. Terraform初期化
+### 1. 初期セットアップ
 
 ```bash
-cd infrastructure
-terraform init
+cd drive-selector
+make setup
 ```
 
 ### 2. 設定ファイル準備
 
 ```bash
+cd infrastructure
 cp terraform.tfvars.sample terraform.tfvars
 # 必要な値を設定
 vi terraform.tfvars
@@ -48,41 +49,23 @@ vi terraform.tfvars
 ### 3. デプロイ実行
 
 ```bash
-# プランを確認
-terraform plan
-
-# デプロイ
-terraform apply
+make deploy
 ```
 
 ### 4. エンドポイントURL取得
 
 ```bash
-# Terraform出力から取得
-terraform output slack_command_endpoint
-terraform output slack_interactions_endpoint
+cd infrastructure && terraform output
 ```
 
 ## Slack App設定
 
-### 1. Slash Commands設定
+デプロイ後にSlack Appの設定を更新してください。詳細は [`slack-app-setup.md`](./slack-app-setup.md) を参照。
 
-1. Slack App管理画面の「Slash Commands」セクションへ移動
-2. 「Create New Command」をクリック
-3. 以下を設定：
-   - Command: `/meeting-analyzer`
-   - Request URL: `{api-gateway-url}/slack/commands`
-   - Short Description: Google Driveから議事録を選択
-   - Usage Hint: [optional] ファイル名で検索
-
-### 2. Interactivity設定
-
-1. 「Interactivity & Shortcuts」セクションへ移動
-2. 「Interactivity」をONに切り替え
-3. Request URLに設定：
-   ```
-   {api-gateway-url}/slack/interactions
-   ```
+### 更新が必要な項目
+- Slash Commands Request URL
+- Interactivity Request URL and Options Load URL
+- Google OAuth Redirect URI
 
 ## API Gatewayの特徴
 
@@ -91,41 +74,40 @@ terraform output slack_interactions_endpoint
 - Slackの要求: 3秒以内にACKレスポンス
 - 対応: Lambda内で即座にACKを返し、処理は非同期実行
 
-### ロギング
-- CloudWatch Logsに全リクエストを記録
+### ロギング・監視
+- CloudWatch Logsで全リクエストを記録
 - X-Rayトレーシング有効
-- エラー時の詳細ログ出力
+- エラー率とレスポンス時間の監視
 
 ### セキュリティ
 - Slack署名検証による認証
-- X-Content-Type-Options: nosniff
-- X-Frame-Options: DENY
+- セキュリティヘッダーの設定
+- HTTPS必須
 
-### スロットリング
-- Rate limit: 10,000 req/sec
-- Burst limit: 5,000 requests
+### パフォーマンス
+- レスポンスタイム: 3秒以内（Slack要件）
+- 適切なスロットリング設定
 
 ## テスト方法
 
 ### 1. ヘルスチェック
 
 ```bash
-curl https://{api-id}.execute-api.{region}.amazonaws.com/{stage}/health
+curl https://{api-id}.execute-api.ap-northeast-1.amazonaws.com/production/health
 ```
 
 期待されるレスポンス：
 ```json
 {
   "status": "healthy",
-  "timestamp": "2024-01-15T10:00:00Z"
+  "timestamp": "2025-01-15T10:00:00Z"
 }
 ```
 
-### 2. テストスクリプト実行
+### 2. 統合テスト
 
 ```bash
-export API_GATEWAY_URL=https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
-./scripts/test_api_gateway.sh
+make test
 ```
 
 ## トラブルシューティング
@@ -156,23 +138,11 @@ terraform apply -target=aws_lambda_permission.api_gateway_invoke
 
 ```bash
 # API Gatewayログ
-aws logs tail /aws/api-gateway/drive-selector-{environment} --follow
+aws logs tail /aws/api-gateway/drive-selector-production --follow
 
 # Lambdaログ
-aws logs tail /aws/lambda/drive-selector-controller-{environment} --follow
+aws logs tail /aws/lambda/drive-selector-controller-production --follow
 ```
-
-## ステージ管理
-
-### 開発環境
-- ステージ名: `development`
-- ログレベル: INFO
-- データトレース: 有効
-
-### 本番環境
-- ステージ名: `production`
-- ログレベル: ERROR
-- データトレース: 無効
 
 ## API仕様
 
@@ -181,12 +151,9 @@ aws logs tail /aws/lambda/drive-selector-controller-{environment} --follow
 ```
 POST /slack/commands
 Content-Type: application/x-www-form-urlencoded
+X-Slack-Signature: v0=...
 
-command=/meeting-analyzer&
-text=search+term&
-user_id=U123456&
-team_id=T123456&
-trigger_id=123456789.123456789
+command=/meeting-analyzer&text=&user_id=U123456&team_id=T123456&trigger_id=...
 ```
 
 ### Slackインタラクションリクエスト
@@ -194,40 +161,12 @@ trigger_id=123456789.123456789
 ```
 POST /slack/interactions
 Content-Type: application/x-www-form-urlencoded
+X-Slack-Signature: v0=...
 
 payload={"type":"block_actions","user":{"id":"U123456"},...}
 ```
 
-## カスタムドメイン設定（オプション）
-
-### 1. ACM証明書の作成
-
-```bash
-aws acm request-certificate \
-  --domain-name api.your-domain.com \
-  --validation-method DNS
-```
-
-### 2. Route53設定
-
-```hcl
-resource "aws_api_gateway_domain_name" "slack_bot" {
-  domain_name     = "api.your-domain.com"
-  certificate_arn = aws_acm_certificate.api.arn
-}
-```
-
-### 3. ベースパスマッピング
-
-```hcl
-resource "aws_api_gateway_base_path_mapping" "slack_bot" {
-  api_id      = aws_api_gateway_rest_api.slack_bot.id
-  stage_name  = aws_api_gateway_stage.slack_bot.stage_name
-  domain_name = aws_api_gateway_domain_name.slack_bot.domain_name
-}
-```
-
-## メトリクス監視
+## 監視とアラート
 
 ### 重要メトリクス
 
@@ -235,24 +174,14 @@ resource "aws_api_gateway_base_path_mapping" "slack_bot" {
 - **5XXError**: サーバーエラー率
 - **Count**: API呼び出し回数
 - **Latency**: レスポンス時間
-- **IntegrationLatency**: Lambda実行時間
 
-### CloudWatchアラーム例
+### CloudWatchアラーム
 
-```hcl
-resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
-  alarm_name          = "${var.project_name}-api-5xx-errors"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "2"
-  metric_name         = "5XXError"
-  namespace           = "AWS/ApiGateway"
-  period              = "300"
-  statistic           = "Sum"
-  threshold           = "10"
-  alarm_description   = "This metric monitors 5xx errors"
-}
-```
+エラー率とレスポンス時間の監視アラームが自動設定されます。
 
-## まとめ
+## 次のステップ
 
-API Gatewayは、Slack BotとLambda関数を接続する重要なコンポーネントです。適切な設定により、セキュアで高性能なAPIエンドポイントを提供します。
+1. API Gatewayのデプロイ完了後、Slack App設定の更新
+2. Google OAuth設定の更新
+3. 動作テストの実施
+4. 本番環境での監視設定確認

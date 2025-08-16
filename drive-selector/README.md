@@ -1,13 +1,13 @@
-# Drive Selector - Slack Bot for Meeting Analyzer
+# Google Drive選択用SlackBot
 
-Google Drive ファイル選択機能を提供する Slack Bot です。Slack から Google Drive のファイルを検索・選択し、議事録分析 Lambda に送信します。
+Google Driveの議事録ファイルを選択し、AI分析システムに送信するSlackBotです。
 
-## 機能
+## 主要機能
 
-- `/meeting-analyzer` コマンドで Google Drive ファイルを検索・選択
-- Google OAuth 2.0 によるユーザー認証
-- 選択したファイルを議事録分析 Lambda へ送信
-- 分析開始時の Slack 通知（メンション付き）
+- `/meeting-analyzer`コマンドによるファイル検索・選択
+- Google OAuth 2.0によるセキュアな認証
+- 選択ファイルの議事録分析システムへの自動送信
+- 分析開始通知（Slackメンション付き）
 
 ## アーキテクチャ
 
@@ -22,68 +22,53 @@ Lambda (drive-selector)
     └→ Lambda (minutes-analyzer-production) [非同期呼び出し]
 ```
 
-## DynamoDB トークン管理
+## OAuth トークン管理
 
-OAuth トークンは DynamoDB テーブルで永続化されます：
+OAuthトークンはDynamoDBで永続化・暗号化されています：
 
-### テーブル構造
+### テーブル仕様
 - **テーブル名**: `{project_name}-oauth-tokens-{environment}`
-- **パーティションキー**: `user_id` (SlackユーザーID)
-- **属性**:
-  - `access_token`: Google OAuth アクセストークン
-  - `refresh_token`: Google OAuth リフレッシュトークン
-  - `expires_at`: トークン有効期限 (UNIX timestamp)
-  - `created_at`: 作成日時 (UNIX timestamp)
-  - `updated_at`: 更新日時 (UNIX timestamp)
-
-### 特徴
-- KMS暗号化による at-rest セキュリティ
-- TTL設定による期限切れトークンの自動削除
-- 自動リフレッシュ機能（有効期限5分前に実行）
+- **主キー**: `user_id` (SlackユーザーID)
+- **暗号化**: KMS暗号化による at-rest セキュリティ
+- **TTL**: 期限切れトークンの自動削除
+- **自動更新**: 有効期限5分前にリフレッシュ実行
 
 ## 環境変数
 
-### 必須
-
-- `SLACK_BOT_TOKEN`: Slack Bot User OAuth Token
-- `SLACK_SIGNING_SECRET`: Slack アプリの署名シークレット
-- `GOOGLE_CLIENT_ID`: Google OAuth 2.0 クライアント ID
-- `GOOGLE_CLIENT_SECRET`: Google OAuth 2.0 クライアントシークレット
-- `PROCESS_LAMBDA_ARN`: 議事録分析 Lambda の ARN
-- `OAUTH_TOKENS_TABLE_NAME`: DynamoDB トークンテーブル名
-- `SLACK_CHANNEL_ID`: 通知を送信する Slack チャンネル ID（例: C1234567890）
+### 必須設定
+- `SLACK_BOT_TOKEN`: Slack Bot OAuth Token
+- `SLACK_SIGNING_SECRET`: Slackアプリ署名シークレット
+- `GOOGLE_CLIENT_ID`: Google OAuth クライアントID
+- `GOOGLE_CLIENT_SECRET`: Google OAuth クライアントシークレット
+- `PROCESS_LAMBDA_ARN`: 議事録分析Lambda ARN
+- `OAUTH_TOKENS_TABLE_NAME`: DynamoDBテーブル名
+- `SLACK_CHANNEL_ID`: 通知送信先チャンネルID
 
 ## デプロイ
-
-### 本番環境
 
 ```bash
 cd infrastructure/environments/production
 terraform init
-terraform plan -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
 ```
 
-## Lambda関数の詳細
+## システム構成
 
 ### 主要コンポーネント
-
 - `handler.rb` - メインハンドラー
-- `lib/google_oauth_client.rb` - OAuth認証管理（DynamoDB連携）
-- `lib/dynamodb_token_store.rb` - DynamoDBトークン管理
-- `lib/google_drive_client.rb` - Drive API連携
-- `lib/slack_command_handler.rb` - Slashコマンド処理
-- `lib/slack_interaction_handler.rb` - インタラクション処理
+- `google_oauth_client.rb` - OAuth認証・DynamoDB連携
+- `google_drive_client.rb` - Google Drive API連携
+- `slack_command_handler.rb` - Slackコマンド処理
+- `slack_interaction_handler.rb` - インタラクション処理
 
-### OAuth トークンフロー
+### 認証フロー
+1. `/meeting-analyzer`コマンド実行
+2. 初回認証時はGoogle OAuth URLにリダイレクト
+3. 認証完了後、トークンをDynamoDBに暗号化保存
+4. 以降のリクエストではDynamoDBからトークン取得
+5. 期限切れ前にトークンを自動リフレッシュ
 
-1. ユーザーが `/meeting-analyzer` コマンドを実行
-2. 認証が必要な場合、Google OAuth URLにリダイレクト
-3. 認証完了後、トークンをDynamoDBに保存
-4. 以降のリクエストでは DynamoDB からトークンを取得
-5. トークン有効期限が近い場合、自動的にリフレッシュ
-
-## テスト
+## テスト実行
 
 ```bash
 cd lambda
@@ -93,24 +78,17 @@ bundle exec rspec
 
 ## トラブルシューティング
 
-### OAuth トークンエラー
+### OAuth認証エラー
+- DynamoDBテーブルのアクセス権限を確認
+- `OAUTH_TOKENS_TABLE_NAME`の設定値を確認
+- CloudWatchログでトークンリフレッシュ状況を確認
 
-1. DynamoDB テーブルへのアクセス権限を確認
-2. `OAUTH_TOKENS_TABLE_NAME` が正しく設定されているか確認
-3. トークンの有効期限が切れていないか確認（自動リフレッシュされるはず）
+### Lambda呼び出しエラー
+- `PROCESS_LAMBDA_ARN`の設定値を確認
+- IAMロールに`lambda:InvokeFunction`権限があるか確認
+- CloudWatchログで詳細エラーを確認
 
-### Lambda 呼び出しが動作しない場合
-
-1. CloudWatch ログを確認
-2. `PROCESS_LAMBDA_ARN` が正しく設定されているか確認
-3. IAM ロールに `lambda:InvokeFunction` 権限があるか確認
-
-### DynamoDB アクセスエラー
-
-1. Lambda実行ロールにDynamoDB権限があるか確認:
-   - `dynamodb:GetItem`
-   - `dynamodb:PutItem`
-   - `dynamodb:UpdateItem`
-   - `dynamodb:DeleteItem`
-2. `OAUTH_TOKENS_TABLE_NAME` 環境変数が設定されているか確認
-3. DynamoDBテーブルが存在し、適切なキー設定になっているか確認
+### DynamoDBアクセスエラー
+- Lambda実行ロールに以下の権限があるか確認：
+  - `dynamodb:GetItem`, `PutItem`, `UpdateItem`, `DeleteItem`
+- テーブルの存在と正しいキー設定を確認

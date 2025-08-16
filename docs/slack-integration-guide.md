@@ -1,8 +1,6 @@
-# Slack Integration ガイド
+# Slack連携設定ガイド
 
-## 概要
-
-本ドキュメントは、議事録分析システムのSlack連携機能の設定方法と必要なOAuth Scopeについて説明します。
+議事録分析システムのSlack連携機能の設定手順です。
 
 ## Slack App の設定手順
 
@@ -32,34 +30,17 @@ SLACK_BOT_TOKEN=xoxb-xxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxx
 SLACK_CHANNEL_ID=C1234567890  # 投稿先チャンネルのID
 ```
 
-## 必要な OAuth Scopes
-
-議事録分析システムが正常に動作するために必要なSlack OAuth Scopeの一覧です。
-
-| OAuth Scope | 説明 | 使用目的 |
-|------------|------|----------|
-| `chat:write` | Send messages as @minutes-analyzer | 議事録分析結果をチャンネルにメインメッセージとして投稿 |
-| `chat:write.public` | Send messages to channels @minutes-analyzer isn't a member of | Botがメンバーでないパブリックチャンネルへの投稿を可能にする |
-| `users.profile:read` | View profile details about people in a workspace | ユーザープロフィール情報の取得（将来的な機能拡張用） |
-| `users:read` | View people in a workspace | ワークスペースのユーザー一覧取得（将来的な機能拡張用） |
-| `users:read.email` | View email addresses of people in a workspace | ユーザーのメールアドレス取得（将来的な機能拡張用） |
+## 必要なOAuth Scopes
 
 ### 必須スコープ
+- `chat:write` - メッセージ送信
+- `chat:write.public` - パブリックチャンネルへの投稿
+- `commands` - スラッシュコマンド
+- `users:read.email` - ユーザーメールアドレス取得（Google Drive連携用）
 
-現在のシステムで**必須**となるスコープ：
-- `chat:write` - 基本的なメッセージ送信機能
-- `chat:write.public` - パブリックチャンネルへの投稿（Botがメンバーでない場合）
-
-**重要**: 両方のスコープを設定することで、どのチャンネルにも柔軟に投稿できるようになります。
-
-### オプションスコープ
-
-将来の機能拡張に備えて設定されているスコープ：
-- `users.profile:read`
-- `users:read` 
-- `users:read.email`
-
-これらは現在のバージョンでは使用されていませんが、今後の機能追加（例：参加者の自動マッピング、メンション機能など）で使用予定です。
+### オプションスコープ（将来拡張用）
+- `users.profile:read` - ユーザープロフィール情報
+- `users:read` - ワークスペースユーザー一覧
 
 ## 投稿先チャンネルの設定
 

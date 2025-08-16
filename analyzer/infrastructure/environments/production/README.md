@@ -1,41 +1,40 @@
-# Production Environment
+# 本番環境デプロイ
 
-本番環境へのデプロイ設定
-
-## 必須の事前準備
-
+議事録分析システムの本番環境へのデプロイ手順です。
 
 ## デプロイ手順
 
-### 1. AWS認証情報の設定
+### 1. AWS認証設定
 ```bash
 export AWS_PROFILE=your-production-profile
-# または
-export AWS_ACCESS_KEY_ID=your-key
-export AWS_SECRET_ACCESS_KEY=your-secret
 ```
 
-### 2. 設定ファイルの準備
+### 2. 設定ファイル準備
 ```bash
-# サンプルファイルからコピー
 cp terraform.tfvars.sample terraform.tfvars
 # 必要に応じて値を編集
 ```
 
 ### 3. デプロイ実行
 ```bash
+cd analyzer
 make deploy-production
 ```
 
-## 重要事項
+## 本番環境の特徴
 
-- Gemini API キーなどの機密情報は、デプロイ後にAWS Secrets Managerで設定
-- CloudWatchアラームが自動設定される
+### インフラ構成
+- S3ステート管理による状態の永続化
+- CloudWatchによる監視・アラート自動設定
+- Lambda: 512MB メモリ、15分タイムアウト
+- API Gateway: APIキー認証有効
 
-## Differences from Local Environment
+### セキュリティ
+- 機密情報はAWS Secrets Managerで管理
+- 最小権限IAMポリシー適用
+- VPC内でのセキュアな通信
 
-- No LocalStack endpoints configuration
-- S3 backend for state management
-- Production-grade monitoring with CloudWatch alarms
-- Higher Lambda memory (512MB) and timeout (15 minutes)
-- API key required for API Gateway
+### 運用監視
+- CloudWatchログによる詳細ログ出力
+- エラー率・実行時間のアラート
+- コスト監視ダッシュボード

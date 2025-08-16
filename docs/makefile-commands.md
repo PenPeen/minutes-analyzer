@@ -1,175 +1,66 @@
-# Makefileコマンド一覧と役割
+# Makefileコマンド一覧
 
-## analyzer/Makefile
+議事録分析システムで使用するMakefileコマンドの概要です。
 
-### 基本コマンド
+## analyzer/Makefile（メイン分析機能）
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `help` | ヘルプ表示 | 利用可能なコマンドとその説明を表示 |
-| `setup` | 初期セットアップ | .env.localの作成、Ruby依存関係のインストール |
-| `start` | 開発環境起動 | Docker・LocalStackの起動のみ（デプロイは含まない） |
-| `stop` | 開発環境停止 | Dockerコンテナの停止 |
+### 開発コマンド
 
-### ビルド関連
+| コマンド | 役割 |
+|---------|------|
+| `help` | 利用可能コマンド表示 |
+| `setup` | 初期セットアップ（.env.local作成、依存関係インストール） |
+| `start` | LocalStack開発環境起動 |
+| `deploy-local` | ローカル環境への完全デプロイ |
+| `stop` | 開発環境停止 |
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `build-lambda` | Lambda関数ビルド | Dockerを使用してRuby Lambda関数をビルド（内部用） |
-| `build-local` | ローカル環境用ビルド | ローカル環境用Lambda関数ビルド |
-| `build-production` | 本番環境用ビルド | 本番環境用Lambda関数ビルド |
+### 本番デプロイ
 
-### LocalStack環境（ローカル開発）
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `deploy-local` | ローカル環境デプロイ | tf-plan→tf-apply→プロンプトアップロード（完全デプロイ） |
-| `destroy-local` | ローカル環境破棄 | terraform destroyでローカルリソースを削除 |
-| `upload-prompts-local` | ローカル環境プロンプトアップロード | ローカル環境のS3にプロンプトファイルをアップロード |
-
-### 本番環境
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `deploy-production` | 本番環境デプロイ | ビルド→tfvars生成→S3バケット確保→terraform→シークレット設定→プロンプトアップロード |
-| `destroy-production` | 本番環境破棄 | terraform destroy + 手動リソース削除（S3、Secrets Manager等） |
-| `upload-prompts-production` | 本番環境プロンプトアップロード | 本番環境のS3にプロンプトファイルをアップロード |
-
-### Terraform関連（ローカル環境）
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `tf-init-local` | ローカル環境Terraform初期化 | ローカル環境用terraform initを実行 |
-| `tf-plan-local` | ローカル環境Terraformプラン | ローカル環境用terraform planで変更内容を確認 |
-| `tf-apply-local` | ローカル環境Terraform適用 | ローカル環境用terraform applyでリソースを作成/更新 |
-
-### Terraform関連（本番環境）
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `tf-init-production` | 本番環境Terraform初期化 | 本番環境用terraform initを実行 |
-| `tf-plan-production` | 本番環境Terraformプラン | 本番環境用terraform planで変更内容を確認 |
-| `tf-apply-production` | 本番環境Terraform適用 | 本番環境用terraform applyでリソースを作成/更新 |
-
-### 設定・ユーティリティ
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `generate-tfvars-local` | ローカル用設定生成 | .env.localからterraform.tfvarsを生成 |
-| `generate-tfvars-production` | 本番用設定生成 | .env.productionからterraform.tfvarsを生成 |
-| `ensure-terraform-backend-bucket-production` | 本番S3バケット確保 | 本番環境用Terraform state S3バケットの作成 |
-| `wait-for-localstack` | LocalStack待機 | LocalStackの起動完了を待機 |
+| コマンド | 役割 |
+|---------|------|
+| `deploy-production` | 本番環境への完全デプロイ |
+| `destroy-production` | 本番環境リソース削除 |
 
 ### テスト・メンテナンス
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `test` | テスト実行 | RSpecを使用したLambda関数のテスト |
-| `health-check` | ヘルスチェック | APIエンドポイントの動作確認 |
-| `clean` | クリーンアップ | Docker、ビルド成果物、Terraform状態の削除 |
+| コマンド | 役割 |
+|---------|------|
+| `test` | RSpecテスト実行 |
+| `health-check` | APIエンドポイント動作確認 |
+| `clean` | 環境クリーンアップ |
 
----
-
-## drive-selector/Makefile
+## drive-selector/Makefile（Slack Bot機能）
 
 ### 基本コマンド
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `help` | ヘルプ表示 | 利用可能なコマンドとその説明を表示 |
-| `setup` | 初期セットアップ | .env.productionの確認、Ruby依存関係のインストール |
+| コマンド | 役割 |
+|---------|------|
+| `setup` | 初期セットアップ |
+| `deploy-production` | 本番環境デプロイ |
+| `test` | RSpecテスト実行 |
+| `logs` | CloudWatch Logs表示 |
 
-### ビルド関連
+## プロジェクト間の主な違い
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `build-lambda` | Lambda関数ビルド | Dockerを使用してRuby Lambda関数をビルド（内部用） |
-| `build-production` | 本番環境用ビルド | 外部向けのビルドコマンド |
+- **analyzer**: LocalStack対応、ローカル開発環境あり
+- **drive-selector**: 本番環境のみ、よりシンプルな構成
 
-### 本番環境のみ
+## 基本的な開発フロー
 
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `deploy-production` | 本番環境デプロイ | tfvars生成→S3バケット確保→ビルド→terraform→シークレット設定 |
-| `destroy-production` | 本番環境破棄 | terraform destroyでリソースを削除 |
-
-### Terraform関連
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `tf-init-production` | 本番環境Terraform初期化 | 本番環境用terraform initを実行 |
-| `tf-plan-production` | 本番環境Terraformプラン | 本番環境用terraform planで変更内容を確認 |
-| `tf-apply-production` | 本番環境Terraform適用 | 本番環境用terraform applyでリソースを作成/更新 |
-
-### 設定・ユーティリティ
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `generate-tfvars-production` | 本番用設定生成 | .env.productionからterraform.tfvarsを生成 |
-| `ensure-terraform-backend-bucket-production` | 本番S3バケット確保 | 本番環境用Terraform state S3バケットの作成 |
-
-### テスト・メンテナンス
-
-| コマンド | 役割 | 詳細 |
-|---------|------|------|
-| `test` | テスト実行 | RSpecを使用したLambda関数のテスト |
-| `health-check` | ヘルスチェック | APIエンドポイントの動作確認 |
-| `logs` | ログ確認 | Lambda関数のCloudWatch Logsを表示 |
-| `check-resources` | リソース確認 | AWSリソースとTerraform状態の整合性チェック |
-| `clean` | クリーンアップ | ビルド成果物、Terraform状態の削除 |
-
----
-
-## 主な違い
-
-1. **analyzer**: LocalStack対応でローカル開発環境あり
-2. **drive-selector**: 本番環境のみ、ローカル開発環境なし
-3. **analyzer**: より複雑な依存関係（Google認証、プロンプト管理）
-4. **drive-selector**: よりシンプルな構成
-
-## 開発フロー
-
-### analyzer での開発フロー
+### analyzer（ローカル開発）
 ```bash
-# 初回セットアップ
 cd analyzer
-make setup
-
-# 開発サイクル
-make start          # Docker・LocalStack起動（1回だけ）
-make deploy-local   # アプリケーションデプロイ
-# ... コード変更 ...
-make deploy-local   # 再デプロイ（即時反映）
-
-# 終了
-make stop           # 環境停止
+make setup           # 初回のみ
+make start           # LocalStack起動
+make deploy-local    # アプリケーションデプロイ
+make test           # テスト実行
 ```
 
-### drive-selector での開発フロー
+### 本番デプロイ
 ```bash
-# 初回セットアップ
-cd drive-selector
-make setup
+# analyzer
+cd analyzer && make deploy-production
 
-# 本番デプロイ
-make build-production    # ビルド
-make deploy-production   # 本番環境デプロイ
+# drive-selector
+cd drive-selector && make deploy-production
 ```
-
-## 統一されたコマンド体系
-
-### 共通コマンド
-- `make setup` - 初期セットアップ
-- `make build-production` - 本番環境用ビルド
-- `make deploy-production` - 本番環境デプロイ
-- `make destroy-production` - 本番環境破棄
-- `make test` - テスト実行
-- `make clean` - クリーンアップ
-- `make health-check` - ヘルスチェック
-
-### analyzer固有（LocalStack対応）
-- `make start` - 開発環境起動
-- `make build-local` - ローカル環境用ビルド
-- `make deploy-local` - ローカル環境デプロイ
-- `make destroy-local` - ローカル環境破棄
-- `make stop` - 開発環境停止
