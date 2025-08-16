@@ -9,7 +9,7 @@ services:
     environment:
       # LocalStack configuration
       - DEBUG=1
-      - LAMBDA_EXECUTOR=docker
+      - LAMBDA_EXECUTOR=local
       - LAMBDA_REMOTE_DOCKER=false
       - LAMBDA_DOCKER_NETWORK=minutes-analyzer_localstack-network
       - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
@@ -33,11 +33,13 @@ services:
       - localstack-data:/var/lib/localstack
       - "./infrastructure/scripts:/scripts"
       - "/tmp:/tmp"  # ホストの/tmpディレクトリをマウント
-      - "/var/run/docker.sock:/var/run/docker.sock"  # FIXME: セキュリティリスク - Dockerソケット共有
     networks:
       - localstack-network
     env_file:
       - ./.env.local
+    security_opt:
+      - no-new-privileges:true
+    read_only: false  # LocalStackは一時的な書き込みが必要
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
       interval: 10s
@@ -66,6 +68,9 @@ services:
     profiles:
       - tools
       - dev  # 開発時のデフォルトプロファイル
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
 
   ruby-lambda-builder:
     build:
@@ -76,6 +81,8 @@ services:
       - ./infrastructure/modules/lambda:/output
       - bundle_cache:/var/task/.bundle
     working_dir: /var/task
+    security_opt:
+      - no-new-privileges:true
 
 networks:
   localstack-network:
