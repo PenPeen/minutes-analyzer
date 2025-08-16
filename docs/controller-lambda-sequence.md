@@ -1,8 +1,8 @@
 # Controller Lambda シーケンス図
 
-本図は、T-03タスク「Controller Lambda基本実装」で実装された機能範囲を示しています。
+本ドキュメントでは、Slack Bot（drive-selector）の基本機能とアーキテクチャを、実装済み機能と将来実装予定機能に分けて説明します。
 
-## 実装された機能範囲 (このPR)
+## 実装済み機能範囲
 
 ```mermaid
 sequenceDiagram
@@ -13,7 +13,7 @@ sequenceDiagram
     participant SM as Secrets Manager
     participant GO as Google OAuth
 
-    Note over U,GO: T-03: Controller Lambda基本実装で実装された範囲
+    Note over U,GO: Slack Bot基本認証・インタラクション処理機能
 
     %% 1. Slackコマンド実行
     U->>S: /meeting-analyzer コマンド実行
@@ -68,7 +68,7 @@ sequenceDiagram
     Note over CL: • CloudWatchログ出力<br/>• 不正リクエスト排除<br/>• タイムアウト対応
 ```
 
-## 今後実装予定の機能（他のタスク）
+## 将来実装予定の機能
 
 ```mermaid
 sequenceDiagram
@@ -80,23 +80,23 @@ sequenceDiagram
     participant GM as Gemini API
     participant N as Notion API
 
-    Note over U,N: T-04〜T-06で実装予定の機能
+    Note over U,N: ファイル検索・選択・分析実行機能
 
     %% 認証済みユーザーのフロー
     alt 認証済みユーザー
-        CL->>S: ファイル検索モーダル表示<br/>(T-04: モーダルUI実装)
+        CL->>S: ファイル検索モーダル表示
         S-->>U: Drive検索UI表示
 
         U->>S: ファイル名で検索
         S->>CL: 検索クエリ
-        CL->>GD: ファイル検索実行<br/>(T-05: Drive検索機能)
+        CL->>GD: ファイル検索実行
         GD-->>CL: 検索結果リスト
         CL->>S: 検索結果をモーダルに表示
         S-->>U: ファイル選択肢表示
 
         U->>S: ファイル選択 + 送信
         S->>CL: 選択されたファイル情報
-        CL->>PL: Lambda Invoke<br/>(T-06: 既存Lambda連携)
+        CL->>PL: Lambda Invoke（既存analyzer Lambda連携）
         Note over CL,PL: {"file_id": "xxx", "file_name": "yyy"}
 
         PL->>GD: ファイル内容取得
@@ -109,7 +109,7 @@ sequenceDiagram
     end
 ```
 
-## このPRで実装されたコンポーネント
+## 実装されたコンポーネント
 
 ### 1. 基盤インフラストラクチャ
 - **API Gateway**: Slackからのリクエスト受付

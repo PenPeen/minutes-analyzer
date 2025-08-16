@@ -1,118 +1,113 @@
-# Slack App設定手順（T-01）
+# Slack App設定手順
 
 ## 概要
-既存のSlack Appに対して、Google Driveファイル選択機能のための権限とコマンドを追加設定します。
+
+既存のSlack AppにGoogle Driveファイル選択機能を追加するための設定手順です。API Gatewayのデプロイ後に必要な設定更新を含みます。
 
 ## 前提条件
-- 既存のSlack Appが作成済みであること
-- Slack App管理画面へのアクセス権限があること
-- SLACK_BOT_TOKEN が取得済みであること
+
+- 既存のSlack App（議事録分析用）
+- Slack App管理者権限
+- API Gateway URL（デプロイ後に取得）
 
 ## 設定手順
 
 ### 1. OAuth & Permissions設定
 
 1. [Slack App管理画面](https://api.slack.com/apps) にアクセス
-2. 対象のアプリを選択
-3. 左メニューから「OAuth & Permissions」を選択
-4. 「Scopes」セクションまでスクロール
-5. 「Bot Token Scopes」に以下を追加：
-   - `commands` - Add slash commands and respond to users
-   - `users:read.email` - View email addresses of people in a workspace
+2. 対象アプリを選択
+3. 「OAuth & Permissions」へ移動
+4. 「Bot Token Scopes」に追加：
+   - `commands` - Slashコマンドの追加と応答
+   - `users:read.email` - ユーザーメールアドレスの参照
 
 ### 2. Slash Commands設定
 
-1. 左メニューから「Slash Commands」を選択
-2. 「Create New Command」をクリック（既存の場合は編集）
-3. 以下の情報を入力：
-   ```
-   Command: /meeting-analyzer
-   Request URL: https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/commands
-   Short Description: Google Driveから議事録を選択して分析
-   Usage Hint: /meeting-analyzer
-   ```
-4. 「Save」をクリック
+1. 「Slash Commands」へ移動
+2. 「Create New Command」または既存コマンドを編集
+3. 設定内容：
+   - Command: `/meeting-analyzer`
+   - Request URL: `https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/commands`
+   - Short Description: `Google Driveから議事録を選択して分析`
+   - Usage Hint: `/meeting-analyzer`
 
-**注意**: API_GATEWAY_IDはデプロイ後に`terraform output`で確認し、更新してください。
+※ API_GATEWAY_IDはデプロイ後に `terraform output` で確認
 
 ### 3. Interactivity設定
 
-1. 左メニューから「Interactivity & Shortcuts」を選択
+1. 「Interactivity & Shortcuts」へ移動
 2. 「Interactivity」をONに切り替え
-3. Request URLを入力：
+3. Request URL設定：
    ```
    https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/interactions
    ```
-4. **Options Load URL**に**同じURL**を入力（重要！）：
+4. **Options Load URL設定（重要）**：
    ```
    https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/interactions
    ```
-   ⚠️ **注意**: Options Load URLはexternal_selectの検索機能に必須です。必ず設定してください。
-5. 「Save Changes」をクリック
+   ※ external_selectの検索機能に必須
 
-**注意**: API_GATEWAY_IDはデプロイ後に`terraform output`で確認し、更新してください。
+※ API_GATEWAY_IDはデプロイ後に `terraform output` で確認
 
 ### 4. アプリの再インストール
 
-1. 「OAuth & Permissions」ページに戻る
+1. 「OAuth & Permissions」へ戻る
 2. 「Reinstall to Workspace」をクリック
-3. 権限を確認して「Allow」をクリック
+3. 新しい権限を確認して「Allow」
 
 ## 環境変数の取得
 
-以下の値を取得して保存してください：
+以下の値を取得してSecrets Managerに設定：
 
 ### SLACK_SIGNING_SECRET
-1. 「Basic Information」を選択
-2. 「App Credentials」セクションを確認
-3. 「Signing Secret」の値をコピー
+1. 「Basic Information」→「App Credentials」
+2. 「Signing Secret」をコピー
 
 ### SLACK_BOT_TOKEN
-1. 「OAuth & Permissions」を選択
-2. 「OAuth Tokens for Your Workspace」セクションを確認
-3. 「Bot User OAuth Token」（xoxb-で始まる）をコピー
+1. 「OAuth & Permissions」→「OAuth Tokens for Your Workspace」
+2. 「Bot User OAuth Token」（xoxb-で始まる）をコピー
 
 ## 設定確認チェックリスト
 
-- [ ] Bot Token Scopesに `commands` が追加されている
-- [ ] Bot Token Scopesに `users:read.email` が追加されている
-- [ ] `/meeting-analyzer` コマンドが登録されている
-- [ ] Interactivityが有効になっている
-- [ ] Request URLとOptions Load URLが正しく設定されている
-- [ ] アプリがワークスペースに再インストールされている
-- [ ] SLACK_SIGNING_SECRET を取得済み
-- [ ] SLACK_BOT_TOKEN を取得済み
+- [ ] Bot Token Scopes: `commands`, `users:read.email` が追加済み
+- [ ] `/meeting-analyzer` コマンドが登録済み
+- [ ] Interactivityが有効
+- [ ] Request URLとOptions Load URLが正しく設定済み
+- [ ] アプリの再インストール完了
+- [ ] SLACK_SIGNING_SECRET, SLACK_BOT_TOKENをSecrets Managerに設定済み
 
 ## トラブルシューティング
 
-### コマンドが認識されない場合
-- アプリの再インストールを確認
-- コマンド名が正しく入力されているか確認（スペースや大文字小文字）
+### コマンド未認識
+- アプリの再インストール確認
+- コマンド名の正確性確認
+- Request URLの正確性確認
 
-### 権限エラーが発生する場合
-- Bot Token Scopesが正しく設定されているか確認
-- トークンが最新のものか確認（再インストール後のトークン）
+### 権限エラー
+- Bot Token Scopesの設定確認
+- トークンの更新確認（再インストール後）
 
 ## デプロイ後の設定更新手順
 
-1. **デプロイを実行**
-   ```bash
-   make deploy
-   ```
+### 1. デプロイ実行
+```bash
+cd drive-selector
+make deploy
+```
 
-2. **API Gateway URLを取得**
-   ```bash
-   cd infrastructure && terraform output
-   ```
+### 2. API Gateway URL取得
+```bash
+cd infrastructure && terraform output
+```
 
-3. **Slack App設定を更新**
-   - Slash CommandsのRequest URLを更新
-   - InteractivityのRequest URLとOptions Load URLを更新
+### 3. Slack App設定更新
+- Slash CommandsのRequest URL
+- InteractivityのRequest URLとOptions Load URL
 
-4. **Google OAuth設定を更新**
-   - Google Cloud ConsoleでRedirect URIを追加
+### 4. Google OAuth設定更新
+- Google Cloud ConsoleでRedirect URI追加
 
-5. **動作確認**
-   - Slackで `/meeting-analyzer` コマンドを実行
-   - Google認証が成功するか確認
-   - ファイル検索が動作するか確認
+### 5. 動作テスト
+- `/meeting-analyzer` コマンド実行
+- Google認証フロー確認
+- ファイル検索機能確認

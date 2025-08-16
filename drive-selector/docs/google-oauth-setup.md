@@ -1,135 +1,107 @@
-# Google OAuth 2.0設定手順（T-02）
+# Google OAuth 2.0設定手順
 
 ## 概要
-Google Drive APIへのアクセスのために、OAuth 2.0認証を設定します。
-ユーザー認証方式を採用することで、Google Workspace以外の環境でも動作可能にします。
+
+Google Drive APIアクセス用のOAuth 2.0認証設定ガイドです。ユーザー認証方式により、任意のGoogleアカウントでの議事録ファイルアクセスが可能になります。
 
 ## 前提条件
-- Google Cloud Platformアカウントが作成済みであること
-- プロジェクトが作成済みであること
-- 課金アカウントが設定済みであること（無料枠内で利用可能）
+
+- Google Cloud Platformアカウント
+- Google Cloudプロジェクトの作成
+- API Gateway URLの取得完了（デプロイ後）
 
 ## 設定手順
 
 ### 1. Google Drive APIの有効化
 
 1. [Google Cloud Console](https://console.cloud.google.com) にアクセス
-2. プロジェクトを選択
-3. 「APIとサービス」→「ライブラリ」を選択
-4. 「Google Drive API」を検索
-5. 「有効にする」をクリック
+2. 対象プロジェクトを選択
+3. 「APIとサービス」→「ライブラリ」へ移動
+4. 「Google Drive API」を検索・有効化
 
 ### 2. OAuth同意画面の設定
 
-1. 「APIとサービス」→「OAuth同意画面」を選択
-2. ユーザータイプを選択：
-   - 組織内のみ: 「内部」
-   - 一般公開: 「外部」
-3. 必須項目を入力：
-   ```
-   アプリ名: Minutes Analyzer Drive Selector
-   ユーザーサポートメール: [あなたのメールアドレス]
-   開発者の連絡先情報: [あなたのメールアドレス]
-   ```
-4. スコープを追加：
-   - `.../auth/drive.metadata.readonly` - Google Driveのメタデータ読み取り
-5. テストユーザーを追加（外部の場合）
+1. 「OAuth同意画面」を選択
+2. ユーザータイプ：組織内のみは「内部」、一般は「外部」
+3. 必須項目：
+   - アプリ名: `Minutes Analyzer Drive Selector`
+   - ユーザーサポートメール: 管理者のメールアドレス
+   - 開発者の連絡先情報: 管理者のメールアドレス
+4. スコープ追加：`https://www.googleapis.com/auth/drive.metadata.readonly`
+5. 外部アプリの場合はテストユーザーを追加
 
 ### 3. OAuth 2.0クライアントIDの作成
 
-1. 「APIとサービス」→「認証情報」を選択
-2. 「認証情報を作成」→「OAuth クライアント ID」を選択
-3. アプリケーションの種類: 「ウェブアプリケーション」
-4. 名前: `Minutes Analyzer Drive Selector`
-5. 承認済みのリダイレクトURIを追加：
+1. 「認証情報」→「認証情報を作成」→「OAuth クライアント ID」
+2. アプリケーションタイプ：「ウェブアプリケーション」
+3. 名前: `Minutes Analyzer Drive Selector`
+4. 承認済みリダイレクトURI：
    ```
-   本番環境: https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/oauth/callback
+   https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/oauth/callback
    ```
-   ※ API_GATEWAY_IDは、デプロイ後に`terraform output`で確認できます
-6. 「作成」をクリック
+   ※ API_GATEWAY_IDはデプロイ後に `terraform output` で確認
+5. 作成後、クライアントIDとシークレットを保存
 
-### 4. 認証情報の取得と保存
+### 4. 認証情報の保存
 
-作成後に表示される以下の情報を安全に保存してください：
-- **クライアントID**: `GOOGLE_CLIENT_ID`として環境変数に設定
-- **クライアントシークレット**: `GOOGLE_CLIENT_SECRET`として環境変数に設定
+以下の情報をSecrets Managerまたは環境変数に設定：
+- `GOOGLE_CLIENT_ID`: 取得したクライアントID
+- `GOOGLE_CLIENT_SECRET`: 取得したクライアントシークレット
 
-また、JSONファイルをダウンロードして保管することも推奨します。
+JSONファイルもダウンロード・保管を推奨。
 
-## OAuth認証フローの概要
+## OAuth認証フロー
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Slack
-    participant Lambda
-    participant Google
+1. ユーザーがSlackで `/meeting-analyzer` コマンド実行
+2. Lambda関数がユーザーの認証状態確認
+3. 未認証の場合、Google認証URLをSlackに返信
+4. ユーザーがGoogle同意画面で権限許可
+5. 認証コードがLambdaのコールバックURLに送信
+6. Lambdaがアクセストークンを取得・保存
+7. 以降のDrive API呼び出しでトークンを使用
 
-    User->>Slack: /meeting-analyzer コマンド実行
-    Slack->>Lambda: コマンドリクエスト
-    Lambda->>Lambda: ユーザーの認証状態確認
+## セキュリティ設定
 
-    alt 未認証の場合
-        Lambda->>Slack: 認証URLを含むメッセージ返信
-        User->>Google: 認証URLにアクセス
-        Google->>User: 同意画面表示
-        User->>Google: 権限を許可
-        Google->>Lambda: 認証コードをコールバック
-        Lambda->>Google: アクセストークン取得
-        Lambda->>Lambda: トークンを保存
-    end
-
-    Lambda->>Google: Drive API呼び出し（トークン使用）
-    Google->>Lambda: ファイルリスト返却
-    Lambda->>Slack: モーダル表示
-```
-
-## セキュリティ考慮事項
-
-### トークンの保管
-- アクセストークンとリフレッシュトークンは暗号化して保存
-- DynamoDBまたはSecrets Managerを使用
+### トークン管理
+- DynamoDBで暗号化保存
 - ユーザーIDと紐付けて管理
+- アクセストークンの自動更新実装
 
-### スコープの最小化
-- 必要最小限のスコープのみを要求
-- `drive.metadata.readonly`のみで、ファイル内容の読み取りは行わない
-
-### トークンの有効期限管理
-- アクセストークンの有効期限（通常1時間）を考慮
-- リフレッシュトークンを使用した自動更新を実装
+### 最小権限原則
+- スコープ: `drive.metadata.readonly`のみ
+- ファイル内容の読み取りは不可
+- メタデータ（ファイル名、更新日時）のみアクセス
 
 ## 環境変数設定
 
-以下の環境変数を`infrastructure/terraform.production.tfvars`に設定してください：
+Secrets Managerに以下を設定：
 
-```hcl
-# Google OAuth設定
-GOOGLE_CLIENT_ID=your_client_id_here
-GOOGLE_CLIENT_SECRET=your_client_secret_here
-
-# オプション（開発環境用）
-GOOGLE_OAUTH_BASE_URL=https://accounts.google.com/o/oauth2/v2
-GOOGLE_TOKEN_URL=https://oauth2.googleapis.com/token
+```json
+{
+  "GOOGLE_CLIENT_ID": "your_client_id",
+  "GOOGLE_CLIENT_SECRET": "your_client_secret"
+}
 ```
 
-※ `GOOGLE_REDIRECT_URI`はLambda内で自動的に生成されます
+リダイレクトURIはLambda内で動的生成されます。
 
 ## トラブルシューティング
 
-### 「リダイレクトURIが一致しません」エラー
-- OAuth クライアントIDの設定で、正確なリダイレクトURIが登録されているか確認
-- HTTPSとHTTP、末尾のスラッシュの有無に注意
+### リダイレクトURI不一致
+- Google Cloud ConsoleのリダイレクトURIとAPI Gateway URLの一致を確認
+- HTTPSプロトコルとパスの正確性をチェック
 
-### 「スコープが承認されていません」エラー
-- OAuth同意画面でスコープが正しく設定されているか確認
-- テストユーザーとして登録されているか確認（外部アプリの場合）
+### スコープ未承認
+- OAuth同意画面のスコープ設定確認
+- 外部アプリの場合はテストユーザー登録確認
 
-### トークンの有効期限切れ
-- リフレッシュトークンを使用した更新処理が実装されているか確認
-- リフレッシュトークンが正しく保存されているか確認
+### トークン期限切れ
+- リフレッシュトークンによる自動更新動作確認
+- DynamoDBでのトークン保存状態確認
 
 ## 次のステップ
-1. ユーザーによるGoogle Cloud Console設定の実施
-2. 環境変数の設定
-3. T-05でOAuth認証フローの実装コードを作成
+
+1. API Gatewayデプロイ完了
+2. Google OAuth設定の実施
+3. Slack Appの設定更新
+4. OAuth認証フローのテスト

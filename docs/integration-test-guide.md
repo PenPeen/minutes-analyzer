@@ -1,65 +1,36 @@
-# 統合テスト実施手順書（開発環境）
+# ローカル開発環境 統合テスト手順
 
-## 概要
-LocalStack環境での統合テストを実施するための手順書です。本番環境のテストは [production-integration-test-guide.md](production-integration-test-guide.md) を参照してください。
+LocalStack環境での統合テストを実施する手順です。本番環境のテストは [production-integration-test-guide.md](production-integration-test-guide.md) を参照してください。
 
 ## 前提条件
 
-### 必要な環境
-- Docker および Docker Compose が起動していること
-- LocalStack が稼働していること
-- AWS CLI がインストールされていること
-- 必要な環境変数が `.env.local` に設定されていること
-
-### 必要な認証情報
-- Google Drive API のサービスアカウント認証情報
-- Gemini API キー
-- Slack Bot Token とChannel ID（オプション）
-- Notion API キーとDatabase ID（オプション）
+- Docker / Docker Compose 起動済み
+- AWS CLI インストール済み
+- `.env.local`ファイルに必要な環境変数を設定済み
 
 ## テスト実施手順
 
-### 1. 環境のセットアップ
+### 1. テスト実行
 
 ```bash
-# 開発環境の起動（LocalStack、ビルド、デプロイを一括実行）
+# 1. 開発環境起動とデプロイ
 cd analyzer
 make start
-```
 
-### 2. テストデータの準備
-
-#### テストペイロードファイル
-`analyzer/sample-data/test_dev_integration_payload.json` を使用してください。
-
-```json
-{
-  "body": "{\"file_id\": \"1gr4YjB-m98qSqa4739VOXgI5UZa1GBtvsur04bpG-rg\", \"file_name\": \"議事録テストファイル.txt\"}",
-  "headers": {
-    "Content-Type": "application/json"
-  }
-}
-```
-
-**注意**: `file_id` は実際のGoogle Drive上のファイルIDに置き換えてください。
-
-### 3. Lambda関数の呼び出し
-
-#### LocalStack環境でのテスト
-
-```bash
-# 統合テストの実行
+# 2. 統合テスト実行
 AWS_ACCESS_KEY_ID=test AWS_SECRET_ACCESS_KEY=test \
 aws --endpoint-url=http://localhost:4566 --region=ap-northeast-1 \
 lambda invoke \
 --function-name minutes-analyzer-local \
---payload fileb://analyzer/sample-data/test_dev_integration_payload.json \
+--payload fileb://sample-data/test_dev_integration_payload.json \
 --cli-read-timeout 120 \
-integration_test_result.json
+test_result.json
 
-# 実行結果の確認
-cat integration_test_result.json | jq '.'
+# 3. 結果確認
+cat test_result.json | jq '.'
 ```
+
+**注意**: テストペイロード内の`file_id`は実際のGoogle Drive上のファイルIDに置き換えてください。
 
 
 ### 4. テスト結果の確認

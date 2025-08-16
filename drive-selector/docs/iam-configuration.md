@@ -2,16 +2,16 @@
 
 ## 概要
 
-このドキュメントでは、Drive Selector Slack BotのIAMロール設定と環境変数管理について説明します。
+Drive Selector Slack BotのセキュアなIAM設定と環境変数管理手順です。最小権限原則に基づいたセキュリティ設定を実現します。
 
 ## IAMロール構成
 
 ### Lambda実行ロール
 
-Lambda関数に必要な最小権限を付与しています。
+Lambda関数に必要最小限の権限を付与。
 
 #### 基本権限
-- `AWSLambdaBasicExecutionRole`: CloudWatch Logsへの書き込み
+- `AWSLambdaBasicExecutionRole`: CloudWatch Logs書き込み
 
 #### DynamoDB権限
 ```json
@@ -24,14 +24,9 @@ Lambda関数に必要な最小権限を付与しています。
         "dynamodb:GetItem",
         "dynamodb:PutItem",
         "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem",
-        "dynamodb:Query",
-        "dynamodb:Scan"
+        "dynamodb:DeleteItem"
       ],
-      "Resource": [
-        "arn:aws:dynamodb:*:*:table/drive-selector-oauth-tokens-*",
-        "arn:aws:dynamodb:*:*:table/drive-selector-user-preferences-*"
-      ]
+      "Resource": "arn:aws:dynamodb:ap-northeast-1:*:table/drive-selector-oauth-tokens-production"
     }
   ]
 }
@@ -44,10 +39,8 @@ Lambda関数に必要な最小権限を付与しています。
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "secretsmanager:GetSecretValue"
-      ],
-      "Resource": "arn:aws:secretsmanager:*:*:secret:drive-selector-secrets-*"
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "arn:aws:secretsmanager:ap-northeast-1:*:secret:drive-selector-secrets-production-*"
     }
   ]
 }
@@ -60,10 +53,8 @@ Lambda関数に必要な最小権限を付与しています。
   "Statement": [
     {
       "Effect": "Allow",
-      "Action": [
-        "lambda:InvokeFunction"
-      ],
-      "Resource": "arn:aws:lambda:*:*:function:minutes-analyzer-*"
+      "Action": "lambda:InvokeFunction",
+      "Resource": "arn:aws:lambda:ap-northeast-1:*:function:minutes-analyzer-production"
     }
   ]
 }
@@ -71,7 +62,7 @@ Lambda関数に必要な最小権限を付与しています。
 
 ### API Gateway CloudWatchロール
 
-API GatewayがCloudWatch Logsに書き込むための権限。
+API GatewayのCloudWatch Logs書き込み権限。
 
 ```json
 {
@@ -82,13 +73,9 @@ API GatewayがCloudWatch Logsに書き込むための権限。
       "Action": [
         "logs:CreateLogGroup",
         "logs:CreateLogStream",
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
-        "logs:PutLogEvents",
-        "logs:GetLogEvents",
-        "logs:FilterLogEvents"
+        "logs:PutLogEvents"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:logs:ap-northeast-1:*:log-group:/aws/api-gateway/drive-selector-*"
     }
   ]
 }
@@ -96,13 +83,11 @@ API GatewayがCloudWatch Logsに書き込むための権限。
 
 ## 環境変数管理
 
-### Secrets Managerで管理する機密情報
-
-以下の機密情報はSecrets Managerで管理されます：
+### Secrets Manager管理情報
 
 | キー | 説明 | 取得元 |
 |-----|------|--------|
-| `SLACK_SIGNING_SECRET` | Slack署名検証用シークレット | Slack App管理画面 |
+| `SLACK_SIGNING_SECRET` | Slack署名検証 | Slack App管理画面 |
 | `SLACK_BOT_TOKEN` | Slack Bot OAuth Token | Slack App管理画面 |
 | `GOOGLE_CLIENT_ID` | Google OAuth Client ID | Google Cloud Console |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth Client Secret | Google Cloud Console |
@@ -110,81 +95,66 @@ API GatewayがCloudWatch Logsに書き込むための権限。
 
 ### Lambda環境変数
 
-Lambda関数に直接設定される環境変数：
-
 | 変数名 | 説明 | 例 |
 |--------|------|-----|
-| `ENVIRONMENT` | 実行環境 | `development`, `production` |
-| `OAUTH_TOKENS_TABLE` | DynamoDBテーブル名 | `drive-selector-oauth-tokens-dev` |
-| `USER_PREFERENCES_TABLE` | DynamoDBテーブル名 | `drive-selector-user-preferences-dev` |
-| `SECRETS_MANAGER_SECRET_ID` | Secrets Manager ID | `drive-selector-secrets-dev` |
+| `ENVIRONMENT` | 実行環境 | `production` |
+| `OAUTH_TOKENS_TABLE` | DynamoDBテーブル名 | `drive-selector-oauth-tokens-production` |
+| `SECRETS_MANAGER_SECRET_ID` | Secrets Manager ID | `drive-selector-secrets-production` |
 
 ## セットアップ手順
 
-### 1. Secrets Managerへの機密情報登録
+### 1. Secrets Manager設定
 
-#### AWS CLIを使用する場合
+#### AWS CLIでの作成
 
 ```bash
-# シークレットを作成
 aws secretsmanager create-secret \
-  --name drive-selector-secrets-development \
+  --name drive-selector-secrets-production \
   --secret-string '{
     "SLACK_SIGNING_SECRET": "your-slack-signing-secret",
     "SLACK_BOT_TOKEN": "xoxb-your-bot-token",
     "GOOGLE_CLIENT_ID": "your-google-client-id",
     "GOOGLE_CLIENT_SECRET": "your-google-client-secret",
-    "PROCESS_LAMBDA_ARN": "arn:aws:lambda:region:account:function:name"
+    "PROCESS_LAMBDA_ARN": "arn:aws:lambda:ap-northeast-1:account:function:minutes-analyzer-production"
   }'
 ```
 
-#### AWS コンソールを使用する場合
+#### AWSコンソールでの作成
 
-1. AWS Secrets Managerコンソールにアクセス
+1. Secrets Managerコンソールへアクセス
 2. 「Store a new secret」をクリック
 3. 「Other type of secret」を選択
-4. キー/値ペアを入力
-5. シークレット名を設定（例: `drive-selector-secrets-development`）
+4. 必要なキー/値ペアを入力
+5. シークレット名: `drive-selector-secrets-production`
 
-### 2. Terraformでのデプロイ
+### 2. Terraformデプロイ
 
 ```bash
-cd infrastructure
+cd drive-selector
 
-# 変数ファイルを準備
+# 設定ファイル準備
+cd infrastructure
 cp terraform.tfvars.sample terraform.tfvars
 
-# 機密情報を環境変数として設定
-export TF_VAR_slack_signing_secret="your-secret"
-export TF_VAR_slack_bot_token="xoxb-your-token"
-export TF_VAR_google_client_id="your-client-id"
-export TF_VAR_google_client_secret="your-client-secret"
-export TF_VAR_process_lambda_arn="arn:aws:lambda:..."
-
 # デプロイ
-terraform apply
+make deploy
 ```
 
-### 3. 環境変数の更新
+### 3. 設定更新
 
-#### Secrets Managerの値を更新
+#### Secrets Manager更新
 
 ```bash
 aws secretsmanager update-secret \
-  --secret-id drive-selector-secrets-development \
+  --secret-id drive-selector-secrets-production \
   --secret-string '{
-    "SLACK_SIGNING_SECRET": "new-secret",
-    ...
+    "SLACK_SIGNING_SECRET": "new-secret"
   }'
 ```
 
-#### Lambda環境変数を更新
+#### Lambda環境変数更新
 
-```bash
-aws lambda update-function-configuration \
-  --function-name drive-selector-controller-development \
-  --environment Variables={ENVIRONMENT=development,...}
-```
+Terraformで管理されるため、手動更新は非推奨。
 
 ## セキュリティベストプラクティス
 
@@ -249,67 +219,43 @@ echo '{"key": "value"}' | jq .
 
 ## 環境別設定
 
-### 開発環境
+### 本番環境設定
 
-- シークレットの即時削除（recovery_window_in_days = 0）
-- 詳細なログ出力
-- テスト用のダミー値許可
-
-### ステージング環境
-
-- 本番環境と同じ設定
-- 実際のAPIキーを使用
-- パフォーマンステスト実施
-
-### 本番環境
-
-- シークレットの削除保護（recovery_window_in_days = 30）
-- 最小限のログ出力
-- 自動ローテーション有効
+- シークレットの削除保護（30日間）
+- エラーレベルのログ出力
 - CloudWatchアラーム設定
+- 最小権限の徹底
 
 ## 監視とアラート
 
-### CloudWatchメトリクス
+### CloudWatchアラーム
 
-```hcl
-resource "aws_cloudwatch_metric_alarm" "secrets_access_error" {
-  alarm_name          = "drive-selector-secrets-access-error"
-  comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = "1"
-  metric_name         = "Errors"
-  namespace           = "AWS/Lambda"
-  period              = "300"
-  statistic           = "Sum"
-  threshold           = "5"
-  alarm_description   = "Secrets Manager access errors"
-  
-  dimensions = {
-    FunctionName = aws_lambda_function.slack_bot_controller.function_name
-  }
-}
-```
+以下のアラームが自動設定されます：
+- Secrets Managerアクセスエラー
+- Lambda関数エラー率
+- DynamoDBアクセスエラー
+- API Gateway 5XXエラー
 
-## コンプライアンス
+## セキュリティベストプラクティス
 
 ### データ保護
-
-- 機密情報は平文で保存しない
-- Secrets Managerの暗号化を使用
-- 転送中の暗号化（TLS）
+- Secrets Managerの暗号化使用
+- 転送中のTLS暗号化
+- 機密情報の平文保存禁止
 
 ### アクセス制御
+- 最小権限原則の徹底
+- リソースベースの権限設定
+- 定期的な権限レビュー
 
-- MFA必須化
-- IPアドレス制限
-- セッション時間制限
+### 監査ログ
+- CloudTrailで全API呼び出し記録
+- CloudWatch Logsでアプリケーションログ監視
+- 不正アクセスの検知とアラート
 
-### 監査
+## 次のステップ
 
-- 全API呼び出しをCloudTrailで記録
-- 定期的なアクセスレビュー
-- コンプライアンスレポート生成
-
-## まとめ
-
-適切なIAMロール設定と環境変数管理により、セキュアで管理しやすいシステムを構築できます。定期的なレビューと更新を行い、セキュリティを維持してください。
+1. Terraformデプロイ実行
+2. Secrets Managerの値設定
+3. IAMロールの動作確認
+4. アラート設定の検証

@@ -1,69 +1,34 @@
-# 本番環境 統合テスト実施手順書
+# 本番環境 統合テスト手順
 
-## 概要
-本書は、議事録分析システムの本番環境（AWS）での統合テストを実施するための手順書です。
-Lambda Function URLを使用して直接Lambda関数を呼び出す方式を採用しています。
+議事録分析システムの本番環境での統合テストを実施する手順です。
 
 ## 前提条件
 
-### 必要な環境
-- AWS CLIがインストールされ、認証情報が設定されていること
-- 本番環境へのデプロイが完了していること
-- Lambda Function URLが設定済みであること
-
-### 必要な認証情報
-- Google Drive のテストファイルID
-- AWS Secrets Manager に以下が設定済み：
-  - GEMINI_API_KEY
-  - GOOGLE_SERVICE_ACCOUNT_JSON
-  - SLACK_BOT_TOKEN（オプション）
-  - NOTION_API_KEY（オプション）
+- AWS CLIの設定完了
+- 本番環境デプロイ完了
+- Lambda Function URL設定済み
+- 必要な認証情報がSecrets Managerに設定済み
 
 ## テスト実施手順
 
-### 1. デプロイ情報の確認
+### 1. テスト実行
 
 ```bash
-# デプロイ済みのリソース情報を取得
+# 1. デプロイ情報確認
 cd analyzer/infrastructure/environments/production
 terraform output
 
-# 以下の情報をメモ：
-# - lambda_function_url: Lambda Function URL
-# - lambda_function_name: Lambda関数名
-# - cloudwatch_log_group: ログ確認用のCloudWatch Log Group名
-```
+# 2. Lambda Function URL取得
+export LAMBDA_URL=$(terraform output -raw lambda_function_url)
 
-### 2. テストデータの準備
-
-既存のテストファイル `analyzer/sample-data/test_prod_api_gateway_payload.json` を使用します：
-
-```json
-{
-  "file_id": "1gr4YjB-m98qSqa4739VOXgI5UZa1GBtvsur04bpG-rg",
-  "file_name": "議事録テストファイル.txt"
-}
-```
-
-**注意**: `file_id` は実際のGoogle Drive上のファイルIDです。必要に応じて変更してください。
-
-### 3. Lambda Function URL経由でのテスト実行
-
-Lambda Function URLを使用して直接Lambda関数を呼び出します。
-この方式では最大15分までの処理に対応可能です。
-
-```bash
-# Lambda Function URLを取得
-export LAMBDA_URL=$(cd analyzer/infrastructure/environments/production && terraform output -raw lambda_function_url)
-
-# Lambda Function URL経由でテスト実行
+# 3. テスト実行
 curl -X POST "$LAMBDA_URL" \
   -H "Content-Type: application/json" \
-  -d @analyzer/sample-data/test_prod_api_gateway_payload.json \
-  -o lambda_url_test_result.json
+  -d @../../sample-data/test_prod_api_gateway_payload.json \
+  -o test_result.json
 
-# 結果を整形して表示
-cat lambda_url_test_result.json | jq '.'
+# 4. 結果確認
+cat test_result.json | jq '.'
 ```
 
 ### 4. テストペイロードのカスタマイズ
