@@ -41,12 +41,17 @@
 - 矛盾点・未解決課題：議論中の不整合や保留事項を列挙
 - 未定項目：担当者や期日が決まっていないアクションを特定
 
-### 3.2 時間効率性
+### 3.2 参加度分析
+- 各参加者の発言回数と発言時間の割合を計算
+- 発言の偏り度合いをスコア化（0-100、100が完全に均等）
+- 発言が少ないまたはない参加者がいる場合は、ファシリテーションの改善点として提案
+
+### 3.3 時間効率性
 - 会議の実際の所要時間を文字列形式で記載（例: "20分35秒"）
 - 各議題の所要時間
 - 予定時間が議事録に記載されている場合は比較、ない場合は「記載なし」と出力
 
-### 3.3 会議の温度感
+### 3.4 会議の温度感
 - 全体的な雰囲気（positive/neutral/negative）
 - 根拠となる発言や表現を引用
 
@@ -102,15 +107,22 @@
       }
     ]
   },
+  "participation_analysis": {
+    "balance_score": 0-100,
+    "speaker_stats": {
+      "参加者名": {
+        "speaking_count": 数値,
+        "speaking_ratio": "XX%"
+      }
+    },
+    "silent_participants": ["参加者名"]
+  },
   "time_efficiency": {
     "actual_duration": "XX分",
     "scheduled_duration": "XX分または「記載なし」",
-    "topic_durations": [
-      {
-        "topic": "トピック名",
-        "duration": "XX分"
-      }
-    ]
+    "topic_durations": {
+      "トピック名": "XX分"
+    }
   },
   "atmosphere": {
     "overall_tone": "positive/neutral/negative",
