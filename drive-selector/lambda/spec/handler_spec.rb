@@ -4,7 +4,7 @@ require 'spec_helper'
 
 RSpec.describe 'lambda_handler' do
   let(:timestamp) { Time.now.to_i.to_s }
-  let(:body) { 'token=test&command=%2Fmeet-transcript&user_id=U1234567890' }
+  let(:body) { 'token=test&command=%2Fmeeting-analyzer&user_id=U1234567890' }
   let(:valid_signature) { create_slack_signature(timestamp, body) }
 
   before do

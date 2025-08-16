@@ -116,7 +116,7 @@ RSpec.describe SlackOptionsProvider do
 
         expect(result[:options]).to be_an(Array)
         expect(result[:options].length).to eq(1)
-        expect(result[:options].first[:text][:text]).to include('Google認証が必要です。/meet-transcript コマンドを再実行してください。')
+        expect(result[:options].first[:text][:text]).to include('Google認証が必要です。/meeting-analyzer コマンドを再実行してください。')
         expect(result[:options].first[:value]).to eq('unauthorized')
       end
     end
@@ -172,7 +172,7 @@ RSpec.describe SlackOptionsProvider do
 
         expect(result[:options]).to be_an(Array)
         expect(result[:options].first[:value]).to eq('unauthorized')
-        expect(result[:options].first[:text][:text]).to include('Google認証が必要です。/meet-transcript コマンドを再実行してください。')
+        expect(result[:options].first[:text][:text]).to include('Google認証が必要です。/meeting-analyzer コマンドを再実行してください。')
       end
     end
   end

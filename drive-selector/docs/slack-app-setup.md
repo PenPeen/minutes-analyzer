@@ -26,10 +26,10 @@
 2. 「Create New Command」をクリック（既存の場合は編集）
 3. 以下の情報を入力：
    ```
-   Command: /meet-transcript
+   Command: /meeting-analyzer
    Request URL: https://[API_GATEWAY_ID].execute-api.ap-northeast-1.amazonaws.com/production/slack/commands
    Short Description: Google Driveから議事録を選択して分析
-   Usage Hint: /meet-transcript
+   Usage Hint: /meeting-analyzer
    ```
 4. 「Save」をクリック
 

@@ -70,7 +70,7 @@ terraform output slack_interactions_endpoint
 1. Slack App管理画面の「Slash Commands」セクションへ移動
 2. 「Create New Command」をクリック
 3. 以下を設定：
-   - Command: `/meet-transcript`
+   - Command: `/meeting-analyzer`
    - Request URL: `{api-gateway-url}/slack/commands`
    - Short Description: Google Driveから議事録を選択
    - Usage Hint: [optional] ファイル名で検索
@@ -133,7 +133,7 @@ export API_GATEWAY_URL=https://{api-id}.execute-api.{region}.amazonaws.com/{stag
 ### 403 Forbidden エラー
 
 **原因**: Lambda権限が不足
-**解決策**: 
+**解決策**:
 ```bash
 terraform apply -target=aws_lambda_permission.api_gateway_invoke
 ```
@@ -148,7 +148,7 @@ terraform apply -target=aws_lambda_permission.api_gateway_invoke
 ### タイムアウトエラー
 
 **原因**: Lambda処理が29秒を超過
-**解決策**: 
+**解決策**:
 - 処理を非同期化
 - Lambda関数のタイムアウト値を確認
 
@@ -182,7 +182,7 @@ aws logs tail /aws/lambda/drive-selector-controller-{environment} --follow
 POST /slack/commands
 Content-Type: application/x-www-form-urlencoded
 
-command=/meet-transcript&
+command=/meeting-analyzer&
 text=search+term&
 user_id=U123456&
 team_id=T123456&

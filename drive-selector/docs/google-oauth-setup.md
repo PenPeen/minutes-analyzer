@@ -65,7 +65,7 @@ sequenceDiagram
     participant Lambda
     participant Google
 
-    User->>Slack: /meet-transcript コマンド実行
+    User->>Slack: /meeting-analyzer コマンド実行
     Slack->>Lambda: コマンドリクエスト
     Lambda->>Lambda: ユーザーの認証状態確認
 
