@@ -5,7 +5,7 @@
 ## 設計
 
 全体設計
-@architecture.md
+@docs/architecture.md
 
 プロンプト設計
 @docs/prompt-design-report.md

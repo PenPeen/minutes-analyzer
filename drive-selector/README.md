@@ -4,7 +4,7 @@ Google Drive ファイル選択機能を提供する Slack Bot です。Slack �
 
 ## 機能
 
-- `/meeting-analyzer` コマンドで Google Drive ファイルを検索・選択
+- `/meet-transcript` コマンドで Google Drive ファイルを検索・選択
 - Google OAuth 2.0 によるユーザー認証
 - 選択したファイルを議事録分析 Lambda へ送信
 - 分析開始時の Slack 通知（メンション付き）
@@ -77,7 +77,7 @@ terraform apply -var-file=terraform.tfvars
 
 ### OAuth トークンフロー
 
-1. ユーザーが `/meeting-analyzer` コマンドを実行
+1. ユーザーが `/meet-transcript` コマンドを実行
 2. 認証が必要な場合、Google OAuth URLにリダイレクト
 3. 認証完了後、トークンをDynamoDBに保存
 4. 以降のリクエストでは DynamoDB からトークンを取得
