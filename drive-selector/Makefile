@@ -29,48 +29,54 @@ setup: ## 初期セットアップを実行
 	fi
 	@echo "✅ セットアップが完了しました"
 
-build-lambda: ## Lambda関数をビルド
+# 本番環境用ビルド
+build-production: ## 本番環境用Lambda関数をビルド
+	@echo "🔨 本番環境用Lambda関数をビルド中..."
+	@mkdir -p infrastructure/modules/lambda
+	@docker compose run --rm ruby-lambda-builder
+	@echo "✅ 本番環境用ビルドが完了しました"
+
+build-lambda: ## Lambda関数をビルド　（内部使用）
 	@echo "🔨 Lambda関数をビルド中..."
 	@mkdir -p infrastructure/modules/lambda
 	@docker compose run --rm ruby-lambda-builder
 	@echo "✅ Lambda関数のビルドが完了しました"
 
-# 後方互換性のためのエイリアス
-build: build-lambda
 
 test: ## テストを実行
 	@echo "🧪 Lambda関数のテストを実行中..."
 	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
 	@echo "✅ テストが完了しました"
 
-tf-init: ensure-terraform-backend-bucket ## Terraformを初期化
-	@echo "Terraform初期化中..."
+# 本番環境用Terraform初期化
+tf-init-production: ensure-terraform-backend-bucket-production ## 本番環境用Terraformを初期化
+	@echo "本番環境用Terraform初期化中..."
 	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
 		cd $(TF_DIR) && terraform init; \
 	else \
-		echo "Terraformは既に初期化されています"; \
+		echo "本番環境用Terraformは既に初期化されています"; \
 	fi
-	@echo "Terraformの初期化が完了しました"
+	@echo "本番環境用Terraformの初期化が完了しました"
 
-# Terraformプランの実行
-tf-plan: tf-init generate-production-tfvars ## Terraformプランを実行
-	@echo "📋 Terraformプランを実行中..."
+# 本番環境用Terraformプラン
+tf-plan-production: tf-init-production generate-tfvars-production build-production ## 本番環境用Terraformプランを実行
+	@echo "📋 本番環境用Terraformプランを実行中..."
 	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
 		cd $(TF_DIR) && terraform plan -var-file="terraform.tfvars"; \
 	else \
 		cd $(TF_DIR) && terraform plan; \
 	fi
-	@echo "✅ Terraformプランが完了しました"
+	@echo "✅ 本番環境用Terraformプランが完了しました"
 
-# Terraform適用
-tf-apply: ## Terraformを適用
-	@echo "🚀 Terraformを適用中..."
+# 本番環境用Terraform適用
+tf-apply-production: ## 本番環境用Terraformを適用
+	@echo "🚀 本番環境用Terraformを適用中..."
 	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
 		cd $(TF_DIR) && terraform apply -var-file="terraform.tfvars" -auto-approve; \
 	else \
 		cd $(TF_DIR) && terraform apply -auto-approve; \
 	fi
-	@echo "✅ Terraformの適用が完了しました"
+	@echo "✅ 本番環境用Terraformの適用が完了しました"
 
 deploy-production: ## 本番環境にデプロイ
 	@echo "🚀 本番環境にデプロイ中..."
@@ -80,9 +86,9 @@ deploy-production: ## 本番環境にデプロイ
 		echo "  本番環境用の設定ファイルを作成してください。"; \
 		exit 1; \
 	fi
-	@$(MAKE) generate-production-tfvars
-	@$(MAKE) ensure-terraform-backend-bucket
-	@$(MAKE) build-lambda
+	@$(MAKE) generate-tfvars-production
+	@$(MAKE) ensure-terraform-backend-bucket-production
+	@$(MAKE) build-production
 	@cd $(TF_DIR) && \
 		terraform init && \
 		terraform plan -var-file="terraform.tfvars" && \
@@ -96,7 +102,7 @@ deploy-production: ## 本番環境にデプロイ
 	@cd $(TF_DIR) && terraform output
 
 # 本番環境用のterraform.tfvars生成
-generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
+generate-tfvars-production: ## 本番環境用terraform.tfvarsを.env.productionから生成
 	@echo "📝 本番環境用terraform.tfvarsを生成中..."
 	@if [ -f .env.production ]; then \
 		( \
@@ -128,7 +134,7 @@ generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
 		exit 1; \
 	fi
 
-ensure-terraform-backend-bucket: ## Terraform backend用S3バケットの存在確認・作成
+ensure-terraform-backend-bucket-production: ## 本番環境用Terraform backend S3バケットの存在確認・作成
 	@echo "🪣 Terraform backend用S3バケットを確認中..."
 	@BUCKET_NAME="drive-selector-terraform-state"; \
 	if aws s3api head-bucket --bucket "$$BUCKET_NAME" --region ap-northeast-1 >/dev/null 2>&1; then \
@@ -163,7 +169,7 @@ destroy-production: ## 本番環境のリソースを削除
 	@if [ ! -f .env.production ]; then \
 		echo "⚠️  .env.productionが見つかりません。terraform.tfvarsが既に存在する場合はそれを使用します。"; \
 	else \
-		$(MAKE) generate-production-tfvars; \
+		$(MAKE) generate-tfvars-production; \
 	fi
 	@echo "🗑️  Terraformでリソースを削除中..."
 	@cd $(TF_DIR) && \

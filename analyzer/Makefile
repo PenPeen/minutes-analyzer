@@ -34,8 +34,8 @@ setup: ## 初期セットアップを実行
 	fi
 	@echo "✅ セットアップが完了しました"
 
-# 開発環境起動（ビルド・デプロイ含む）
-start: ## 開発環境を起動・デプロイ
+# 開発環境起動（Docker・LocalStackのみ）
+start: ## 開発環境（Docker・LocalStack）を起動
 	@echo "🚀 開発環境を起動中..."
 	@if [ ! -f .env.local ]; then \
 		echo "❌ .env.localが見つかりません。make setup を最初に実行してください。"; \
@@ -45,21 +45,25 @@ start: ## 開発環境を起動・デプロイ
 	@export $$(cat .env.local | grep -v '^#' | grep -v 'GOOGLE_SERVICE_ACCOUNT_JSON' | xargs) && \
 	cd infrastructure && docker compose up -d
 	@$(MAKE) wait-for-localstack
-	@echo "📝 設定ファイルを生成中..."
-	@$(MAKE) generate-tfvars
-	@echo "🔨 Lambda関数をビルド中..."
-	@$(MAKE) build-lambda
-	@echo "🚀 インフラストラクチャをデプロイ中..."
-	@$(MAKE) tf-init
-	@$(MAKE) tf-apply
-	@echo "📤 プロンプトをアップロード中..."
-	@$(MAKE) upload-prompts-local
 	@echo "✅ 開発環境の起動が完了しました"
 	@echo ""
-	@echo "📋 デプロイ情報:"
-	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
+	@echo "📋 次のステップ:"
+	@echo "• アプリケーションをデプロイ: make deploy-local"
+	@echo "• 環境停止: make stop"
 
-# terraform.tfvarsの生成
+# ローカル環境用ビルド
+build-local: ## ローカル環境用のビルドを実行
+	@echo "🔨 ローカル環境用Lambda関数をビルド中..."
+	@$(MAKE) build-lambda
+	@echo "✅ ローカル環境用ビルドが完了しました"
+
+# 本番環境用ビルド
+build-production: ## 本番環境用のビルドを実行
+	@echo "🔨 本番環境用Lambda関数をビルド中..."
+	@$(MAKE) build-lambda
+	@echo "✅ 本番環境用ビルドが完了しました"
+
+# ローカル環境用terraform.tfvarsの生成
 # 
 # Google Service Account JSONの処理について:
 # 当初はBASE64エンコードを使用していたが、以下の理由でファイル生成方式に変更:
@@ -72,7 +76,7 @@ start: ## 開発環境を起動・デプロイ
 # - .env.localには1行のJSONを保存し、環境変数として扱いやすい
 # - google_service_account.jsonは.gitignoreに追加済みで、誤ったコミットを防止
 #
-generate-tfvars: ## terraform.tfvarsを.env.localから生成
+generate-tfvars-local: ## ローカル環境用terraform.tfvarsを.env.localから生成
 	@echo "📝 terraform.tfvarsとGoogle認証情報を生成中..."
 	@if [ -f .env.local ]; then \
 		( \
@@ -136,48 +140,81 @@ build-lambda: ## Lambda関数をビルド
 	@docker compose run --rm ruby-lambda-builder
 	@echo "✅ Lambda関数のビルドが完了しました"
 
-tf-init: ## Terraformを初期化
-	@echo "Terraform初期化中..."
+# ローカル環境用Terraform初期化
+tf-init-local: ## ローカル環境用Terraformを初期化
+	@echo "ローカル環境用Terraform初期化中..."
 	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
 		cd $(TF_DIR) && terraform init; \
 	else \
 		echo "Terraformは既に初期化されています"; \
 	fi
-	@echo "Terraformの初期化が完了しました"
+	@echo "ローカル環境用Terraformの初期化が完了しました"
 
-# Terraformプランの実行
-tf-plan: tf-init ## Terraformプランを実行
-	@echo "📋 Terraformプランを実行中..."
+# ローカル環境用Terraformプラン
+tf-plan-local: tf-init-local generate-tfvars-local build-local ## ローカル環境用Terraformプランを実行
+	@echo "📋 ローカル環境用Terraformプランを実行中..."
 	@cd $(TF_DIR) && terraform plan
-	@echo "✅ Terraformプランが完了しました"
+	@echo "✅ ローカル環境用Terraformプランが完了しました"
 
-# Terraform適用（プランなし）
-tf-apply: ## Terraformを適用
-	@echo "🚀 Terraformを適用中..."
+# ローカル環境用Terraform適用
+tf-apply-local: ## ローカル環境用Terraformを適用
+	@echo "🚀 ローカル環境用Terraformを適用中..."
 	@if [ -f $(TF_DIR)/terraform.tfvars ]; then \
 		cd $(TF_DIR) && terraform apply -var-file="terraform.tfvars" -auto-approve; \
 	else \
 		cd $(TF_DIR) && terraform apply -auto-approve; \
 	fi
-	@echo "✅ Terraformの適用が完了しました"
+	@echo "✅ ローカル環境用Terraformの適用が完了しました"
 
-# LocalStack環境にデプロイ（プラン確認あり）
-deploy-local: tf-plan tf-apply upload-prompts-local ## LocalStack環境にデプロイ
-	@echo "✅ デプロイが完了しました"
+# 本番環境用Terraform初期化
+tf-init-production: ensure-terraform-backend-bucket-production ## 本番環境用Terraformを初期化
+	@echo "本番環境用Terraform初期化中..."
+	@if [ ! -f infrastructure/environments/production/.terraform.lock.hcl ]; then \
+		cd infrastructure/environments/production && terraform init; \
+	else \
+		echo "本番環境用Terraformは既に初期化されています"; \
+	fi
+	@echo "本番環境用Terraformの初期化が完了しました"
+
+# 本番環境用Terraformプラン
+tf-plan-production: tf-init-production generate-tfvars-production build-production ## 本番環境用Terraformプランを実行
+	@echo "📋 本番環境用Terraformプランを実行中..."
+	@cd infrastructure/environments/production && terraform plan -var-file="terraform.tfvars"
+	@echo "✅ 本番環境用Terraformプランが完了しました"
+
+# 本番環境用Terraform適用
+tf-apply-production: ## 本番環境用Terraformを適用
+	@echo "🚀 本番環境用Terraformを適用中..."
+	@if [ -f infrastructure/environments/production/terraform.tfvars ]; then \
+		cd infrastructure/environments/production && terraform apply -var-file="terraform.tfvars" -auto-approve; \
+	else \
+		cd infrastructure/environments/production && terraform apply -auto-approve; \
+	fi
+	@echo "✅ 本番環境用Terraformの適用が完了しました"
+
+# ローカル環境にデプロイ（LocalStack使用）
+deploy-local: tf-plan-local tf-apply-local upload-prompts-local ## ローカル環境（LocalStack）にデプロイ
+	@echo "✅ ローカル環境のデプロイが完了しました"
+	@echo ""
 	@echo "📋 デプロイ情報:"
-	@cd $(TF_DIR) && terraform output
+	@cd $(TF_DIR) && terraform output 2>/dev/null || echo "デプロイ情報の取得に失敗しました"
 
 # プロンプトをS3にアップロード
-upload-prompts-local: ## プロンプトファイルをLocalStackのS3にアップロード
-	@echo "📤 プロンプトファイルをS3にアップロード中..."
+upload-prompts-local: ## ローカル環境のS3にプロンプトファイルをアップロード
+	@echo "📤 ローカル環境用プロンプトファイルをS3にアップロード中..."
 	@$(AWS_LOCAL_CREDENTIALS) ./scripts/upload_prompts_to_s3.sh local
-	@echo "✅ プロンプトのアップロードが完了しました"
+	@echo "✅ ローカル環境用プロンプトのアップロードが完了しました"
 
-# LocalStack環境を破棄
-destroy-local: ## LocalStack環境を破棄
-	@echo "🗑️  LocalStack環境を破棄中..."
+upload-prompts-production: ## 本番環境のS3にプロンプトファイルをアップロード
+	@echo "📤 本番環境用プロンプトファイルをS3にアップロード中..."
+	@./scripts/upload_prompts_to_s3.sh production
+	@echo "✅ 本番環境用プロンプトのアップロードが完了しました"
+
+# ローカル環境を破棄
+destroy-local: ## ローカル環境（LocalStack）を破棄
+	@echo "🗑️  ローカル環境を破棄中..."
 	@cd $(TF_DIR) && terraform destroy -auto-approve
-	@echo "✅ 環境の破棄が完了しました"
+	@echo "✅ ローカル環境の破棄が完了しました"
 
 # テスト実行
 test: test-lambda
@@ -252,7 +289,7 @@ stop: ## 開発環境を停止
 	@echo "開発環境が停止しました"
 
 # 本番環境用のterraform.tfvars生成
-generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
+generate-tfvars-production: ## 本番環境用terraform.tfvarsを.env.productionから生成
 	@echo "📝 本番環境用terraform.tfvarsを生成中..."
 	@if [ -f .env.production ]; then \
 		( \
@@ -291,7 +328,7 @@ generate-production-tfvars: ## .env.productionからterraform.tfvarsを生成
 		exit 1; \
 	fi
 
-ensure-terraform-backend-bucket: ## Terraform backend用S3バケットの存在確認・作成
+ensure-terraform-backend-bucket-production: ## 本番環境用Terraform backend S3バケットの存在確認・作成
 	@echo "🪣 Terraform backend用S3バケットを確認中..."
 	@BUCKET_NAME="minutes-analyzer-terraform-state"; \
 	if aws s3api head-bucket --bucket "$$BUCKET_NAME" --region ap-northeast-1 >/dev/null 2>&1; then \
@@ -327,7 +364,7 @@ destroy-production: ## 本番環境のリソースを削除
 	@if [ ! -f .env.production ]; then \
 		echo "⚠️  .env.productionが見つかりません。terraform.tfvarsが既に存在する場合はそれを使用します。"; \
 	else \
-		$(MAKE) generate-production-tfvars; \
+		$(MAKE) generate-tfvars-production; \
 	fi
 	@echo "🗑️  Terraformでリソースを削除中..."
 	@cd infrastructure/environments/production && \
@@ -384,9 +421,9 @@ deploy-production: ## 本番環境にデプロイ
 		exit 1; \
 	fi
 	@echo "🔨 Lambda関数をビルド中..."
-	@$(MAKE) build-lambda
-	@$(MAKE) generate-production-tfvars
-	@$(MAKE) ensure-terraform-backend-bucket
+	@$(MAKE) build-production
+	@$(MAKE) generate-tfvars-production
+	@$(MAKE) ensure-terraform-backend-bucket-production
 	@cd infrastructure/environments/production && \
 		terraform init && \
 		terraform plan && \
@@ -395,8 +432,7 @@ deploy-production: ## 本番環境にデプロイ
 		terraform apply
 	@echo "🔐 Secrets Managerにシークレットを設定中..."
 	@./scripts/set-production-secrets.sh
-	@echo "📤 プロンプトをS3にアップロード中..."
-	@./scripts/upload_prompts_to_s3.sh production
+	@$(MAKE) upload-prompts-production
 	@echo "✅ 本番環境へのデプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/production && terraform output
