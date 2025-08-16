@@ -40,11 +40,6 @@ RSpec.describe SlackInteractionHandler do
                 }
               }
             },
-            'custom_title_block' => {
-              'custom_title' => {
-                'value' => 'Custom Meeting Name'
-              }
-            }
           }
         }
       }
@@ -109,10 +104,6 @@ RSpec.describe SlackInteractionHandler do
             .to output(/Selected file: file_id_123/).to_stdout
         end
 
-        it 'logs custom filename when provided' do
-          expect { handler.handle_interaction(modal_submission_payload) }
-            .to output(/Custom filename: Custom Meeting Name/).to_stdout
-        end
       end
 
       context 'when no file is selected' do
@@ -239,18 +230,6 @@ RSpec.describe SlackInteractionHandler do
           .to output(/Selected file: file_id_123/).to_stdout
       end
 
-      it 'extracts custom filename when provided' do
-        expect { handler.send(:process_modal_submission, view_state, user_id) }
-          .to output(/Custom filename: Custom Meeting Name/).to_stdout
-      end
-
-      it 'handles missing filename gracefully' do
-        state = JSON.parse(view_state.to_json)
-        state['values']['custom_title_block']['custom_title']['value'] = ''
-
-        expect { handler.send(:process_modal_submission, state, user_id) }
-          .to output(/Custom filename: \(none\)/).to_stdout
-      end
     end
 
     describe '#extract_selected_file' do
@@ -261,7 +240,6 @@ RSpec.describe SlackInteractionHandler do
 
         expect(file_info[:file_id]).to eq('file_id_123')
         expect(file_info[:file_name]).to eq('Meeting Notes 2025-01-15.txt')
-        expect(file_info[:custom_filename]).to eq('Custom Meeting Name')
       end
 
       it 'handles missing selected option' do
@@ -272,13 +250,6 @@ RSpec.describe SlackInteractionHandler do
         expect(file_info).to be_nil
       end
 
-      it 'handles missing custom filename' do
-        values = JSON.parse(modal_submission_payload['view']['state']['values'].to_json)
-        values['custom_title_block']['custom_title']['value'] = ''
-
-        file_info = handler.send(:extract_selected_file, values)
-        expect(file_info[:custom_filename]).to be_nil
-      end
 
       it 'handles completely malformed values' do
         file_info = handler.send(:extract_selected_file, {})

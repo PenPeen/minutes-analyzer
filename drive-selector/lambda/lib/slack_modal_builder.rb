@@ -58,29 +58,6 @@ class SlackModalBuilder
           }
         },
         {
-          type: 'input',
-          block_id: 'custom_title_block',
-          element: {
-            type: 'plain_text_input',
-            action_id: 'custom_title',
-            placeholder: {
-              type: 'plain_text',
-              text: '例: 2024年1月定例会議',
-              emoji: true
-            }
-          },
-          label: {
-            type: 'plain_text',
-            text: 'タイトル（オプション）',
-            emoji: true
-          },
-          optional: true,
-          hint: {
-            type: 'plain_text',
-            text: '空欄の場合、ファイル名から自動生成されます'
-          }
-        },
-        {
           type: 'section',
           block_id: 'options_block',
           text: {
