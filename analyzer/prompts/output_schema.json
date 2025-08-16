@@ -90,24 +90,27 @@
       },
       "required": ["overall_score", "contradictions", "unresolved_issues", "undefined_items"]
     },
-    "time_efficiency": {
+    "participation_analysis": {
       "type": "object",
       "properties": {
-        "actual_duration": {"type": "string"},
-        "scheduled_duration": {"type": "string"},
-        "topic_durations": {
-          "type": "array",
-          "items": {
+        "balance_score": {"type": "number", "minimum": 0, "maximum": 100},
+        "speaker_stats": {
+          "type": "object",
+          "additionalProperties": {
             "type": "object",
             "properties": {
-              "topic": {"type": "string"},
-              "duration": {"type": "string"}
+              "speaking_count": {"type": "number"},
+              "speaking_ratio": {"type": "string"}
             },
-            "required": ["topic", "duration"]
+            "required": ["speaking_count", "speaking_ratio"]
           }
+        },
+        "silent_participants": {
+          "type": "array",
+          "items": {"type": "string"}
         }
       },
-      "required": ["actual_duration", "scheduled_duration", "topic_durations"]
+      "required": ["balance_score", "speaker_stats", "silent_participants"]
     },
     "atmosphere": {
       "type": "object",
@@ -145,7 +148,7 @@
     "actions",
     "actions_summary",
     "health_assessment",
-    "time_efficiency",
+    "participation_analysis",
     "atmosphere",
     "improvement_suggestions"
   ]
