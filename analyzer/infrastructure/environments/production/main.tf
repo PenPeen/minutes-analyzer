@@ -19,6 +19,9 @@ provider "aws" {
   region = var.aws_region
 }
 
+# Get current AWS account ID
+data "aws_caller_identity" "current" {}
+
 # Secrets Manager for Application Secrets
 resource "aws_secretsmanager_secret" "app_secrets" {
   name = "${var.project_name}-secrets-${var.environment}"
@@ -82,27 +85,20 @@ resource "aws_s3_bucket_public_access_block" "prompts" {
   restrict_public_buckets = true
 }
 
-# Lambda Function URL for direct access (bypasses API Gateway timeout)
-resource "aws_lambda_function_url" "minutes_analyzer" {
-  function_name      = aws_lambda_function.minutes_analyzer.function_name
-  authorization_type = "NONE"  # You can change to "AWS_IAM" for authentication
-  
-  cors {
-    allow_credentials = false
-    allow_origins     = ["*"]
-    allow_methods     = ["POST"]
-    allow_headers     = ["Content-Type", "X-Amz-Date", "Authorization", "X-Api-Key", "X-Amz-Security-Token"]
-    expose_headers    = ["Content-Type"]
-    max_age           = 0
-  }
-}
-
 # CloudWatch Log Group
 resource "aws_cloudwatch_log_group" "lambda_logs" {
   name              = "/aws/lambda/${aws_lambda_function.minutes_analyzer.function_name}"
   retention_in_days = var.log_retention_days
 
   tags = var.common_tags
+}
+
+# Lambda Permission - drive-selector-productionからのみアクセス許可
+resource "aws_lambda_permission" "allow_drive_selector_invoke" {
+  statement_id  = "AllowInvokeFromDriveSelector"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.minutes_analyzer.function_name
+  principal     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/drive-selector-lambda-role-production"
 }
 
 # IAM Role
