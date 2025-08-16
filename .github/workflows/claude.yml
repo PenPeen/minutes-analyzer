@@ -33,6 +33,9 @@ jobs:
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@beta
+        env:
+          LANG: ja_JP.UTF-8
+          LC_ALL: ja_JP.UTF-8
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 
@@ -53,12 +56,14 @@ jobs:
           # allowed_tools: "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
           
           # Optional: Add custom instructions for Claude to customize its behavior for your project
-          # custom_instructions: |
-          #   Follow our coding standards
-          #   Ensure all new code has tests
-          #   Use TypeScript for new files
+          custom_instructions: |
+            必ず日本語でコミュニケーションを行ってください。
+            コードコメントや変数名は英語を使用しても構いませんが、説明や回答は日本語で行ってください。
+            プロジェクトのコーディング規約に従ってください。
+            新しいコードには必ずテストを追加してください。
           
           # Optional: Custom environment variables for Claude
-          # claude_env: |
-          #   NODE_ENV: test
+          claude_env: |
+            LANG: ja_JP.UTF-8
+            LC_ALL: ja_JP.UTF-8
 
