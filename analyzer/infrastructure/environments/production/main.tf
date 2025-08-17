@@ -54,6 +54,26 @@ resource "aws_kms_key" "main" {
           "kms:DescribeKey"
         ]
         Resource = "*"
+      },
+      {
+        Sid    = "Allow CloudWatch Logs"
+        Effect = "Allow"
+        Principal = {
+          Service = "logs.${var.aws_region}.amazonaws.com"
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          ArnEquals = {
+            "kms:EncryptionContext:aws:logs:arn" = "arn:aws:logs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:log-group:/aws/lambda/${var.project_name}-${var.environment}"
+          }
+        }
       }
     ]
   })
@@ -68,86 +88,6 @@ resource "aws_kms_alias" "main" {
   target_key_id = aws_kms_key.main.key_id
 }
 
-# VPC Configuration
-resource "aws_vpc" "main" {
-  cidr_block           = "10.0.0.0/16"
-  enable_dns_hostnames = true
-  enable_dns_support   = true
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-vpc-${var.environment}"
-  })
-}
-
-# Internet Gateway
-resource "aws_internet_gateway" "main" {
-  vpc_id = aws_vpc.main.id
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-igw-${var.environment}"
-  })
-}
-
-# Public Subnet
-resource "aws_subnet" "public" {
-  vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
-  availability_zone       = "${var.aws_region}a"
-  map_public_ip_on_launch = true
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-public-subnet-${var.environment}"
-    Type = "Public"
-  })
-}
-
-# Route Table for Public Subnet
-resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    gateway_id = aws_internet_gateway.main.id
-  }
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-public-rt-${var.environment}"
-  })
-}
-
-# Route Table Association
-resource "aws_route_table_association" "public" {
-  subnet_id      = aws_subnet.public.id
-  route_table_id = aws_route_table.public.id
-}
-
-# Security Group for Lambda
-resource "aws_security_group" "lambda" {
-  name_prefix = "${var.project_name}-lambda-"
-  vpc_id      = aws_vpc.main.id
-
-  # Allow HTTPS outbound traffic for external API calls
-  egress {
-    description = "HTTPS outbound for external APIs"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  # Allow DNS resolution
-  egress {
-    description = "DNS resolution"
-    from_port   = 53
-    to_port     = 53
-    protocol    = "udp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = merge(var.common_tags, {
-    Name = "${var.project_name}-lambda-sg-${var.environment}"
-  })
-}
 
 # Secrets Manager for Application Secrets
 resource "aws_secretsmanager_secret" "app_secrets" {
@@ -171,11 +111,6 @@ resource "aws_lambda_function" "minutes_analyzer" {
 
   source_code_hash = filebase64sha256(var.lambda_zip_path)
 
-  # VPC Configuration
-  vpc_config {
-    subnet_ids         = [aws_subnet.public.id]
-    security_group_ids = [aws_security_group.lambda.id]
-  }
 
   environment {
     variables = {
@@ -194,7 +129,6 @@ resource "aws_lambda_function" "minutes_analyzer" {
 
   depends_on = [
     aws_iam_role_policy_attachment.lambda_basic_execution,
-    aws_iam_role_policy_attachment.lambda_vpc_execution,
     aws_cloudwatch_log_group.lambda_logs,
   ]
 }
@@ -240,7 +174,7 @@ resource "aws_s3_bucket_public_access_block" "prompts" {
 
 # CloudWatch Log Group with KMS encryption
 resource "aws_cloudwatch_log_group" "lambda_logs" {
-  name              = "/aws/lambda/${aws_lambda_function.minutes_analyzer.function_name}"
+  name              = "/aws/lambda/${var.project_name}-${var.environment}"
   retention_in_days = var.log_retention_days
   kms_key_id        = aws_kms_key.main.arn
 
@@ -284,11 +218,6 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
   role       = aws_iam_role.lambda_execution_role.name
 }
 
-# IAM Role Policy for VPC access
-resource "aws_iam_role_policy_attachment" "lambda_vpc_execution" {
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
-  role       = aws_iam_role.lambda_execution_role.name
-}
 
 # IAM Policy for Secrets Manager
 # IAM Role Policy for S3 Prompts Bucket
