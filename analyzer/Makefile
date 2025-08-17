@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda ensure-terraform-backend-bucket
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda ensure-terraform-backend-bucket terraform-fmt terraform-validate
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -281,6 +281,27 @@ stop: ## 開発環境を停止
 		docker compose -f $(DOCKER_COMPOSE_FILE) down; \
 	fi
 	@echo "開発環境が停止しました"
+
+# Terraform検証コマンド
+terraform-fmt: ## Terraformファイルのフォーマットを実行
+	@echo "🎨 Terraformファイルをフォーマット中..."
+	@cd infrastructure/environments/local && terraform fmt
+	@cd infrastructure/environments/production && terraform fmt
+	@echo "✅ Terraformフォーマットが完了しました"
+
+terraform-validate: ## Terraformファイルの検証を実行
+	@echo "✅ Terraformファイルを検証中..."
+	@if [ ! -f infrastructure/environments/local/.terraform.lock.hcl ]; then \
+		echo "📋 ローカル環境のTerraformを初期化中..."; \
+		cd infrastructure/environments/local && terraform init; \
+	fi
+	@cd infrastructure/environments/local && terraform validate
+	@if [ ! -f infrastructure/environments/production/.terraform.lock.hcl ]; then \
+		echo "📋 本番環境のTerraformを初期化中..."; \
+		cd infrastructure/environments/production && terraform init; \
+	fi
+	@cd infrastructure/environments/production && terraform validate
+	@echo "✅ Terraform検証が完了しました"
 
 # 本番環境用のterraform.tfvars生成
 generate-tfvars-production: ## 本番環境用terraform.tfvarsを.env.productionから生成

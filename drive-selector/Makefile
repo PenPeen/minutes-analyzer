@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup build clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources
+.PHONY: help setup build clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources terraform-fmt terraform-validate
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -226,3 +226,18 @@ check-resources: ## AWSリソースとTerraform状態の整合性をチェック
 	@cd $(TF_DIR) && terraform state list | grep -E "(api_gateway|lambda)" || echo "Terraform状態が見つかりません"
 	@echo ""
 	@echo "⚠️  手動で作成されたリソースがある場合は、Terraformでimportするか削除してください。"
+
+# Terraform検証コマンド
+terraform-fmt: ## Terraformファイルのフォーマットを実行
+	@echo "🎨 Terraformファイルをフォーマット中..."
+	@cd $(TF_DIR) && terraform fmt
+	@echo "✅ Terraformフォーマットが完了しました"
+
+terraform-validate: ## Terraformファイルの検証を実行
+	@echo "✅ Terraformファイルを検証中..."
+	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
+		echo "📋 Terraformを初期化中..."; \
+		cd $(TF_DIR) && terraform init; \
+	fi
+	@cd $(TF_DIR) && terraform validate
+	@echo "✅ Terraform検証が完了しました"
