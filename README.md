@@ -52,10 +52,10 @@ cp env.local.sample .env.local
 **必須設定**
 - `GEMINI_API_KEY`: Gemini API キー
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google サービスアカウント認証情報
-
-**オプション設定**
 - `SLACK_BOT_TOKEN`: Slack Bot OAuth Token
 - `SLACK_CHANNEL_ID`: 通知先チャンネルID
+
+**オプション設定**
 - `NOTION_API_KEY`: Notion Integration トークン
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
@@ -144,6 +144,15 @@ minutes-analyzer/
 │   ├── 📁 scripts/          # ユーティリティスクリプト
 │   └── 📁 sample-data/      # テストデータ
 ├── 📁 drive-selector/       # SlackBot（GoogleDrive上のファイルを選択）
+│   ├── 📁 infrastructure/   # インフラ設定
+│   │   ├── 📁 docker/       # Dockerビルド環境
+│   │   └── 📁 environments/ # 環境別設定
+│   │       └── 📁 production/# 本番環境設定
+│   ├── 📁 lambda/           # Ruby Lambda関数
+│   │   ├── 📁 lib/          # ライブラリモジュール
+│   │   └── 📁 spec/         # テストファイル
+│   ├── 📁 docs/             # Slack・Google API設定ドキュメント
+│   └── 📁 scripts/          # デプロイ・設定スクリプト
 ├── 📁 docs/                 # ドキュメント
 └── 📁 test/                 # 統合テスト
 ```
@@ -153,10 +162,10 @@ minutes-analyzer/
 ### 必須設定
 - `GEMINI_API_KEY`: Gemini API キー（[Google AI Studio](https://makersuite.google.com/app/apikey)で取得）
 - `GOOGLE_SERVICE_ACCOUNT_JSON`: Google サービスアカウント認証情報
-
-### オプション設定
 - `SLACK_BOT_TOKEN`: Slack Bot OAuth Token
 - `SLACK_CHANNEL_ID`: 通知先チャンネルID
+
+### オプション設定
 - `NOTION_API_KEY`: Notion Integration トークン
 - `NOTION_DATABASE_ID`: 議事録用データベースID
 - `NOTION_TASK_DATABASE_ID`: タスク管理用データベースID
