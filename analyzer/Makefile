@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda ensure-terraform-backend-bucket
+.PHONY: help setup start build-lambda deploy-local destroy-local clean check-localstack-ready stop test test-lambda ensure-terraform-backend-bucket terraform-fmt-local terraform-validate-local terraform-fmt-production terraform-validate-production
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -430,3 +430,43 @@ deploy-production: ## 本番環境にデプロイ
 	@echo "✅ 本番環境へのデプロイが完了しました"
 	@echo "📋 デプロイ情報:"
 	@cd infrastructure/environments/production && terraform output
+
+# terraform検証コマンド（ローカル環境用）
+terraform-fmt-local: ## ローカル環境のTerraformファイルをフォーマット
+	@echo "🔧 ローカル環境のTerraformファイルをフォーマット中..."
+	@if [ ! -f infrastructure/environments/local/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		cd infrastructure/environments/local && terraform init; \
+	fi
+	@cd infrastructure/environments/local && terraform fmt -recursive
+	@echo "✅ ローカル環境のTerraformフォーマットが完了しました"
+
+terraform-validate-local: ## ローカル環境のTerraformファイルを検証
+	@echo "🔍 ローカル環境のTerraformファイルを検証中..."
+	@if [ ! -f infrastructure/environments/local/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		cd infrastructure/environments/local && terraform init; \
+	fi
+	@cd infrastructure/environments/local && terraform validate
+	@echo "✅ ローカル環境のTerraform検証が完了しました"
+
+# terraform検証コマンド（本番環境用）
+terraform-fmt-production: ## 本番環境のTerraformファイルをフォーマット
+	@echo "🔧 本番環境のTerraformファイルをフォーマット中..."
+	@if [ ! -f infrastructure/environments/production/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		$(MAKE) ensure-terraform-backend-bucket-production; \
+		cd infrastructure/environments/production && terraform init; \
+	fi
+	@cd infrastructure/environments/production && terraform fmt -recursive
+	@echo "✅ 本番環境のTerraformフォーマットが完了しました"
+
+terraform-validate-production: ## 本番環境のTerraformファイルを検証
+	@echo "🔍 本番環境のTerraformファイルを検証中..."
+	@if [ ! -f infrastructure/environments/production/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		$(MAKE) ensure-terraform-backend-bucket-production; \
+		cd infrastructure/environments/production && terraform init; \
+	fi
+	@cd infrastructure/environments/production && terraform validate
+	@echo "✅ 本番環境のTerraform検証が完了しました"
