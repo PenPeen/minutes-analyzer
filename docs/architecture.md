@@ -53,77 +53,101 @@ https://developers.google.com/apps-script/guides/services/quotas
 
 ---
 
-### パターンB: Google Apps Script + AWS Lambda ハイブリッド型 ⭐選択
+### パターンC: Slack Bot + AWS Lambda型 ⭐最終採用
 
 ```mermaid
 sequenceDiagram
-    participant GM as Google Meet
+    participant User as Slack User
+    participant SB as Slack Bot
+    participant API as API Gateway
+    participant CL as Controller Lambda
     participant GD as Google Drive
-    participant GAS as Google Apps Script
-    participant Lambda as AWS Lambda
+    participant AL as Analyzer Lambda
     participant Gemini as Gemini API
     participant Slack as Slack API
     participant Notion as Notion API
 
-    GM->>GD: 議事録自動保存
-    GAS->>GD: 新規ファイル検知
-    GAS->>Lambda: ファイルID送信
-    Lambda->>GD: ファイル内容取得
-    Lambda->>Gemini: テキスト分析依頼
+    User->>SB: /meeting-analyzer コマンド
+    SB->>API: スラッシュコマンド送信
+    API->>CL: リクエスト転送
+    CL->>GD: ファイル検索
+    GD->>CL: ファイルリスト返却
+    CL->>SB: モーダル表示
+    User->>SB: ファイル選択
+    SB->>API: 選択結果送信
+    API->>CL: 選択処理
+    CL->>AL: ファイルID + メタデータ送信
+    AL->>GD: ファイル内容取得
+    AL->>Gemini: テキスト分析依頼
     Note over Gemini: 決定事項・アクション抽出<br/>タスク背景・手順生成
-    Gemini->>Lambda: 分析結果返却
-    Lambda->>Slack: 通知送信
-    Lambda->>Notion: ページ・タスク作成
+    Gemini->>AL: 分析結果返却
+    AL->>Slack: 通知送信
+    AL->>Notion: ページ・タスク作成
+    AL->>CL: 処理完了通知
+    CL->>SB: 完了メッセージ
 ```
 
 **技術スタック:**
-- Google Apps Script（監視・前処理）
-- AWS Lambda（AI処理・配信）
-- API Gateway
+- Slack Bot App（UI・コマンド処理）
+- API Gateway（エンドポイント）
+- Controller Lambda（Slack連携・Google Drive検索）
+- Analyzer Lambda（AI処理・配信）
 - Gemini 2.5 Flash API
 - Slack API
 - Notion API
 
 **データフロー:**
-1. Google MeetがGoogle Driveに議事録を自動保存
-2. GASが新しい議事録ファイルを検知
-3. GASがファイルIDとメタデータをLambda関数に送信
-4. Lambda関数がGoogle Drive APIでファイルを直接取得
-5. 取得したテキストをGemini APIに送信して分析
-6. 分析結果をSlack/Notionに自動配信
+1. ユーザーがSlackで `/meeting-analyzer` コマンドを実行
+2. Controller LambdaがGoogle Driveでファイルを検索してモーダル表示
+3. ユーザーがファイルを選択
+4. Controller LambdaがAnalyzer Lambdaにファイル情報を送信
+5. Analyzer LambdaがGoogle Drive APIでファイルを取得
+6. 取得したテキストをGemini APIに送信して分析
+7. 分析結果をSlack/Notionに自動配信
 
 **メリット:**
-- Lambdaを使用することで、**実行時間が15分**
-- **シンプルなアーキテクチャ**: Lambda内でAI処理・配信を一括実行
-- CloudWatchを使用することでの充実した監視・ログ機能
-- 高いスケーラビリティ（同時実行数1000以上）
+- **手動選択による確実性**: 誤検知なし、明示的なファイル選択
+- **迅速な価値提供**: 短期間で実装・デプロイが可能
+- **低い運用コスト**: 複雑なインフラ管理や監視が不要
+- **拡張性**: 将来的な自動化への段階的移行が可能
+- **CloudWatch統合**: 充実した監視・ログ機能
+- **スケーラビリティ**: Lambda同時実行数1000以上
 
 **デメリット:**
-- AWS学習コストあり
-- 初期設定の複雑さ（GAS + AWS連携）
+- **手動操作が必要**: 完全自動化ではない
+- **AWS学習コスト**: 初期設定の複雑さ
+- **SlackBot管理**: Bot設定・権限管理の運用負荷
 
-**コスト試算:** 月$8-15
+**コスト試算:** 月$5-12
 
 ## 決定事項
 
-**パターンB** を採用
+**パターンC（Slack Bot + AWS Lambda型）** を採用
 
 ### 決定要因
 
-### 1. 実行時間制限の解決
+### 1. 確実性と運用の安定性
 
-**問題:**
+**背景:**
+- 完全自動検知（監査ログ連携）: GCPインフラ整備・高コスト
+- Drive API Push通知: ユーザー数分の監視・運用負荷大
+- **Slack Bot（手動選択）**: 誤検知なし・低運用コスト
+
+### 2. 実行時間制限の解決
+
+**技術的優位性:**
 - 1時間の会議 → 文字起こし20,000文字
 - Gemini 2.5 Flash API処理時間: 3-5分
-- GAS制限: 6分 → **ギリギリでリスクが高い**
+- Lambda実行時間制限: 15分 → **十分な余裕**
 
-### 2. 監視・運用の充実
+### 3. 監視・運用の充実
 
 **CloudWatch統合:**
 ```
 - 実行時間・メモリ使用量の可視化
 - エラー率・成功率のダッシュボード
 - アラート設定
+- 2つのLambda関数（Controller/Analyzer）の独立監視
 ```
 
 ## Notion API連携のメリット
