@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources
+.PHONY: help setup clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources terraform-fmt-production terraform-validate-production
 
 # デフォルトターゲット
 help: ## ヘルプを表示
@@ -226,3 +226,24 @@ check-resources: ## AWSリソースとTerraform状態の整合性をチェック
 	@cd $(TF_DIR) && terraform state list | grep -E "(api_gateway|lambda)" || echo "Terraform状態が見つかりません"
 	@echo ""
 	@echo "⚠️  手動で作成されたリソースがある場合は、Terraformでimportするか削除してください。"
+
+# terraform検証コマンド（本番環境用）
+terraform-fmt-production: ## 本番環境のTerraformファイルをフォーマット
+	@echo "🔧 本番環境のTerraformファイルをフォーマット中..."
+	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		$(MAKE) ensure-terraform-backend-bucket-production; \
+		cd $(TF_DIR) && terraform init; \
+	fi
+	@cd $(TF_DIR) && terraform fmt -recursive
+	@echo "✅ 本番環境のTerraformフォーマットが完了しました"
+
+terraform-validate-production: ## 本番環境のTerraformファイルを検証
+	@echo "🔍 本番環境のTerraformファイルを検証中..."
+	@if [ ! -f $(TF_DIR)/.terraform.lock.hcl ]; then \
+		echo "Terraformが初期化されていません。初期化を実行します..."; \
+		$(MAKE) ensure-terraform-backend-bucket-production; \
+		cd $(TF_DIR) && terraform init; \
+	fi
+	@cd $(TF_DIR) && terraform validate
+	@echo "✅ 本番環境のTerraform検証が完了しました"
