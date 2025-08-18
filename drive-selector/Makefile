@@ -1,5 +1,5 @@
 MAKEFLAGS += --silent
-.PHONY: help setup build clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources terraform-fmt-production terraform-validate-production
+.PHONY: help setup clean test deploy-production destroy-production clean-production build-lambda tf-init tf-plan tf-apply generate-production-tfvars ensure-terraform-backend-bucket health-check logs check-resources terraform-fmt-production terraform-validate-production
 
 # デフォルトターゲット
 help: ## ヘルプを表示
