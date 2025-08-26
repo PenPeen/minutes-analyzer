@@ -175,6 +175,18 @@ minutes-analyzer/
 - [Google Drive API設定](docs/google-drive-api-setup.md)
 - [Slack Integration設定](docs/slack-integration-guide.md)
 
+## ⚠️ セキュリティ・機密情報に関する注意点
+
+機密情報を扱う際は以下の点にご注意ください：
+
+1. **Gemini APIのデータ利用について**
+   - 無料プランなど特定のプランではオプトアウト不可のため、機密情報の処理は避けてください
+   - 詳細は[Gemini APIのプライバシーポリシー](https://ai.google.dev/gemini-api/terms)を確認してください
+
+2. **ネットワークセキュリティについて**
+   - VPCエンドポイントなどのセキュリティ機能については本アプリでは未対応です
+   - 本番環境では適切なネットワークセキュリティ対策を検討してください
+
 ## 📖 ドキュメント
 
 - [システムアーキテクチャ](docs/architecture.md)
