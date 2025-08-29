@@ -30,10 +30,6 @@ drive-selector/lambda/.bundle/
 drive-selector/build/
 drive-selector/lambda/coverage/
 
-# LocalStack
-analyzer/infrastructure/volume/
-analyzer/infrastructure/infrastructure/volume/
-.localstack/
 
 # Ruby
 *.gem
@@ -73,8 +69,6 @@ yarn-error.log*
 google_service_account.json
 *_service_account.json
 
-# Cache
-analyzer/infrastructure/infrastructure/volume/cache/*
 
 # IDEs
 .vscode/

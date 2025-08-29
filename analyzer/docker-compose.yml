@@ -1,77 +1,4 @@
 services:
-  localstack:
-    container_name: localstack-${PROJECT_NAME:-minutes-analyzer}
-    image: localstack/localstack:2.3
-    platform: linux/amd64
-    ports:
-      - "4566:4566"            # LocalStack Gateway
-      - "4510-4559:4510-4559"  # External services port range
-    environment:
-      # LocalStack configuration
-      - DEBUG=1
-      - LAMBDA_EXECUTOR=local
-      - LAMBDA_REMOTE_DOCKER=false
-      - LAMBDA_DOCKER_NETWORK=minutes-analyzer_localstack-network
-      - LOCALSTACK_API_KEY=${LOCALSTACK_API_KEY:-}
-
-      # AWS services to enable
-      - SERVICES=lambda,apigateway,logs,iam,sts,secretsmanager
-
-      # Data persistence
-      - DATA_DIR=/tmp/localstack/data
-      - PERSISTENCE=1
-
-      # Edge port (deprecated but for compatibility)
-      - EDGE_PORT=4566
-
-      # Additional Lambda settings
-      - LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT=60
-      - LAMBDA_REMOVE_CONTAINERS=true
-      - HOST_TMP_FOLDER=/tmp
-
-    volumes:
-      - localstack-data:/var/lib/localstack
-      - "./infrastructure/scripts:/scripts"
-      - "/tmp:/tmp"  # ホストの/tmpディレクトリをマウント
-    networks:
-      - localstack-network
-    env_file:
-      - ./.env.local
-    security_opt:
-      - no-new-privileges:true
-    read_only: false  # LocalStackは一時的な書き込みが必要
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4566/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  terraform:
-    container_name: terraform-${PROJECT_NAME:-minutes-analyzer}
-    image: hashicorp/terraform:latest
-    working_dir: /workspace
-    env_file:
-      - ./.env.local
-    environment:
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-test}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY:-test}
-      - AWS_DEFAULT_REGION=${AWS_REGION:-ap-northeast-1}
-      - AWS_ENDPOINT_URL=http://localstack:4566
-    volumes:
-      - ".:/workspace"
-      - "./infrastructure/environments/local:/workspace/env"
-    networks:
-      - localstack-network
-    depends_on:
-      localstack:
-        condition: service_healthy
-    profiles:
-      - tools
-      - dev  # 開発時のデフォルトプロファイル
-    security_opt:
-      - no-new-privileges:true
-    read_only: true
-
   ruby-lambda-builder:
     build:
       context: ./infrastructure/docker/ruby-lambda-builder
@@ -84,16 +11,6 @@ services:
     security_opt:
       - no-new-privileges:true
 
-networks:
-  localstack-network:
-    driver: bridge
-
 volumes:
   bundle_cache:
     driver: local
-  localstack-data:
-    driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: ${LOCALSTACK_VOLUME_DIR:-./infrastructure/infrastructure/volume}
