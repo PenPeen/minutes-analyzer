@@ -121,13 +121,11 @@ RSpec.describe SecretsManager do
     context 'when creating client without injected client' do
       before do
         ENV['AWS_REGION'] = 'us-west-2'
-        ENV['AWS_ENDPOINT_URL'] = 'http://localhost:4566'
         allow(Aws::SecretsManager::Client).to receive(:new)
       end
 
       after do
         ENV.delete('AWS_REGION')
-        ENV.delete('AWS_ENDPOINT_URL')
       end
 
       it 'creates client with correct options' do
@@ -139,8 +137,7 @@ RSpec.describe SecretsManager do
         secrets_manager_without_client.get_secrets
 
         expect(Aws::SecretsManager::Client).to have_received(:new).with(
-          region: 'us-west-2',
-          endpoint: 'http://localhost:4566'
+          region: 'us-west-2'
         )
       end
     end
@@ -148,7 +145,6 @@ RSpec.describe SecretsManager do
     context 'when AWS_REGION is not set' do
       before do
         ENV.delete('AWS_REGION')
-        ENV.delete('AWS_ENDPOINT_URL')
         allow(Aws::SecretsManager::Client).to receive(:new).and_return(mock_client)
         allow(mock_client).to receive(:get_secret_value).and_return(
           double('response', secret_string: secret_string)

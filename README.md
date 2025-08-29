@@ -102,7 +102,7 @@ make deploy-production  # 本番デプロイ
 - **drive-selector**: Google Driveファイル選択用SlackBot
 - **AWS Lambda**: Gemini 2.5 Flash APIによる議事録分析エンジン
 - **Slack/Notion連携**: 分析結果の自動通知・データベース化
-- **LocalStack**: ローカル開発環境
+- **AWS**: 本番環境インフラストラクチャ
 
 ### 管理方針
 
@@ -133,9 +133,8 @@ make deploy-production  # 本番デプロイ
 ```
 minutes-analyzer/
 ├── 📁 analyzer/             # メインアプリケーション
-│   ├── 📁 infrastructure/   # Terraform + LocalStack
+│   ├── 📁 infrastructure/   # Terraform設定
 │   │   ├── 📁 environments/  # 環境別設定
-│   │   │   ├── 📁 local/     # LocalStack設定
 │   │   │   └── 📁 production/# 本番環境設定
 │   │   ├── 📁 modules/       # 再利用可能なTerraformモジュール
 │   │   └── 📁 scripts/       # デプロイスクリプト
@@ -199,15 +198,15 @@ minutes-analyzer/
 
 ### よくある問題と解決方法
 
-**LocalStackが起動しない**
+**ビルドエラー**
 ```bash
 cd analyzer && make clean  # 完全クリーンアップ
-docker ps                 # Docker状態確認
+make build-lambda          # Lambda関数再ビルド
 ```
 
 **GEMINI_API_KEYエラー**
 ```bash
-grep GEMINI_API_KEY analyzer/.env.local  # 設定確認
+grep GEMINI_API_KEY analyzer/.env.production  # 設定確認
 ```
 [Google AI Studio](https://makersuite.google.com/app/apikey)でキーを再生成してください。
 

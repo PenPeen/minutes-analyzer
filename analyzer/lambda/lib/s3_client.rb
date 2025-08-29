@@ -2,7 +2,7 @@ require 'aws-sdk-s3'
 require 'json'
 
 class S3Client
-  def initialize(logger, environment = 'local')
+  def initialize(logger, environment = ENV.fetch('ENVIRONMENT', 'production'))
     @logger = logger
     @environment = environment
     @bucket_name = ENV.fetch('S3_PROMPTS_BUCKET', "minutes-analyzer-prompts-#{@environment}")
@@ -69,13 +69,6 @@ class S3Client
       logger: @logger,
       log_level: :debug
     }
-
-    # LocalStack endpoint configuration
-    if @environment == 'local'
-      options[:endpoint] = 'http://localstack:4566'
-      options[:force_path_style] = true
-      options[:credentials] = Aws::Credentials.new('test', 'test')
-    end
 
     Aws::S3::Client.new(options)
   end
