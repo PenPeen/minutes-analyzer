@@ -60,7 +60,7 @@ class SlackMessageBuilder
   def build_header(analysis_result)
     meeting_summary = analysis_result['meeting_summary'] || {}
     original_title = meeting_summary['title'] || 'Meeting'
-    
+
     # タイトル整形処理を追加
     formatted_title = format_meeting_title(original_title, analysis_result)
 
@@ -159,10 +159,10 @@ class SlackMessageBuilder
     atmosphere = analysis_result['atmosphere'] || {}
     return nil unless atmosphere['overall_tone']
 
-    tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
+    tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
-    text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
+    text_lines << tone_japanese
 
     # 根拠を最大3件まで表示
     evidence = atmosphere['evidence'] || []
@@ -237,10 +237,10 @@ class SlackMessageBuilder
       file_name = analysis_result['original_file_name']
       return looks_like_filename?(file_name) ? shorten_filename_title(file_name) : file_name
     end
-    
+
     # フォールバック: Geminiが生成したタイトルを使用
     return original_title unless looks_like_filename?(original_title)
-    
+
     # ファイル名っぽい場合は短縮処理を実行
     return shorten_filename_title(original_title)
   end
@@ -257,15 +257,29 @@ class SlackMessageBuilder
   def shorten_filename_title(filename)
     # "Webチームリファインメント - 2025/08/01 15:00 JST - Gemini によるメモ"
     # → "Webチームリファインメント - 2025/08/01"
-    
+
     # 不要な部分を削除
     cleaned = filename
       .gsub(/ - Gemini によるメモ$/, '')  # " - Gemini によるメモ" を削除
       .gsub(/ \d{1,2}:\d{2}.*$/, '')      # 時刻以降を削除
       .gsub(/\.txt$|\.docx?$|\.pdf$/, '') # 拡張子を削除
       .strip
-    
+
     # 短縮後も長い場合は、最初の50文字程度に制限
     cleaned.length > 50 ? "#{cleaned[0,47]}..." : cleaned
+  end
+
+  # 雰囲気の英語表現を日本語に変換
+  def get_tone_japanese(tone)
+    case tone
+    when 'positive'
+      'とても盛り上がっていて良かったですね🥳'
+    when 'negative'
+      '雰囲気があまり良くなかったかも...？🤔'
+    when 'neutral'
+      '落ち着いた雰囲気でした🤣'
+    else
+      '雰囲気は読み取れませんでした😅'
+    end
   end
 end
