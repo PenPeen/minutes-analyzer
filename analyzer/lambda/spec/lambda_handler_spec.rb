@@ -91,6 +91,7 @@ RSpec.describe LambdaHandler do
           expected_summary = summary.dup
           expected_summary['executor_info'] = { user_id: nil, user_email: nil }
           expected_summary['original_file_name'] = 'test.txt'
+          expected_summary['slack_mentions'] = nil
           expect(slack_client).to receive(:send_notification).with(expected_summary, nil)
           handler.handle(event: event, context: context)
         end
