@@ -160,9 +160,11 @@ class SlackMessageBuilder
     return nil unless atmosphere['overall_tone']
 
     tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
+    tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
-    text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
+    text_lines << ""
+    text_lines << "#{tone_emoji} #{tone_japanese}"
 
     # 根拠を最大3件まで表示
     evidence = atmosphere['evidence'] || []
@@ -267,5 +269,19 @@ class SlackMessageBuilder
     
     # 短縮後も長い場合は、最初の50文字程度に制限
     cleaned.length > 50 ? "#{cleaned[0,47]}..." : cleaned
+  end
+
+  # 雰囲気の英語表記を自然な日本語に変換
+  def get_tone_japanese(tone)
+    case tone&.downcase
+    when 'positive'
+      '盛り上がったみたいで何よりです 🤟'
+    when 'negative'
+      '雰囲気があまり良くなかったかも...？🤔'
+    when 'neutral'
+      '落ち着いた雰囲気でした🤣'
+    else
+      '雰囲気は読み取れませんでした😅'
+    end
   end
 end
