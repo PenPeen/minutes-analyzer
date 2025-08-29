@@ -49,9 +49,9 @@ module Constants
   # Tone indicators
   module Tone
     EMOJIS = {
-      'positive' => '😊',
-      'negative' => '😔',
-      'neutral' => '😐'
+      'positive' => ':パーティーの顔:',
+      'negative' => ':thinking_face:',
+      'neutral' => ':slightly_smiling_face:'
     }.freeze
   end
   
