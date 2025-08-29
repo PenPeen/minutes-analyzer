@@ -159,9 +159,6 @@ class NotionPageBuilder
     @task_database_id && !@task_database_id.to_s.empty?
   end
   
-  # 重複した関連タスクメソッドを削除
-  
-  # 元のメソッドを削除
   def _old_has_task_database?
     @task_database_id && !@task_database_id.empty?
   end
@@ -208,7 +205,6 @@ class NotionPageBuilder
     
     blocks = [create_heading('📌 決定事項')]
     
-    # 決定事項を全件表示（省略なし）
     decisions.each do |decision|
       blocks << create_bulleted_item(decision['content'])
     end
@@ -258,14 +254,11 @@ class NotionPageBuilder
     blocks
   end
   
-  # 会議の健全性評価セクションを削除
-  
   
   def build_atmosphere_section(analysis_result)
     atmosphere = analysis_result['atmosphere'] || {}
     return [] unless atmosphere['overall_tone']
     
-    # Slackフォーマットと統一
     tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
     
     blocks = [create_heading('🌡️ 会議の雰囲気')]
@@ -292,8 +285,6 @@ class NotionPageBuilder
     
     blocks
   end
-  
-  # 関連タスクセクションを削除
   
   def format_participants(participants)
     return 'N/A' unless participants.is_a?(Array) && participants.any?
@@ -359,7 +350,7 @@ class NotionPageBuilder
     }
   end
   
-  # 雰囲気の英語表現を日本語に変換（Slackフォーマットと統一）
+  # 雰囲気の英語表現を日本語に変換
   def get_tone_japanese(tone)
     case tone
     when 'positive'

@@ -288,8 +288,7 @@ RSpec.describe NotionClient do
 
       expect(section_headers).to include('📌 決定事項')
       expect(section_headers).to include('✅ アクション項目')
-      expect(section_headers).to include('📊 会議の健全性評価')
-      expect(section_headers).to include('😊 会議の雰囲気')
+      expect(section_headers).to include('🌡️ 会議の雰囲気')
       expect(section_headers).to include('💡 改善提案')
     end
   end
