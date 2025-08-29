@@ -43,11 +43,8 @@ make setup
 ```
 
 #### 3. 環境変数設定
-```bash
-cp env.local.sample .env.local
-```
 
-`.env.local`で以下の環境変数を設定してください：
+`.env.production` ファイルに設定後、`scripts/set-production-secrets.sh` でSecrets Managerに反映
 
 **必須設定**
 - `GEMINI_API_KEY`: Gemini API キー
@@ -189,7 +186,7 @@ minutes-analyzer/
 ## 📖 ドキュメント
 
 - [システムアーキテクチャ](docs/architecture.md)
-- [Google Drive API設定](docs/google-drive-api-setup.md) 
+- [Google Drive API設定](docs/google-drive-api-setup.md)
 - [Slack Integration設定](docs/slack-integration-guide.md)
 - [統合テスト手順](docs/integration-test-guide.md)
 - [Makefileコマンド](docs/makefile-commands.md)

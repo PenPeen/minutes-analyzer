@@ -23,7 +23,7 @@
 
 ### 3. 環境変数の設定
 
-`.env.local` または `.env.production` に以下を設定：
+`.env.production` ファイルに以下を設定し、`scripts/set-production-secrets.sh` でSecrets Managerに反映：
 
 ```bash
 SLACK_BOT_TOKEN=xoxb-xxxxxxxxxxxx-xxxxxxxxxxxx-xxxxxxxxxxxxxxxxxxxx

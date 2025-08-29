@@ -127,17 +127,6 @@ setup_environment_files() {
 
     cd "$PROJECT_ROOT"
 
-    # .env.local の作成
-    if [ ! -f ".env.local" ]; then
-        if [ -f "env.local.sample" ]; then
-            cp env.local.sample .env.local
-            log_success ".env.local ファイルを作成しました"
-        else
-            log_error "env.local.sample ファイルが見つかりません"
-            exit 1
-        fi
-    fi
-
     # .gitignore の確認
     if [ -f ".gitignore" ]; then
         log_success ".gitignore ファイルが確認されました"
@@ -228,13 +217,6 @@ verify_project_structure() {
 setup_terraform_vars() {
     log_info "Terraform変数ファイルを作成中..."
     cd "$PROJECT_ROOT"
-    if [ -f ".env.local" ]; then
-        log_warning "⚠️ .env.localが見つかりました。"
-        log_info "Terraform変数ファイルを生成するには 'make generate-tfvars' を実行してください。"
-        log_info "このコマンドはMakefile内で安全に環境変数を処理します。"
-    else
-        log_warning "⚠️ .env.local が見つかりません。terraform.tfvars は作成されませんでした。"
-    fi
 }
 
 # 使用方法の表示

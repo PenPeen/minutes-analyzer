@@ -54,7 +54,7 @@
 
 ### 6. サービスアカウントキーを環境変数に設定
 
-ダウンロードしたサービスアカウントキー（JSONファイル）の内容全体をコピーし、プロジェクトルートにある`.env.local`ファイルの`GOOGLE_SERVICE_ACCOUNT_JSON`の値として貼り付けます。
+ダウンロードしたサービスアカウントキー（JSONファイル）の内容全体を `.env.production` ファイルの `GOOGLE_SERVICE_ACCOUNT_JSON` に設定し、`scripts/set-production-secrets.sh` でSecrets Managerに反映します。
 
 **重要:** JSONを貼り付ける際は、改行も含めてそのまま1行で貼り付けてください。以下のコマンドを使用すると便利です。
 
