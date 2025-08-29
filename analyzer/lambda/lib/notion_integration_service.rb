@@ -616,7 +616,7 @@ class NotionIntegrationService
       children: children
     }
 
-    response = make_notion_request(uri, request_body)
+    response = @api_client.create_page(request_body)
 
     if response[:success]
       @logger.info("Successfully created task: #{action['task']}")
@@ -627,9 +627,4 @@ class NotionIntegrationService
     response
   end
 
-  # 後方互換性のためのmake_notion_requestメソッド（削除予定）
-  def make_notion_request(uri, body)
-    # NotionApiClientに委譲
-    @api_client.create_page(body)
-  end
 end
