@@ -239,10 +239,7 @@ RSpec.describe SlackClient do
           'actions' => [],
           'atmosphere' => {
             'overall_tone' => 'positive',
-            'evidence' => [
-              '素晴らしい進捗ですね',
-              '順調に進んでいます'
-            ]
+            'comment' => 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
           },
           'improvement_suggestions' => [
             {
