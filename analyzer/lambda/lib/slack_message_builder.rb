@@ -105,9 +105,10 @@ class SlackMessageBuilder
     return nil if decisions.empty?
 
     text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
+    text_lines << ""
 
     decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
-      text_lines << "#{index + 1}. #{decision['content']}"
+      text_lines << "• #{decision['content']}"
     end
 
     if decisions.size > MAX_DECISIONS
@@ -129,10 +130,11 @@ class SlackMessageBuilder
 
     sorted_actions = sort_actions(actions)
     text_lines = ["*:clipboard: アクション一覧 (#{actions.size}件)*"]
+    text_lines << ""
 
     sorted_actions.first(MAX_ACTIONS).each_with_index do |action, index|
       action_text = build_action_text(action)
-      text_lines << "#{index + 1}. #{action_text}"
+      text_lines << "• #{action_text}"
     end
 
     if actions.size > MAX_ACTIONS
@@ -162,7 +164,8 @@ class SlackMessageBuilder
     tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
-    text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
+    text_lines << ""
+    text_lines << "#{tone_emoji} #{get_tone_japanese(atmosphere['overall_tone'])}"
 
     # 根拠を最大3件まで表示
     evidence = atmosphere['evidence'] || []
@@ -185,10 +188,11 @@ class SlackMessageBuilder
     return nil if suggestions.empty?
 
     text_lines = ["*💡 改善提案*"]
+    text_lines << ""
 
     suggestions.each_with_index do |suggestion, index|
-      text_lines << "#{index + 1}. #{suggestion['suggestion']}"
-      text_lines << "   → 期待効果: #{suggestion['expected_impact']}" if suggestion['expected_impact']
+      text_lines << "💫 #{suggestion['suggestion']}"
+      text_lines << "   *→ 期待効果: #{suggestion['expected_impact']}*" if suggestion['expected_impact']
     end
 
     {
@@ -227,7 +231,21 @@ class SlackMessageBuilder
     assignee = action['slack_mention'] || action['assignee'] || '未定'
     deadline = action['deadline_formatted'] || '期日未定'
 
-    "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
+    "#{priority_emoji} #{action['task']} - #{assignee} 📅 #{deadline}"
+  end
+
+  # 雰囲気トーンを日本語に変換
+  def get_tone_japanese(tone)
+    case tone&.downcase
+    when 'positive'
+      'ポジティブ'
+    when 'negative'
+      'ネガティブ'
+    when 'neutral'
+      'ニュートラル'
+    else
+      tone || 'ニュートラル'
+    end
   end
 
   # 議事録タイトルを整形するメソッド
