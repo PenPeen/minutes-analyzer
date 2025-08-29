@@ -188,7 +188,6 @@ class SlackMessageBuilder
 
     suggestions.each_with_index do |suggestion, index|
       text_lines << "#{index + 1}. #{suggestion['suggestion']}"
-      text_lines << "   → 期待効果: #{suggestion['expected_impact']}" if suggestion['expected_impact']
     end
 
     {
