@@ -7,15 +7,28 @@ class IntegrationService
   end
   
   def process_integrations(analysis_result, secrets, user_mappings = {}, executor_info = nil)
+    # 1. Notion連携を先に実行
+    notion_result = process_notion_integration(analysis_result, secrets)
+    
+    # 2. NotionのURLを取得（成功時のみ）
+    notion_url = if notion_result && (notion_result['success'] || notion_result[:success])
+                   notion_result['url'] || notion_result[:url]
+                 else
+                   nil
+                 end
+    
+    # 3. Slack連携（NotionURLを含む）
+    slack_result = process_slack_integration(analysis_result, secrets, user_mappings, executor_info, notion_url)
+    
     {
-      slack: process_slack_integration(analysis_result, secrets, user_mappings, executor_info),
-      notion: process_notion_integration(analysis_result, secrets)
+      notion: notion_result,
+      slack: slack_result
     }
   end
   
   private
   
-  def process_slack_integration(analysis_result, secrets, user_mappings, executor_info = nil)
+  def process_slack_integration(analysis_result, secrets, user_mappings, executor_info = nil, notion_url = nil)
     slack_bot_token = secrets['SLACK_BOT_TOKEN']
     slack_channel_id = secrets['SLACK_CHANNEL_ID']
     
@@ -31,7 +44,7 @@ class IntegrationService
       result_with_mentions['executor_info'] = executor_info
     end
     
-    slack_service.send_notification(result_with_mentions)
+    slack_service.send_notification(result_with_mentions, notion_url)
   rescue StandardError => e
     handle_integration_error('Slack', e)
   end

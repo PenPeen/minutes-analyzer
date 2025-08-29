@@ -10,7 +10,7 @@ class SlackNotificationService
     @message_builder = SlackMessageBuilder.new(logger)
   end
 
-  def send_notification(analysis_result)
+  def send_notification(analysis_result, notion_url = nil)
     unless @bot_token && !@bot_token.empty?
       @logger.error("Slack bot token is not configured")
       return { success: false, error: 'Slack bot token is not configured' }
@@ -24,7 +24,7 @@ class SlackNotificationService
     @logger.info("Sending Slack notification to channel: #{@channel_id}")
 
     # メッセージを構築
-    main_message = @message_builder.build_main_message(analysis_result)
+    main_message = @message_builder.build_main_message(analysis_result, notion_url)
     
     # メインメッセージを送信
     result = @api_client.post_message(@channel_id, main_message)
