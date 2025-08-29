@@ -9,7 +9,7 @@ class SlackMessageBuilder
     @logger = logger
   end
 
-  def build_main_message(analysis_result)
+  def build_main_message(analysis_result, notion_url = nil)
     blocks = []
 
     blocks << build_mention_message(analysis_result)
@@ -17,6 +17,9 @@ class SlackMessageBuilder
     blocks << build_summary_section(analysis_result)
     blocks << build_decisions_section(analysis_result)
     blocks << build_actions_section(analysis_result)
+    
+    # NotionページURLがある場合はボタンを追加
+    blocks << build_notion_button(notion_url) if notion_url
 
     {
       text: create_fallback_text(analysis_result),
@@ -280,5 +283,24 @@ class SlackMessageBuilder
     else
       '雰囲気は読み取れませんでした😅'
     end
+  end
+
+  # NotionページへのボタンをSlackブロックとして構築
+  def build_notion_button(notion_url)
+    {
+      type: "actions",
+      elements: [
+        {
+          type: "button",
+          text: {
+            type: "plain_text",
+            text: "📋 Notionで詳細を見る",
+            emoji: true
+          },
+          url: notion_url,
+          style: "primary"
+        }
+      ]
+    }
   end
 end
