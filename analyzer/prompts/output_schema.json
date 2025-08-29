@@ -97,12 +97,13 @@
           "type": "string",
           "enum": ["positive", "neutral", "negative"]
         },
-        "evidence": {
-          "type": "array",
-          "items": {"type": "string"}
+        "comment": {
+          "type": "string",
+          "minLength": 100,
+          "maxLength": 150
         }
       },
-      "required": ["overall_tone", "evidence"]
+      "required": ["overall_tone", "comment"]
     },
     "improvement_suggestions": {
       "type": "array",

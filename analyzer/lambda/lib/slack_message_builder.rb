@@ -164,11 +164,11 @@ class SlackMessageBuilder
     text_lines = ["*🌡️ 会議の雰囲気*"]
     text_lines << tone_japanese
 
-    # 根拠を最大3件まで表示
-    evidence = atmosphere['evidence'] || []
-    evidence.first(3).each do |item|
-      cleaned_item = item.gsub(/\s*[\(（]\d{1,2}:\d{2}(?::\d{2})?[\)）]\s*/, '')
-      text_lines << "• #{cleaned_item}"
+    # Geminiが生成したコメントを表示
+    comment = atmosphere['comment']
+    if comment && !comment.empty?
+      text_lines << ""  # 空行を追加
+      text_lines << comment
     end
 
     {
