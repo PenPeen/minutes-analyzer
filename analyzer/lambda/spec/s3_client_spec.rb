@@ -3,7 +3,7 @@ require_relative '../lib/s3_client'
 
 RSpec.describe S3Client do
   let(:logger) { double('logger') }
-  let(:environment) { 'local' }
+  let(:environment) { 'production' }
   let(:s3_client) { S3Client.new(logger, environment) }
   let(:mock_s3) { double('Aws::S3::Client') }
   let(:mock_response) { double('response') }
@@ -15,7 +15,7 @@ RSpec.describe S3Client do
     allow(logger).to receive(:debug)
     allow(Aws::S3::Client).to receive(:new).and_return(mock_s3)
     allow(ENV).to receive(:fetch).and_call_original
-    allow(ENV).to receive(:fetch).with('S3_PROMPTS_BUCKET', anything).and_return('minutes-analyzer-prompts-local')
+    allow(ENV).to receive(:fetch).with('S3_PROMPTS_BUCKET', anything).and_return('test-bucket-name')
   end
 
   describe '#get_prompt' do
@@ -35,14 +35,14 @@ RSpec.describe S3Client do
 
       it 'requests from correct bucket and key' do
         expect(mock_s3).to receive(:get_object).with(
-          bucket: 'minutes-analyzer-prompts-local',
+          bucket: 'test-bucket-name',
           key: 'prompts/meeting_analysis_prompt.txt'
         )
         s3_client.get_prompt
       end
 
       it 'logs success' do
-        expect(logger).to receive(:info).with('Fetching prompt from S3: minutes-analyzer-prompts-local/prompts/meeting_analysis_prompt.txt')
+        expect(logger).to receive(:info).with('Fetching prompt from S3: test-bucket-name/prompts/meeting_analysis_prompt.txt')
         expect(logger).to receive(:info).with(/Successfully retrieved prompt \(\d+ bytes\)/)
         s3_client.get_prompt
       end
@@ -79,14 +79,14 @@ RSpec.describe S3Client do
 
       it 'requests from correct bucket and key' do
         expect(mock_s3).to receive(:get_object).with(
-          bucket: 'minutes-analyzer-prompts-local',
+          bucket: 'test-bucket-name',
           key: 'prompts/meeting_verification_prompt.txt'
         )
         s3_client.get_verification_prompt
       end
 
       it 'logs success' do
-        expect(logger).to receive(:info).with('Fetching verification prompt from S3: minutes-analyzer-prompts-local/prompts/meeting_verification_prompt.txt')
+        expect(logger).to receive(:info).with('Fetching verification prompt from S3: test-bucket-name/prompts/meeting_verification_prompt.txt')
         expect(logger).to receive(:info).with(/Successfully retrieved verification prompt \(\d+ bytes\)/)
         s3_client.get_verification_prompt
       end
@@ -124,14 +124,14 @@ RSpec.describe S3Client do
 
       it 'requests from correct bucket and key' do
         expect(mock_s3).to receive(:get_object).with(
-          bucket: 'minutes-analyzer-prompts-local',
+          bucket: 'test-bucket-name',
           key: 'schemas/output_schema.json'
         )
         s3_client.get_output_schema
       end
 
       it 'logs success' do
-        expect(logger).to receive(:info).with('Fetching output schema from S3: minutes-analyzer-prompts-local/schemas/output_schema.json')
+        expect(logger).to receive(:info).with('Fetching output schema from S3: test-bucket-name/schemas/output_schema.json')
         expect(logger).to receive(:info).with('Successfully retrieved output schema')
         s3_client.get_output_schema
       end
@@ -152,28 +152,13 @@ RSpec.describe S3Client do
   end
 
   describe 'S3 client configuration' do
-    context 'for local environment' do
-      it 'configures LocalStack endpoint' do
-        expect(Aws::S3::Client).to receive(:new).with(
-          hash_including(
-            endpoint: 'http://localstack:4566',
-            force_path_style: true,
-            region: 'ap-northeast-1'
-          )
-        )
-        S3Client.new(logger, 'local')
+    it 'uses default AWS configuration' do
+      expect(Aws::S3::Client).to receive(:new) do |opts|
+        expect(opts).to include(region: 'ap-northeast-1')
+        expect(opts).not_to have_key(:endpoint)
+        mock_s3
       end
-    end
-
-    context 'for production environment' do
-      it 'uses default AWS configuration' do
-        expect(Aws::S3::Client).to receive(:new) do |opts|
-          expect(opts).to include(region: 'ap-northeast-1')
-          expect(opts).not_to have_key(:endpoint)
-          mock_s3
-        end
-        S3Client.new(logger, 'production')
-      end
+      S3Client.new(logger, 'production')
     end
     
     context 'when S3_PROMPTS_BUCKET environment variable is set' do

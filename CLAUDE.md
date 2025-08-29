@@ -35,7 +35,7 @@
   - cd analyzer && make deploy-production - 本番デプロイ
 
 ## トラブルシューティング情報
-- LocalStack起動問題の対処法
+- ビルド・デプロイ問題の対処法
 - APIキーエラーの解決方法
 
 ## プロジェクト構成の説明
