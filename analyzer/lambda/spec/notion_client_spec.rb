@@ -68,7 +68,7 @@ RSpec.describe NotionClient do
         },
         'atmosphere' => {
           'overall_tone' => 'positive',
-          'evidence' => ['ポジティブで建設的な雰囲気']
+          'comment' => 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
         },
         'improvement_suggestions' => [
           {
@@ -249,7 +249,7 @@ RSpec.describe NotionClient do
         },
         'atmosphere' => {
           'overall_tone' => 'positive',
-          'evidence' => ['良好']
+          'comment' => 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
         },
         'improvement_suggestions' => [
           { 'category' => 'facilitation', 'suggestion' => 'アドバイス', 'expected_impact' => '改善' }
