@@ -104,14 +104,14 @@ class SlackMessageBuilder
     decisions = analysis_result['decisions'] || []
     return nil if decisions.empty?
 
-    text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
+    text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*", ""]
 
     decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
-      text_lines << "#{index + 1}. #{decision['content']}"
+      text_lines << "• #{decision['content']}"
     end
 
     if decisions.size > MAX_DECISIONS
-      text_lines << "...他#{decisions.size - MAX_DECISIONS}件"
+      text_lines << "• ...他#{decisions.size - MAX_DECISIONS}件"
     end
 
     {
@@ -128,15 +128,27 @@ class SlackMessageBuilder
     return nil if actions.empty?
 
     sorted_actions = sort_actions(actions)
-    text_lines = ["*:clipboard: アクション一覧 (#{actions.size}件)*"]
+    text_lines = ["*:clipboard: アクション一覧 (#{actions.size}件)*", ""]
 
-    sorted_actions.first(MAX_ACTIONS).each_with_index do |action, index|
-      action_text = build_action_text(action)
-      text_lines << "#{index + 1}. #{action_text}"
+    # 優先度別にグループ化して表示
+    grouped_actions = group_actions_by_priority(sorted_actions.first(MAX_ACTIONS))
+    
+    grouped_actions.each do |priority, priority_actions|
+      next if priority_actions.empty?
+      
+      priority_label = get_priority_label(priority)
+      text_lines << "*#{priority_label}*" unless grouped_actions.size == 1
+      
+      priority_actions.each do |action|
+        action_text = build_detailed_action_text(action)
+        text_lines << "• #{action_text}"
+      end
+      
+      text_lines << "" unless priority == grouped_actions.keys.last # 最後のグループ以外は空行追加
     end
 
     if actions.size > MAX_ACTIONS
-      text_lines << "...他#{actions.size - MAX_ACTIONS}件"
+      text_lines << "• ...他#{actions.size - MAX_ACTIONS}件"
     end
 
     # 期日なしアクションの警告
@@ -160,15 +172,20 @@ class SlackMessageBuilder
     return nil unless atmosphere['overall_tone']
 
     tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
+    tone_text = get_tone_japanese(atmosphere['overall_tone'])
 
-    text_lines = ["*🌡️ 会議の雰囲気*"]
-    text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
+    text_lines = ["*🌡️ 会議の雰囲気*", ""]
+    text_lines << "#{tone_emoji} #{tone_text}"
 
     # 根拠を最大3件まで表示
     evidence = atmosphere['evidence'] || []
-    evidence.first(3).each do |item|
-      cleaned_item = item.gsub(/\s*[\(（]\d{1,2}:\d{2}(?::\d{2})?[\)）]\s*/, '')
-      text_lines << "• #{cleaned_item}"
+    unless evidence.empty?
+      text_lines << ""
+      text_lines << "*発言例:*"
+      evidence.first(3).each do |item|
+        cleaned_item = item.gsub(/\s*[\(（]\d{1,2}:\d{2}(?::\d{2})?[\)）]\s*/, '')
+        text_lines << "• \"#{cleaned_item}\""
+      end
     end
 
     {
@@ -184,11 +201,14 @@ class SlackMessageBuilder
     suggestions = analysis_result['improvement_suggestions'] || []
     return nil if suggestions.empty?
 
-    text_lines = ["*💡 改善提案*"]
+    text_lines = ["*💡 改善提案*", ""]
 
     suggestions.each_with_index do |suggestion, index|
       text_lines << "#{index + 1}. #{suggestion['suggestion']}"
-      text_lines << "   → 期待効果: #{suggestion['expected_impact']}" if suggestion['expected_impact']
+      if suggestion['expected_impact']
+        text_lines << "   💫 _期待効果: #{suggestion['expected_impact']}_"
+      end
+      text_lines << "" unless index == suggestions.size - 1  # 最後の項目以外は空行追加
     end
 
     {
@@ -228,6 +248,60 @@ class SlackMessageBuilder
     deadline = action['deadline_formatted'] || '期日未定'
 
     "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
+  end
+
+  # 詳細なアクション表示（2行形式）
+  def build_detailed_action_text(action)
+    assignee = action['slack_mention'] || action['assignee'] || '未定'
+    deadline = action['deadline_formatted'] || '期日未定'
+
+    task_line = action['task']
+    detail_line = "  👤 #{assignee}  📅 #{deadline}"
+    
+    "#{task_line}\n#{detail_line}"
+  end
+
+  # 優先度別グループ化
+  def group_actions_by_priority(actions)
+    grouped = actions.group_by { |action| action['priority'] }
+    
+    # 優先度順でソート
+    ordered_groups = {}
+    ['high', 'medium', 'low'].each do |priority|
+      ordered_groups[priority] = grouped[priority] || []
+    end
+    
+    # 空のグループを除去
+    ordered_groups.reject { |_, actions| actions.empty? }
+  end
+
+  # 優先度ラベル取得
+  def get_priority_label(priority)
+    emoji = Constants::Priority::EMOJIS[priority] || Constants::Priority::EMOJIS['low']
+    case priority
+    when 'high'
+      "#{emoji} 高優先度"
+    when 'medium'
+      "#{emoji} 中優先度"
+    when 'low'
+      "#{emoji} 低優先度"
+    else
+      "#{emoji} その他"
+    end
+  end
+
+  # 雰囲気の日本語変換
+  def get_tone_japanese(tone)
+    case tone
+    when 'positive'
+      'ポジティブ'
+    when 'negative'
+      'ネガティブ'  
+    when 'neutral'
+      'ニュートラル'
+    else
+      tone
+    end
   end
 
   # 議事録タイトルを整形するメソッド
