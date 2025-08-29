@@ -64,7 +64,7 @@ RSpec.describe SlackMessageBuilder do
         
         # Notionボタンが含まれていることを確認
         action_blocks = result[:blocks].select { |block| block[:type] == 'actions' }
-        expect(action_blocks).to have_exactly(1).items
+        expect(action_blocks.size).to eq(1)
         
         button = action_blocks.first[:elements].first
         expect(button[:type]).to eq('button')

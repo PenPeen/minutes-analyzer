@@ -84,7 +84,7 @@ class IntegrationService
   def enrich_with_slack_mentions(analysis_result, user_mappings)
     result_with_mentions = analysis_result.dup
     slack_mentions = user_mappings.dig(:user_mappings, :slack_mentions)
-    result_with_mentions['slack_mentions'] = slack_mentions if slack_mentions
+    result_with_mentions['slack_mentions'] = slack_mentions
     result_with_mentions
   end
   
