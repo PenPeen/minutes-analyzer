@@ -106,8 +106,8 @@ class SlackMessageBuilder
 
     text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
 
-    decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
-      text_lines << "#{index + 1}. #{decision['content']}"
+    decisions.first(MAX_DECISIONS).each do |decision|
+      text_lines << "• #{decision['content']}"
     end
 
     if decisions.size > MAX_DECISIONS
@@ -130,9 +130,9 @@ class SlackMessageBuilder
     sorted_actions = sort_actions(actions)
     text_lines = ["*:clipboard: アクション一覧 (#{actions.size}件)*"]
 
-    sorted_actions.first(MAX_ACTIONS).each_with_index do |action, index|
+    sorted_actions.first(MAX_ACTIONS).each do |action|
       action_text = build_action_text(action)
-      text_lines << "#{index + 1}. #{action_text}"
+      text_lines << "• #{action_text}"
     end
 
     if actions.size > MAX_ACTIONS
@@ -162,7 +162,7 @@ class SlackMessageBuilder
     tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
-    text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
+    text_lines << "#{tone_emoji} #{get_tone_japanese(atmosphere['overall_tone'])}"
 
     # 根拠を最大3件まで表示
     evidence = atmosphere['evidence'] || []
@@ -186,9 +186,9 @@ class SlackMessageBuilder
 
     text_lines = ["*💡 改善提案*"]
 
-    suggestions.each_with_index do |suggestion, index|
-      text_lines << "#{index + 1}. #{suggestion['suggestion']}"
-      text_lines << "   → 期待効果: #{suggestion['expected_impact']}" if suggestion['expected_impact']
+    suggestions.each do |suggestion|
+      text_lines << "• 💫 #{suggestion['suggestion']}"
+      text_lines << "   → 期待効果: _#{suggestion['expected_impact']}_" if suggestion['expected_impact']
     end
 
     {
@@ -227,7 +227,7 @@ class SlackMessageBuilder
     assignee = action['slack_mention'] || action['assignee'] || '未定'
     deadline = action['deadline_formatted'] || '期日未定'
 
-    "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
+    "#{priority_emoji} #{action['task']} - #{assignee} 📅 #{deadline}"
   end
 
   # 議事録タイトルを整形するメソッド
@@ -267,5 +267,19 @@ class SlackMessageBuilder
     
     # 短縮後も長い場合は、最初の50文字程度に制限
     cleaned.length > 50 ? "#{cleaned[0,47]}..." : cleaned
+  end
+
+  # 雰囲気表示を日本語に変換
+  def get_tone_japanese(tone)
+    case tone
+    when 'positive'
+      'とても盛り上がっていて良かったですね🥳'
+    when 'negative'
+      '雰囲気があまり良くなかったかも...？🤔'
+    when 'neutral'
+      '落ち着いた雰囲気でした🤣'
+    else
+      '雰囲気は読み取れませんでした😅'
+    end
   end
 end
