@@ -1,7 +1,6 @@
 require 'time'
 
 class NotionPageBuilder
-  MAX_DECISION_DISPLAY = 5
   MAX_ACTION_DISPLAY = 5
   MAX_SUGGESTION_DISPLAY = 3
   
@@ -60,10 +59,8 @@ class NotionPageBuilder
     sections << build_summary_section(analysis_result)
     sections << build_decisions_section(analysis_result)
     sections << build_actions_section(analysis_result)
-    sections << build_health_assessment_section(analysis_result)
     sections << build_atmosphere_section(analysis_result)
     sections << build_improvements_section(analysis_result)
-    sections << build_linked_database_section if has_task_database?
     
     sections.flatten.compact
   end
@@ -162,31 +159,6 @@ class NotionPageBuilder
     @task_database_id && !@task_database_id.to_s.empty?
   end
   
-  def build_linked_database_section
-    return [] unless has_task_database?
-    
-    [
-      {
-        type: 'heading_2',
-        heading_2: {
-          rich_text: [
-            {
-              type: 'text',
-              text: { content: '📝 関連タスク' }
-            }
-          ]
-        }
-      },
-      {
-        type: 'linked_database',
-        linked_database: {
-          database_id: @task_database_id
-        }
-      }
-    ]
-  end
-  
-  # 元のメソッドを削除
   def _old_has_task_database?
     @task_database_id && !@task_database_id.empty?
   end
@@ -233,12 +205,8 @@ class NotionPageBuilder
     
     blocks = [create_heading('📌 決定事項')]
     
-    decisions.first(MAX_DECISION_DISPLAY).each do |decision|
+    decisions.each do |decision|
       blocks << create_bulleted_item(decision['content'])
-    end
-    
-    if decisions.size > MAX_DECISION_DISPLAY
-      blocks << create_paragraph("...他#{decisions.size - MAX_DECISION_DISPLAY}件")
     end
     
     blocks
@@ -286,41 +254,23 @@ class NotionPageBuilder
     blocks
   end
   
-  def build_health_assessment_section(analysis_result)
-    health = analysis_result['health_assessment'] || {}
-    return [] unless health['overall_score']
-    
-    blocks = [create_heading('📊 会議の健全性評価')]
-    blocks << create_paragraph("健全性スコア: #{health['overall_score']}/100")
-    
-    if health['contradictions']&.any?
-      blocks << create_paragraph('矛盾点:')
-      health['contradictions'].each { |c| blocks << create_bulleted_item(c) }
-    end
-    
-    if health['unresolved_issues']&.any?
-      blocks << create_paragraph('未解決課題:')
-      health['unresolved_issues'].each { |u| blocks << create_bulleted_item(u) }
-    end
-    
-    blocks
-  end
-  
   
   def build_atmosphere_section(analysis_result)
     atmosphere = analysis_result['atmosphere'] || {}
     return [] unless atmosphere['overall_tone']
     
-    tone_emoji = case atmosphere['overall_tone']
-                 when 'positive' then '😊'
-                 when 'negative' then '😔'
-                 else '😐'
-                 end
+    tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
     
-    [
-      create_heading('😊 会議の雰囲気'),
-      create_paragraph("#{tone_emoji} #{atmosphere['overall_tone']}")
-    ]
+    blocks = [create_heading('🌡️ 会議の雰囲気')]
+    blocks << create_paragraph(tone_japanese)
+    
+    # Geminiが生成したコメントを表示
+    comment = atmosphere['comment']
+    if comment && !comment.empty?
+      blocks << create_paragraph(comment)
+    end
+    
+    blocks
   end
   
   def build_improvements_section(analysis_result)
@@ -334,19 +284,6 @@ class NotionPageBuilder
     end
     
     blocks
-  end
-  
-  def build_linked_database_section
-    return [] unless has_task_database?
-    
-    # タスクデータベースへのリンクを含むセクション
-    compact_task_db_id = @task_database_id.to_s.gsub('-', '')
-    tasks_url = "https://www.notion.so/#{compact_task_db_id}"
-    
-    [
-      create_heading('🔗 関連タスク'),
-      create_paragraph("タスク管理データベース: #{tasks_url}")
-    ]
   end
   
   def format_participants(participants)
@@ -411,5 +348,19 @@ class NotionPageBuilder
         'rich_text' => [{ 'type' => 'text', 'text' => { 'content' => text } }]
       }
     }
+  end
+  
+  # 雰囲気の英語表現を日本語に変換
+  def get_tone_japanese(tone)
+    case tone
+    when 'positive'
+      'とても盛り上がっていて良かったですね🥳'
+    when 'negative'
+      '雰囲気があまり良くなかったかも...？🤔'
+    when 'neutral'
+      '落ち着いた雰囲気でした🤣'
+    else
+      '雰囲気は読み取れませんでした😅'
+    end
   end
 end
