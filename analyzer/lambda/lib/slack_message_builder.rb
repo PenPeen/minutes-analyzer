@@ -162,6 +162,7 @@ class SlackMessageBuilder
     tone_emoji = Constants::Tone::EMOJIS[atmosphere['overall_tone']] || Constants::Tone::EMOJIS['neutral']
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
+    text_lines << ""  # 空行を追加
     text_lines << "#{tone_emoji} #{atmosphere['overall_tone']}"
 
     # 根拠を最大3件まで表示
