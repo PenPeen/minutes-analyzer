@@ -274,13 +274,13 @@ class SlackMessageBuilder
   def get_tone_japanese(tone)
     case tone
     when 'positive'
-      'とても盛り上がっていて良かったですね'
+      'とても盛り上がっていて良かったですね🥳'
     when 'negative' 
-      '雰囲気があまり良くなかったかも...？'
+      '雰囲気があまり良くなかったかも...？🤔'
     when 'neutral'
-      '落ち着いた雰囲気でした'
+      '落ち着いた雰囲気でした🤣'
     else
-      '雰囲気は読み取れませんでした'
+      '雰囲気は読み取れませんでした😅'
     end
   end
 end
