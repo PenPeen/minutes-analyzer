@@ -34,8 +34,6 @@ class SlackCommandHandler
       case command
       when '/meeting-analyzer'
         handle_meeting_analyzer(user_id, team_id, trigger_id, event)
-      when '/meeting-analyzer-url'
-        handle_meeting_analyzer_url(user_id, team_id, text, event)
       else
         unknown_command_response(command)
       end
@@ -90,73 +88,6 @@ class SlackCommandHandler
     response
   end
 
-  # /meeting-analyzer-url コマンドを処理
-  def handle_meeting_analyzer_url(user_id, team_id, text, event = nil)
-    # URLが提供されているかチェック
-    if text.nil? || text.strip.empty?
-      body_content = create_error_response('Google ドキュメントのURLを入力してください。\n例: /meeting-analyzer-url https://docs.google.com/document/d/XXXXX')
-      return create_http_response(200, body_content)
-    end
-
-    # URLからファイルIDを抽出
-    file_id = extract_file_id_from_url(text.strip)
-    unless file_id
-      body_content = create_error_response('無効なGoogle ドキュメントURLです。正しいURLを入力してください。\n例: https://docs.google.com/document/d/XXXXX')
-      return create_http_response(200, body_content)
-    end
-
-    # ユーザーが認証済みか確認
-    unless @oauth_client.authenticated?(user_id)
-      # 未認証の場合、認証URLを返す
-      auth_url = @oauth_client.generate_auth_url(user_id, nil, event)
-      body_content = create_auth_required_response(auth_url)
-      return create_http_response(200, body_content)
-    end
-
-    # 認証済みの場合、ファイルの存在とアクセス権限を確認
-    begin
-      token_data = @oauth_client.get_valid_tokens(user_id)
-      access_token = token_data['access_token']
-      google_drive_client = GoogleDriveClient.new(access_token)
-      
-      # ファイル情報を取得してアクセス権限を確認
-      file_info = google_drive_client.get_file_info(file_id)
-      
-      # Analyzer Lambdaにファイル情報を送信
-      payload = {
-        input_type: 'url',
-        file_id: file_id,
-        file_name: file_info['name'] || 'Google Document',
-        slack_user_id: user_id,
-        google_doc_url: text.strip
-      }
-
-      @lambda_invoker.invoke_analyzer(payload)
-
-      # 成功レスポンス
-      body_content = {
-        'response_type' => 'in_channel',
-        'text' => "📝 議事録分析を開始しました: #{file_info['name']}"
-      }
-      create_http_response(200, body_content)
-
-    rescue GoogleDriveClient::AccessDeniedError => e
-      puts "Access denied for file_id: #{file_id}, user_id: #{user_id}, error: #{e.message}"
-      body_content = create_error_response('指定されたドキュメントへのアクセス権限がありません。ドキュメントの所有者に共有権限の付与を依頼してください。')
-      create_http_response(200, body_content)
-      
-    rescue GoogleDriveClient::FileNotFoundError => e
-      puts "File not found: #{file_id}, error: #{e.message}"
-      body_content = create_error_response('指定されたドキュメントが見つかりません。URLが正しいことを確認してください。')
-      create_http_response(200, body_content)
-      
-    rescue => e
-      puts "Error processing URL command for file_id: #{file_id}, user_id: #{user_id}, error: #{e.message}"
-      puts "Backtrace: #{e.backtrace.join("\n")}"
-      body_content = create_error_response('ドキュメントの処理中にエラーが発生しました。しばらくしてからもう一度お試しください。')
-      create_http_response(200, body_content)
-    end
-  end
 
   # Google DocsのURLからファイルIDを抽出
   def extract_file_id_from_url(url)

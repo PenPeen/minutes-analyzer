@@ -49,8 +49,8 @@ class GoogleDriveClient
         raise "Failed to fetch file from Google Drive: #{e.message}"
       end
     rescue Google::Apis::AuthorizationError => e
-      @logger.error("Google Drive API authorization error: #{e.message}")
-      raise "Authorization failed for Google Drive: #{e.message}"
+      @logger.error("Google Drive API error: #{e.message}")
+      raise "Failed to fetch file from Google Drive: #{e.message}"
     rescue Google::Apis::Error => e
       @logger.error("Google Drive API error: #{e.message}")
       raise "Failed to fetch file from Google Drive: #{e.message}"
@@ -84,7 +84,10 @@ class GoogleDriveClient
 
   def download_file_content(file_id)
     # Get file metadata to determine the type
-    file = @drive_service.get_file(file_id, fields: 'mimeType')
+    file = @drive_service.get_file(file_id, fields: 'id, name, size, mimeType')
+    
+    # Log file information
+    @logger.info("File info - Name: #{file.name}, Size: #{file.size}, MIME: #{file.mime_type}")
     
     case file.mime_type
     when 'application/vnd.google-apps.document'
@@ -101,7 +104,7 @@ class GoogleDriveClient
       begin
         export_google_document(file_id)
       rescue Google::Apis::ClientError => e
-        @logger.warn("Text export failed for #{file.mime_type}, trying direct download: #{e.message}")
+        @logger.warn("Export failed, trying direct download: #{e.message}")
         download_text_file(file_id)
       end
     end

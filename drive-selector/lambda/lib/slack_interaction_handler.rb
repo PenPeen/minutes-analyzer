@@ -100,7 +100,7 @@ class SlackInteractionHandler
     file_info = extract_selected_file(view_state['values'])
 
     unless file_info
-      return create_validation_error('file_select' => 'ファイルを選択してください')
+      return create_validation_error('url_input' => 'ファイルを選択するか、Google DocsのURLを入力してください')
     end
 
     # Notion保存オプションを抽出
@@ -167,14 +167,22 @@ class SlackInteractionHandler
       end
 
       # Lambda関数を呼び出し
-      result = @lambda_invoker.invoke_analysis_lambda({
+      lambda_payload = {
         file_id: file_info[:file_id],
         file_name: file_info[:file_name],
         user_id: user_id,
         user_email: @slack_client.get_user_email(user_id),
         save_to_notion: save_to_notion,
-        slack_channel_id: channel_id
-      })
+        slack_channel_id: channel_id,
+        input_type: file_info[:input_type] || 'select'
+      }
+
+      # URL入力の場合は追加情報を含める
+      if file_info[:input_type] == 'url'
+        lambda_payload[:source_url] = file_info[:source_url]
+      end
+
+      result = @lambda_invoker.invoke_analysis_lambda(lambda_payload)
       
       puts "Lambda invocation result: #{result.inspect}"
       
@@ -224,15 +232,33 @@ class SlackInteractionHandler
   def extract_selected_file(values)
     return nil unless values
 
+    # URL入力がある場合を優先
+    url_input = values.dig('url_input_block', 'url_input', 'value')
+    if url_input && !url_input.strip.empty?
+      file_id = extract_file_id_from_url(url_input.strip)
+      return nil unless file_id
+
+      # ファイル名をURLから取得または生成
+      file_name = get_file_name_from_url(url_input.strip) || 'Google Document'
+      return {
+        file_id: file_id,
+        file_name: file_name,
+        input_type: 'url',
+        source_url: url_input.strip
+      }
+    end
+
+    # ファイル選択がある場合
     file_select_data = values.dig('file_select_block', 'file_select', 'selected_option')
     return nil unless file_select_data
 
-
     {
       file_id: file_select_data['value'],
-      file_name: file_select_data.dig('text', 'text')
+      file_name: file_select_data.dig('text', 'text'),
+      input_type: 'select'
     }
-  rescue
+  rescue => e
+    puts "Error extracting selected file: #{e.message}"
     nil
   end
 
@@ -323,5 +349,31 @@ class SlackInteractionHandler
       headers: { 'Content-Type' => 'application/json' },
       body: JSON.generate(body_content)
     }
+  end
+
+  # Google DocsのURLからファイルIDを抽出
+  def extract_file_id_from_url(url)
+    return nil if url.nil? || url.strip.empty?
+    
+    patterns = [
+      %r{docs\.google\.com/document/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/file/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/open\?id=([a-zA-Z0-9-_]+)}
+    ]
+    
+    cleaned_url = url.strip
+    patterns.each do |pattern|
+      match = cleaned_url.match(pattern)
+      return match[1] if match && !match[1].empty?
+    end
+    
+    nil
+  end
+
+  # URLからファイル名を取得（簡易版）
+  def get_file_name_from_url(url)
+    # 実際のファイル名はGoogleDriveClientで取得する
+    # ここでは仮の名前を返す
+    "Google Document from URL"
   end
 end
