@@ -100,7 +100,7 @@ class SlackInteractionHandler
     file_info = extract_selected_file(view_state['values'])
 
     unless file_info
-      return create_validation_error('url_input' => 'ファイルを選択するか、Google DocsのURLを入力してください')
+      return create_validation_error('file_select' => 'ファイルを選択してください')
     end
 
     # Notion保存オプションを抽出

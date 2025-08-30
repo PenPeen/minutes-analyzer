@@ -46,6 +46,13 @@ RSpec.describe GoogleDriveClient do
           .with(file_id, fields: 'id, name, size, mimeType')
           .and_return(mock_file)
         
+        # Mock get_file for download_dest parameter (fallback scenario)
+        allow(mock_drive_service).to receive(:get_file) do |file_id, options|
+          if options.key?(:download_dest)
+            options[:download_dest].write(file_content)
+          end
+        end
+        
         # Mock export_file for text/plain
         allow(mock_drive_service).to receive(:export_file) do |id, mime_type, options|
           options[:download_dest].write(file_content)
@@ -87,19 +94,26 @@ RSpec.describe GoogleDriveClient do
 
     context 'when export fails and falls back to direct download' do
       let(:file_content) { "Meeting transcript content" }
+      let(:unknown_mime_file) do 
+        instance_double(Google::Apis::DriveV3::File,
+          name: 'test_meeting.unknown',
+          size: 1000,
+          mime_type: 'application/octet-stream'  # Unknown MIME type to trigger fallback
+        )
+      end
 
       before do
         allow(mock_drive_service).to receive(:get_file)
           .with(file_id, fields: 'id, name, size, mimeType')
-          .and_return(mock_file)
+          .and_return(unknown_mime_file)
         
         # Mock export_file to fail
         allow(mock_drive_service).to receive(:export_file)
           .and_raise(Google::Apis::ClientError.new("Export not supported"))
         
-        # Mock direct download
-        allow(mock_drive_service).to receive(:get_file) do |id, options|
-          if options[:download_dest]
+        # Mock direct download for download_text_file method
+        allow(mock_drive_service).to receive(:get_file) do |file_id, options|
+          if options.key?(:download_dest)
             options[:download_dest].write(file_content)
           else
             mock_file

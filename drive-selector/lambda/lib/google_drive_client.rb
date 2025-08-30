@@ -88,7 +88,7 @@ class GoogleDriveClient
       raise AccessDeniedError, "Authorization error: #{e.message}"
     rescue Google::Apis::Error => e
       puts "Failed to get file info: #{e.message}"
-      raise StandardError, "Failed to get file info: #{e.message}"
+      return nil
     end
   end
 
