@@ -33,7 +33,7 @@ SlackでGoogle Driveファイルを検索・選択し、議事録分析Lambdaを
 
 ### Slack App設定
 - スラッシュコマンド: `/meeting-analyzer`
-- 必要スコープ: `commands`, `chat:write`, `users:read.email`
+- 必要スコープ: `commands`, `chat:write`
 - モーダルでファイル検索・選択UI提供
 
 ### Google Drive連携
