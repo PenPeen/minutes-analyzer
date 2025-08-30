@@ -4,6 +4,13 @@ class NotionPageBuilder
   MAX_ACTION_DISPLAY = 5
   MAX_SUGGESTION_DISPLAY = 3
   
+  # 雰囲気タイプの日本語マッピング
+  ATMOSPHERE_TYPE_MAPPING = {
+    'positive' => 'ポジティブ',
+    'negative' => 'ネガティブ',
+    'neutral' => 'ニュートラル'
+  }.freeze
+  
   def initialize(task_database_id, logger)
     @task_database_id = task_database_id
     @logger = logger
@@ -40,7 +47,9 @@ class NotionPageBuilder
       },
       '日付' => build_date_property(meeting_summary['date']),
       '参加者' => build_participants_property(meeting_summary['participants']),
-      'スコア' => build_health_score_property(analysis_result)
+      'スコア' => build_health_score_property(analysis_result),
+      '会議雰囲気' => build_atmosphere_property(analysis_result),
+      '雰囲気詳細' => build_atmosphere_comment_property(analysis_result)
     }
   end
   
@@ -182,6 +191,35 @@ class NotionPageBuilder
     health_assessment = analysis_result['health_assessment'] || {}
     score = health_assessment['overall_score'] || 0
     { 'number' => score }
+  end
+
+  def build_atmosphere_property(analysis_result)
+    atmosphere = analysis_result['atmosphere'] || {}
+    overall_tone = atmosphere['overall_tone']
+    
+    return { 'select' => nil } unless overall_tone
+    
+    # 日本語の選択肢名に変換
+    tone_name = ATMOSPHERE_TYPE_MAPPING[overall_tone] || 'その他'
+    
+    { 'select' => { 'name' => tone_name } }
+  end
+
+  def build_atmosphere_comment_property(analysis_result)
+    atmosphere = analysis_result['atmosphere'] || {}
+    comment = atmosphere['comment']
+    
+    return { 'rich_text' => [] } unless comment && !comment.empty?
+    
+    {
+      'rich_text' => [
+        {
+          'text' => {
+            'content' => comment
+          }
+        }
+      ]
+    }
   end
   
   def build_summary_section(analysis_result)

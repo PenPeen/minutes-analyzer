@@ -19,6 +19,10 @@ RSpec.describe NotionPageBuilder do
           },
           'health_assessment' => {
             'overall_score' => 85
+          },
+          'atmosphere' => {
+            'overall_tone' => 'positive',
+            'comment' => '会議全体が活気にあふれ、前向きな意見が多く出ていました。'
           }
         }
       end
@@ -35,6 +39,15 @@ RSpec.describe NotionPageBuilder do
         expect(properties['日付']).not_to be_nil
         expect(properties['参加者']).not_to be_nil
         expect(properties['スコア']).not_to be_nil
+        expect(properties['会議雰囲気']).not_to be_nil
+        expect(properties['雰囲気詳細']).not_to be_nil
+      end
+
+      it 'sets atmosphere properties correctly' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties['会議雰囲気']['select']['name']).to eq('ポジティブ')
+        expect(properties['雰囲気詳細']['rich_text'][0]['text']['content']).to eq('会議全体が活気にあふれ、前向きな意見が多く出ていました。')
       end
     end
 
@@ -186,6 +199,156 @@ RSpec.describe NotionPageBuilder do
       expected_content = '⚪ ドキュメント更新 - 未定'
       
       expect(result['bulleted_list_item']['rich_text'][0]['text']['content']).to eq(expected_content)
+    end
+  end
+
+  describe 'atmosphere property methods' do
+    describe '#build_atmosphere_property' do
+      context 'when atmosphere has positive tone' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'positive',
+              'comment' => 'テストコメント'
+            }
+          }
+        end
+
+        it 'returns ポジティブ for positive tone' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']['name']).to eq('ポジティブ')
+        end
+      end
+
+      context 'when atmosphere has negative tone' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'negative',
+              'comment' => 'テストコメント'
+            }
+          }
+        end
+
+        it 'returns ネガティブ for negative tone' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']['name']).to eq('ネガティブ')
+        end
+      end
+
+      context 'when atmosphere has neutral tone' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'neutral',
+              'comment' => 'テストコメント'
+            }
+          }
+        end
+
+        it 'returns ニュートラル for neutral tone' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']['name']).to eq('ニュートラル')
+        end
+      end
+
+      context 'when atmosphere has unknown tone' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'unknown',
+              'comment' => 'テストコメント'
+            }
+          }
+        end
+
+        it 'returns その他 for unknown tone' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']['name']).to eq('その他')
+        end
+      end
+
+      context 'when atmosphere has no tone' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'comment' => 'テストコメント'
+            }
+          }
+        end
+
+        it 'returns nil select when tone is missing' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']).to be_nil
+        end
+      end
+
+      context 'when atmosphere is missing' do
+        let(:analysis_result) { {} }
+
+        it 'returns nil select when atmosphere is missing' do
+          property = builder.send(:build_atmosphere_property, analysis_result)
+          expect(property['select']).to be_nil
+        end
+      end
+    end
+
+    describe '#build_atmosphere_comment_property' do
+      context 'when atmosphere has comment' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'positive',
+              'comment' => '会議全体が活発で前向きな議論が行われました。'
+            }
+          }
+        end
+
+        it 'returns rich text with comment content' do
+          property = builder.send(:build_atmosphere_comment_property, analysis_result)
+          expect(property['rich_text'][0]['text']['content']).to eq('会議全体が活発で前向きな議論が行われました。')
+        end
+      end
+
+      context 'when atmosphere has empty comment' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'positive',
+              'comment' => ''
+            }
+          }
+        end
+
+        it 'returns empty rich text for empty comment' do
+          property = builder.send(:build_atmosphere_comment_property, analysis_result)
+          expect(property['rich_text']).to eq([])
+        end
+      end
+
+      context 'when atmosphere has no comment' do
+        let(:analysis_result) do
+          {
+            'atmosphere' => {
+              'overall_tone' => 'positive'
+            }
+          }
+        end
+
+        it 'returns empty rich text when comment is missing' do
+          property = builder.send(:build_atmosphere_comment_property, analysis_result)
+          expect(property['rich_text']).to eq([])
+        end
+      end
+
+      context 'when atmosphere is missing' do
+        let(:analysis_result) { {} }
+
+        it 'returns empty rich text when atmosphere is missing' do
+          property = builder.send(:build_atmosphere_comment_property, analysis_result)
+          expect(property['rich_text']).to eq([])
+        end
+      end
     end
   end
 end
