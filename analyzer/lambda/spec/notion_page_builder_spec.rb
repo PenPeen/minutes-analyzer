@@ -124,4 +124,26 @@ RSpec.describe NotionPageBuilder do
       expect(page_data[:parent][:database_id]).to eq(database_id)
     end
   end
+
+  describe '#sort_decisions' do
+    let(:unsorted_decisions) do
+      [
+        { 'content' => 'Low priority decision', 'priority' => 'low' },
+        { 'content' => 'High priority decision', 'priority' => 'high' },
+        { 'content' => 'Medium priority decision', 'priority' => 'medium' },
+        { 'content' => 'No priority decision', 'priority' => nil }
+      ]
+    end
+
+    it '優先度順（high → medium → low → nil）で決定事項をソートする' do
+      sorted = builder.send(:sort_decisions, unsorted_decisions)
+
+      expect(sorted.map { |d| d['content'] }).to eq([
+        'High priority decision',
+        'Medium priority decision',  
+        'Low priority decision',
+        'No priority decision'
+      ])
+    end
+  end
 end

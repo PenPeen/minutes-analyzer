@@ -13,7 +13,7 @@ RSpec.describe SlackMessageBuilder do
         'participants' => ['山田太郎', '佐藤花子']
       },
       'decisions' => [
-        { 'content' => 'プロジェクト予算を決定', 'category' => 'policy' }
+        { 'content' => 'プロジェクト予算を決定', 'category' => 'policy', 'priority' => 'high' }
       ],
       'actions' => [
         {
@@ -91,6 +91,28 @@ RSpec.describe SlackMessageBuilder do
         end
         expect(action_sections).to be_empty
       end
+    end
+  end
+
+  describe '#sort_decisions' do
+    let(:unsorted_decisions) do
+      [
+        { 'content' => 'Low priority decision', 'priority' => 'low' },
+        { 'content' => 'High priority decision', 'priority' => 'high' },
+        { 'content' => 'Medium priority decision', 'priority' => 'medium' },
+        { 'content' => 'No priority decision', 'priority' => nil }
+      ]
+    end
+
+    it '優先度順（high → medium → low → nil）で決定事項をソートする' do
+      sorted = builder.send(:sort_decisions, unsorted_decisions)
+
+      expect(sorted.map { |d| d['content'] }).to eq([
+        'High priority decision',
+        'Medium priority decision',
+        'Low priority decision',
+        'No priority decision'
+      ])
     end
   end
 

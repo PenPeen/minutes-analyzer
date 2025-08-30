@@ -22,9 +22,13 @@
           "category": {
             "type": "string",
             "enum": ["pricing", "schedule", "policy", "other"]
+          },
+          "priority": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
           }
         },
-        "required": ["content", "category"]
+        "required": ["content", "category", "priority"]
       }
     },
     "actions": {

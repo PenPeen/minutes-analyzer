@@ -205,8 +205,12 @@ class NotionPageBuilder
     
     blocks = [create_heading('📌 決定事項')]
     
-    decisions.each do |decision|
-      blocks << create_bulleted_item(decision['content'])
+    # 優先度順にソート
+    sorted_decisions = sort_decisions(decisions)
+    sorted_decisions.each do |decision|
+      priority_emoji = get_priority_emoji(decision['priority'])
+      content = "#{priority_emoji} #{decision['content']}"
+      blocks << create_bulleted_item(content)
     end
     
     blocks
@@ -298,6 +302,21 @@ class NotionPageBuilder
         priority_order[action['priority']] || 3,
         action['deadline'] || 'zzzz'
       ]
+    end
+  end
+
+  def sort_decisions(decisions)
+    priority_order = { 'high' => 0, 'medium' => 1, 'low' => 2 }
+    decisions.sort_by do |decision|
+      priority_order[decision['priority']] || 3
+    end
+  end
+
+  def get_priority_emoji(priority)
+    case priority&.downcase
+    when 'high' then '🔴'
+    when 'medium' then '🟡'
+    else '⚪'
     end
   end
   
