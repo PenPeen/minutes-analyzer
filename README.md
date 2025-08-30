@@ -36,9 +36,14 @@ git clone https://github.com/PenPeen/minutes-analyzer.git
 cd minutes-analyzer
 ```
 
-#### 2. 初期セットアップ
+#### 2. 各サービスの初期セットアップ
 ```bash
+# analyzer（議事録分析エンジン）
 cd analyzer
+make setup
+
+# drive-selector（SlackBot）
+cd drive-selector
 make setup
 ```
 
@@ -61,23 +66,49 @@ make setup
 
 ### 開発環境の起動
 
-#### 日常開発フロー
+#### analyzer（議事録分析エンジン）
 ```bash
 cd analyzer
 make start        # 環境起動・ビルド・ローカル自動デプロイ
 make stop         # 環境停止
+make test         # テスト実行
+```
+
+#### drive-selector（SlackBot）
+```bash
+cd drive-selector
+make start        # 環境起動・デプロイ
+make stop         # 環境停止
+make test         # テスト実行
 ```
 
 #### 本番デプロイ
 ```bash
+# analyzer（議事録分析エンジン）
 cd analyzer
-make deploy-production   # 本番環境への手動デプロイ
-```
+make deploy-production
 
+# drive-selector（SlackBot）
+cd drive-selector
+make deploy-production
+```
 
 ## 📋 主要コマンド
 
+### analyzer（議事録分析エンジン）
 以下のコマンドは`analyzer`ディレクトリ内で実行してください：
+
+```bash
+make help           # 利用可能なコマンドを表示
+make setup          # 初期セットアップ
+make start          # 開発環境起動・デプロイ
+make test           # テスト実行
+make clean          # 環境クリーンアップ
+make deploy-production  # 本番デプロイ
+```
+
+### drive-selector（SlackBot）
+以下のコマンドは`drive-selector`ディレクトリ内で実行してください：
 
 ```bash
 make help           # 利用可能なコマンドを表示
@@ -92,14 +123,23 @@ make deploy-production  # 本番デプロイ
 
 ## 🏗️ システム構成
 
-**Slack Bot + AWS Lambda**のサーバーレスアーキテクチャを採用：
+本システムは**マイクロサービス型**のサーバーレスアーキテクチャを採用し、2つの独立したサービスから構成されています：
 
-### 主要コンポーネント
+### マイクロサービス構成
 
-- **drive-selector**: Google Driveファイル選択用SlackBot
-- **AWS Lambda**: Gemini 2.5 Flash APIによる議事録分析エンジン
-- **Slack/Notion連携**: 分析結果の自動通知・データベース化
-- **AWS**: 本番環境インフラストラクチャ
+| サービス | 役割 | 技術スタック |
+|---------|-----|-------------|
+| **drive-selector** | Google Driveファイル選択UI | Slack Bot + AWS Lambda (Ruby) |
+| **analyzer** | 議事録AI分析エンジン | AWS Lambda (Ruby) + Gemini 2.5 Flash |
+
+### 連携フロー
+
+```
+Slack User → drive-selector → analyzer → Slack/Notion
+```
+
+1. **drive-selector**: SlackでGoogle Driveファイルを選択
+2. **analyzer**: 選択されたファイルをAI分析。分析結果をSlack通知・Notion連携
 
 ### 管理方針
 
