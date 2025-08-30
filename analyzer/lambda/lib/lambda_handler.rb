@@ -3,7 +3,6 @@ require_relative 'gemini_client'
 require_relative 'google_drive_client'
 require_relative 'request_validator'
 require_relative 'environment_config'
-require_relative 'user_mapping_service'
 require_relative 'integration_service'
 require_relative 'response_builder'
 require_relative 's3_client'
@@ -11,7 +10,7 @@ require 'logger'
 require 'json'
 
 class LambdaHandler
-  def initialize(logger: nil, secrets_manager: nil, gemini_client: nil, meeting_processor: nil, s3_client: nil)
+  def initialize(logger: nil, secrets_manager: nil, gemini_client: nil, s3_client: nil)
     @logger = logger || Logger.new($stdout)
     @logger.level = ENV.fetch('LOG_LEVEL', 'INFO').upcase
     @secrets_manager = secrets_manager || SecretsManager.new(@logger)
@@ -20,14 +19,8 @@ class LambdaHandler
     @config = EnvironmentConfig.new(@logger)
     @environment = @config.environment
     @validator = RequestValidator.new(@logger)
-    @user_mapping_service = UserMappingService.new(@logger, @config)
     @integration_service = IntegrationService.new(@logger)
     @s3_client = s3_client || S3Client.new(@logger, @environment)
-    
-    # 後方互換性のため（テスト用）
-    if meeting_processor
-      @user_mapping_service.instance_variable_set(:@processor, meeting_processor)
-    end
   end
 
   def handle(event:, context:)
@@ -54,19 +47,15 @@ class LambdaHandler
       # Gemini APIで分析
       analysis_result = analyze_with_gemini(input_text, secrets)
       
-      # ユーザーマッピング処理
-      user_mappings = @user_mapping_service.process_mapping(file_id, secrets)
-      analysis_result = @user_mapping_service.enrich_actions_with_assignees(analysis_result, user_mappings)
-      
       # オリジナルファイル名を追加（タイトル整形用）
       analysis_result['original_file_name'] = file_name
       
       # 外部サービス連携（実行者情報を追加）
       executor_info = { user_id: user_id, user_email: user_email }
-      integration_results = @integration_service.process_integrations(analysis_result, secrets, user_mappings, executor_info)
+      integration_results = @integration_service.process_integrations(analysis_result, secrets, {}, executor_info)
       
       # レスポンス生成
-      ResponseBuilder.success_response(analysis_result, integration_results, user_mappings)
+      ResponseBuilder.success_response(analysis_result, integration_results, {})
       
     rescue RequestValidator::ValidationError => e
       ResponseBuilder.error_response(400, e.message)

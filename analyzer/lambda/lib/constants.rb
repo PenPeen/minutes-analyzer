@@ -75,10 +75,4 @@ module Constants
     MAX_TITLE_LENGTH = 200
   end
   
-  # User mapping
-  module UserMapping
-    MAPPING_TIMEOUT = 60
-    MAX_THREADS = 10
-    API_TIMEOUT = 30
-  end
 end
