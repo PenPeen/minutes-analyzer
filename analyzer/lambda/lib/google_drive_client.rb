@@ -31,8 +31,8 @@ class GoogleDriveClient
         raise "File too large: #{file.size} bytes (max 100MB)"
       end
       
-      # Download file content
-      content = download_file_content(file_id)
+      # Download file content using the file object we already have
+      content = download_file_content(file)
       
       @logger.info("Successfully downloaded file content: #{content.length} characters")
       content
@@ -82,30 +82,27 @@ class GoogleDriveClient
     @logger.info("Google Drive service initialized successfully")
   end
 
-  def download_file_content(file_id)
-    # Get file metadata to determine the type
-    file = @drive_service.get_file(file_id, fields: 'id, name, size, mimeType')
-    
-    # Log file information
-    @logger.info("File info - Name: #{file.name}, Size: #{file.size}, MIME: #{file.mime_type}")
+  def download_file_content(file)
+    # Use the file object passed in (already contains metadata)
+    @logger.info("Processing file type: #{file.mime_type}")
     
     case file.mime_type
     when 'application/vnd.google-apps.document'
       # Google Docs - export as plain text
       @logger.info("Exporting Google Document as plain text")
-      export_google_document(file_id)
+      export_google_document(file.id)
     when 'text/plain'
       # Plain text file - direct download
       @logger.info("Downloading plain text file")
-      download_text_file(file_id)
+      download_text_file(file.id)
     else
       # Try to export as text first, then fallback to direct download
       @logger.info("Unknown file type #{file.mime_type}, attempting text export")
       begin
-        export_google_document(file_id)
+        export_google_document(file.id)
       rescue Google::Apis::ClientError => e
         @logger.warn("Export failed, trying direct download: #{e.message}")
-        download_text_file(file_id)
+        download_text_file(file.id)
       end
     end
   end

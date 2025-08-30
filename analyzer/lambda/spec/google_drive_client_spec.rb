@@ -115,8 +115,6 @@ RSpec.describe GoogleDriveClient do
         allow(mock_drive_service).to receive(:get_file) do |file_id, options|
           if options.key?(:download_dest)
             options[:download_dest].write(file_content)
-          else
-            mock_file
           end
         end
       end
