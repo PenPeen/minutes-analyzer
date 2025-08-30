@@ -30,12 +30,12 @@ RSpec.describe GeminiClient do
     context 'when API call is successful' do
       let(:analysis_result) do
         {
-          'meeting_summary' => {
-            'title' => 'Test Meeting',
-            'date' => '2025-08-04'
+          meeting_summary: {
+            title: 'Test Meeting',
+            date: '2025-08-04'
           },
-          'decisions' => [],
-          'actions' => []
+          decisions: [],
+          actions: []
         }
       end
 
@@ -290,7 +290,7 @@ RSpec.describe GeminiClient do
             {
               content: {
                 parts: [
-                  { text: { 'meeting_summary' => {} }.to_json }
+                  { text: { meeting_summary: {} }.to_json }
                 ]
               }
             }
@@ -300,7 +300,7 @@ RSpec.describe GeminiClient do
 
       result = gemini_client.summarize(test_text)
       expect(result).to be_a(Hash)
-      expect(result).to have_key('meeting_summary')
+      expect(result).to have_key(:meeting_summary)
     end
   end
 

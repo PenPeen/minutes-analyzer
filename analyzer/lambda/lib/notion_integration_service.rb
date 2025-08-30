@@ -37,7 +37,7 @@ class NotionIntegrationService
 
       # タスクマネージャーを使用してアクション項目を作成
       task_results = nil
-      actions = analysis_result['actions'] || []
+      actions = analysis_result[:actions] || []
       if actions.any? && @task_database_id && !@task_database_id.empty?
         task_results = @task_manager.create_tasks_from_actions(actions, page_id)
       end
@@ -90,41 +90,41 @@ class NotionIntegrationService
   def build_meeting_properties(analysis_result)
     # nil安全な値の取得
     analysis_result ||= {}
-    meeting_summary = analysis_result['meeting_summary'] || {}
-    decisions = analysis_result['decisions'] || []
-    actions = analysis_result['actions'] || []
-    health_assessment = analysis_result['health_assessment'] || {}
+    meeting_summary = analysis_result[:meeting_summary] || {}
+    decisions = analysis_result[:decisions] || []
+    actions = analysis_result[:actions] || []
+    health_assessment = analysis_result[:health_assessment] || {}
 
     properties = {
       "タイトル" => {
         title: [
           {
             text: {
-              content: meeting_summary['title'] || "議事録 #{Time.now.strftime('%Y-%m-%d %H:%M')}"
+              content: meeting_summary[:title] || "議事録 #{Time.now.strftime('%Y-%m-%d %H:%M')}"
             }
           }
         ]
       },
       "日付" => {
         date: {
-          start: meeting_summary['date'] || Time.now.strftime('%Y-%m-%d')
+          start: meeting_summary[:date] || Time.now.strftime('%Y-%m-%d')
         }
       }
     }
 
     # 参加者の設定
-    if meeting_summary['participants'] && meeting_summary['participants'].any?
+    if meeting_summary[:participants] && meeting_summary[:participants].any?
       properties["参加者"] = {
-        multi_select: meeting_summary['participants'].map { |p| { name: p } }
+        multi_select: meeting_summary[:participants].map { |p| { name: p } }
       }
     end
 
     # 決定事項とアクション項目は本文に記載するため、プロパティには設定しない
 
     # 健全性スコアの設定
-    if health_assessment['overall_score']
+    if health_assessment[:overall_score]
       properties["スコア"] = {
-        number: health_assessment['overall_score']
+        number: health_assessment[:overall_score]
       }
     end
 
@@ -139,18 +139,18 @@ class NotionIntegrationService
 
     # nil安全な値の取得
     analysis_result ||= {}
-    decisions = analysis_result['decisions'] || []
-    actions = analysis_result['actions'] || []
-    health_assessment = analysis_result['health_assessment'] || {}
-    participation_analysis = analysis_result['participation_analysis'] || {}
-    atmosphere = analysis_result['atmosphere'] || {}
-    improvement_suggestions = analysis_result['improvement_suggestions'] || []
+    decisions = analysis_result[:decisions] || []
+    actions = analysis_result[:actions] || []
+    health_assessment = analysis_result[:health_assessment] || {}
+    participation_analysis = analysis_result[:participation_analysis] || {}
+    atmosphere = analysis_result[:atmosphere] || {}
+    improvement_suggestions = analysis_result[:improvement_suggestions] || []
 
     content.concat(build_decisions_section(decisions)) if decisions.any?
     content.concat(build_actions_section(actions)) if actions.any?
-    content.concat(build_health_section(health_assessment)) if health_assessment['overall_score']
-    content.concat(build_participation_section(participation_analysis)) if participation_analysis['balance_score']
-    content.concat(build_atmosphere_section(atmosphere)) if atmosphere['overall_tone']
+    content.concat(build_health_section(health_assessment)) if health_assessment[:overall_score]
+    content.concat(build_participation_section(participation_analysis)) if participation_analysis[:balance_score]
+    content.concat(build_atmosphere_section(atmosphere)) if atmosphere[:overall_tone]
     content.concat(build_improvements_section(improvement_suggestions)) if improvement_suggestions.any?
 
     content
@@ -261,7 +261,7 @@ class NotionIntegrationService
       }
     }
 
-    content = "総合スコア: #{health_assessment['overall_score']}/100\n"
+    content = "総合スコア: #{health_assessment[:overall_score]}/100\n"
 
     if health_assessment['contradictions'] && health_assessment['contradictions'].any?
       content += "\n矛盾点:\n"
@@ -302,7 +302,7 @@ class NotionIntegrationService
       }
     }
 
-    content = "バランススコア: #{participation_analysis['balance_score']}/100\n\n"
+    content = "バランススコア: #{participation_analysis[:balance_score]}/100\n\n"
 
     if participation_analysis['speaker_stats']
       content += "発言統計:\n"
@@ -338,13 +338,13 @@ class NotionIntegrationService
       }
     }
 
-    tone_emoji = case atmosphere['overall_tone']
+    tone_emoji = case atmosphere[:overall_tone]
                  when 'positive' then '😊'
                  when 'negative' then '😟'
                  else '😐'
                  end
 
-    content = "全体的な雰囲気: #{tone_emoji} #{atmosphere['overall_tone']}\n\n"
+    content = "全体的な雰囲気: #{tone_emoji} #{atmosphere[:overall_tone]}\n\n"
 
     if atmosphere['evidence'] && atmosphere['evidence'].any?
       content += "根拠:\n"
@@ -424,7 +424,7 @@ class NotionIntegrationService
   # @param content [Array] コンテンツ配列
   # @param action [Hash] タスクのアクション情報
   def add_task_context_section(content, action)
-    return unless action['task_context'] && !action['task_context'].empty?
+    return unless action[:task_context] && !action[:task_context].empty?
 
     content << {
       type: "heading_2",
@@ -444,7 +444,7 @@ class NotionIntegrationService
         rich_text: [
           {
             type: "text",
-            text: { content: action['task_context'] }
+            text: { content: action[:task_context] }
           }
         ]
       }
@@ -455,7 +455,7 @@ class NotionIntegrationService
   # @param content [Array] コンテンツ配列
   # @param action [Hash] タスクのアクション情報
   def add_task_steps_section(content, action)
-    return unless action['suggested_steps'] && action['suggested_steps'].any?
+    return unless action[:suggested_steps] && action[:suggested_steps].any?
 
     content << {
       type: "heading_2",
@@ -469,7 +469,7 @@ class NotionIntegrationService
       }
     }
 
-    action['suggested_steps'].each do |step|
+    action[:suggested_steps].each do |step|
       content << {
         type: "numbered_list_item",
         numbered_list_item: {

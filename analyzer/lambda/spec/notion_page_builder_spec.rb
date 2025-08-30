@@ -12,13 +12,13 @@ RSpec.describe NotionPageBuilder do
     context 'when meeting_summary has date and title' do
       let(:analysis_result) do
         {
-          'meeting_summary' => {
-            'date' => '2025-01-15',
-            'title' => '新機能リリース進捗確認MTG',
-            'participants' => ['田中太郎', '山田花子']
+          meeting_summary: {
+            date: '2025-01-15',
+            title: '新機能リリース進捗確認MTG',
+            participants: ['田中太郎', '山田花子']
           },
-          'health_assessment' => {
-            'overall_score' => 85
+          health_assessment: {
+            overall_score: 85
           }
         }
       end
@@ -41,8 +41,8 @@ RSpec.describe NotionPageBuilder do
     context 'when meeting_summary has no date' do
       let(:analysis_result) do
         {
-          'meeting_summary' => {
-            'title' => '緊急対応会議'
+          meeting_summary: {
+            title: '緊急対応会議'
           }
         }
       end
@@ -59,8 +59,8 @@ RSpec.describe NotionPageBuilder do
     context 'when meeting_summary has no title' do
       let(:analysis_result) do
         {
-          'meeting_summary' => {
-            'date' => '2025-01-15'
+          meeting_summary: {
+            date: '2025-01-15'
           }
         }
       end
@@ -75,7 +75,7 @@ RSpec.describe NotionPageBuilder do
     context 'when meeting_summary is empty' do
       let(:analysis_result) do
         {
-          'meeting_summary' => {}
+          meeting_summary: {}
         }
       end
 
@@ -99,14 +99,71 @@ RSpec.describe NotionPageBuilder do
         expect(properties['タイトル']['title'][0]['text']['content']).to eq('2025-01-20 Untitled Meeting')
       end
     end
+
+    context 'when file_metadata with web_view_link is provided' do
+      let(:analysis_result) do
+        {
+          meeting_summary: {
+            date: '2025-01-15',
+            title: '新機能リリース進捗確認MTG'
+          },
+          file_metadata: {
+            web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
+          }
+        }
+      end
+
+      it 'includes Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties['Google Docs URL']['url']).to eq('https://docs.google.com/document/d/1234567890abcdef/edit')
+      end
+    end
+
+    context 'when file_metadata is present but web_view_link is nil' do
+      let(:analysis_result) do
+        {
+          meeting_summary: {
+            date: '2025-01-15',
+            title: '新機能リリース進捗確認MTG'
+          },
+          file_metadata: {
+            web_view_link: nil
+          }
+        }
+      end
+
+      it 'does not include Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties.key?('Google Docs URL')).to be false
+      end
+    end
+
+    context 'when file_metadata is not present' do
+      let(:analysis_result) do
+        {
+          meeting_summary: {
+            date: '2025-01-15',
+            title: '新機能リリース進捗確認MTG'
+          }
+        }
+      end
+
+      it 'does not include Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties.key?('Google Docs URL')).to be false
+      end
+    end
   end
 
   describe '#build_meeting_page' do
     let(:analysis_result) do
       {
-        'meeting_summary' => {
-          'date' => '2025-01-15',
-          'title' => '定例会議'
+        meeting_summary: {
+          date: '2025-01-15',
+          title: '定例会議'
         }
       }
     end
@@ -128,17 +185,17 @@ RSpec.describe NotionPageBuilder do
   describe '#sort_decisions' do
     let(:unsorted_decisions) do
       [
-        { 'content' => 'Low priority decision', 'priority' => 'low' },
-        { 'content' => 'High priority decision', 'priority' => 'high' },
-        { 'content' => 'Medium priority decision', 'priority' => 'medium' },
-        { 'content' => 'No priority decision', 'priority' => nil }
+        { content: 'Low priority decision', priority: 'low' },
+        { content: 'High priority decision', priority: 'high' },
+        { content: 'Medium priority decision', priority: 'medium' },
+        { content: 'No priority decision', priority: nil }
       ]
     end
 
     it '優先度順（high → medium → low → nil）で決定事項をソートする' do
       sorted = builder.send(:sort_decisions, unsorted_decisions)
 
-      expect(sorted.map { |d| d['content'] }).to eq([
+      expect(sorted.map { |d| d[:content] }).to eq([
         'High priority decision',
         'Medium priority decision',  
         'Low priority decision',
@@ -150,10 +207,10 @@ RSpec.describe NotionPageBuilder do
   describe '#create_action_item' do
     it 'アクション項目に優先度絵文字を含む' do
       action = {
-        'task' => 'レポート作成',
-        'assignee' => '山田太郎',
-        'priority' => 'high',
-        'deadline_formatted' => '2025/01/20'
+        task: 'レポート作成',
+        assignee: '山田太郎',
+        priority: 'high',
+        deadline_formatted: '2025/01/20'
       }
 
       result = builder.send(:create_action_item, action)
@@ -164,9 +221,9 @@ RSpec.describe NotionPageBuilder do
 
     it 'medium優先度のアクション項目に黄色絵文字を含む' do
       action = {
-        'task' => 'テスト実行',
-        'assignee' => '佐藤花子',
-        'priority' => 'medium'
+        task: 'テスト実行',
+        assignee: '佐藤花子',
+        priority: 'medium'
       }
 
       result = builder.send(:create_action_item, action)
@@ -177,9 +234,9 @@ RSpec.describe NotionPageBuilder do
 
     it '優先度がnilの場合はlow優先度として白い絵文字を使用' do
       action = {
-        'task' => 'ドキュメント更新',
-        'assignee' => '未定',
-        'priority' => nil
+        task: 'ドキュメント更新',
+        assignee: '未定',
+        priority: nil
       }
 
       result = builder.send(:create_action_item, action)

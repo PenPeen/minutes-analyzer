@@ -45,18 +45,23 @@ class LambdaHandler
       validate_secrets(secrets)
       
       # Google Driveからファイル取得
-      input_text, actual_file_name = fetch_file_content(file_id, secrets)
+      drive_result = fetch_file_content(file_id, secrets)
+      input_text = drive_result[:content]
+      file_metadata = drive_result[:metadata]
       
       # Gemini APIで分析
       analysis_result = analyze_with_gemini(input_text, secrets)
       
       # オリジナルファイル名を追加（タイトル整形用）
-      analysis_result['original_file_name'] = actual_file_name || file_name
+      analysis_result[:original_file_name] = file_metadata[:name] || file_name
+      
+      # ファイルメタデータを追加（Notion連携用）
+      analysis_result[:file_metadata] = file_metadata
       
       # URL入力の場合は追加の情報を含める
       if input_type == 'url' && google_doc_url
-        analysis_result['source_url'] = google_doc_url
-        analysis_result['input_type'] = 'url'
+        analysis_result[:source_url] = google_doc_url
+        analysis_result[:input_type] = :url
       end
       
       # 外部サービス連携（実行者情報を追加）
@@ -108,7 +113,7 @@ class LambdaHandler
     google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
     slack_notification_service = create_slack_notification_service(secrets)
     drive_client = GoogleDriveClient.new(google_credentials, @logger, slack_notification_service)
-    drive_client.get_file_content(file_id)  # [content, file_name] を返す
+    drive_client.get_file_content(file_id)  # {content: ..., metadata: ...} を返す
   end
 
   def create_slack_notification_service(secrets)
