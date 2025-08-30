@@ -5,12 +5,26 @@ require 'googleauth'
 require_relative 'google_oauth_client'
 
 class GoogleDriveClient
+  # カスタムエラークラス
+  class AccessDeniedError < StandardError; end
+  class FileNotFoundError < StandardError; end
+  
   DRIVE_SERVICE = Google::Apis::DriveV3::DriveService
   SCOPE = Google::Apis::DriveV3::AUTH_DRIVE_METADATA_READONLY
 
-  def initialize(slack_user_id)
-    @slack_user_id = slack_user_id
-    @oauth_client = GoogleOAuthClient.new
+  def initialize(user_identifier)
+    if user_identifier.is_a?(String) && user_identifier.start_with?('ya29.')
+      # OAuth2アクセストークンとして扱う（新しい用途）
+      @access_token = user_identifier
+      @slack_user_id = nil
+      @oauth_client = nil
+    else
+      # 既存の用途（Slack User IDとして扱う）
+      @slack_user_id = user_identifier
+      @access_token = nil
+      @oauth_client = GoogleOAuthClient.new
+    end
+    
     @drive_service = DRIVE_SERVICE.new
     setup_authorization
   end
@@ -61,15 +75,34 @@ class GoogleDriveClient
         fields: 'id,name,mimeType,modifiedTime,size,owners,webViewLink,parents',
         supports_all_drives: true
       )
+    rescue Google::Apis::ClientError => e
+      if e.status_code == 404
+        raise FileNotFoundError, "File not found: #{file_id}"
+      elsif e.status_code == 403
+        raise AccessDeniedError, "Access denied to file: #{file_id}"
+      else
+        puts "Failed to get file info: #{e.message}"
+        raise StandardError, "Failed to get file info: #{e.message}"
+      end
+    rescue Google::Apis::AuthorizationError => e
+      raise AccessDeniedError, "Authorization error: #{e.message}"
     rescue Google::Apis::Error => e
       puts "Failed to get file info: #{e.message}"
-      nil
+      raise StandardError, "Failed to get file info: #{e.message}"
     end
   end
 
   # ユーザーが認証済みか確認
   def authorized?
-    @oauth_client.authenticated?(@slack_user_id)
+    if @access_token
+      # アクセストークンベースの場合は常にtrue（トークンが提供されている前提）
+      true
+    elsif @oauth_client && @slack_user_id
+      # Slack User IDベースの場合は従来通り
+      @oauth_client.authenticated?(@slack_user_id)
+    else
+      false
+    end
   end
 
   # クエリのエスケープ（public for testing）
@@ -88,11 +121,15 @@ class GoogleDriveClient
 
   # 認証設定
   def setup_authorization
-    tokens = @oauth_client.get_tokens(@slack_user_id)
-    return unless tokens
-
-    # Google Auth用のAuthorizerを設定
-    @drive_service.authorization = create_authorization(tokens[:access_token])
+    if @access_token
+      # アクセストークンベースの認証
+      @drive_service.authorization = create_authorization(@access_token)
+    elsif @oauth_client && @slack_user_id
+      # Slack User IDベースの認証（従来通り）
+      tokens = @oauth_client.get_tokens(@slack_user_id)
+      return unless tokens
+      @drive_service.authorization = create_authorization(tokens[:access_token])
+    end
   end
 
   # 認証オブジェクトを作成

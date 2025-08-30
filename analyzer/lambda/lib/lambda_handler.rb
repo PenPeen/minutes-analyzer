@@ -32,7 +32,12 @@ class LambdaHandler
       file_name = parsed_body['file_name'] || 'Unknown'
       user_id = parsed_body['slack_user_id']
       user_email = parsed_body['slack_user_email']
+      input_type = parsed_body['input_type']
+      google_doc_url = parsed_body['google_doc_url']
+      
       @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
+      @logger.info("Input type: #{input_type}")
+      @logger.info("Google Doc URL: #{google_doc_url}") if google_doc_url
       @logger.info("Executor user_id: #{user_id}, user_email: #{user_email}") if user_id
       
       # シークレット取得と検証
@@ -47,6 +52,12 @@ class LambdaHandler
       
       # オリジナルファイル名を追加（タイトル整形用）
       analysis_result['original_file_name'] = file_name
+      
+      # URL入力の場合は追加の情報を含める
+      if input_type == 'url' && google_doc_url
+        analysis_result['source_url'] = google_doc_url
+        analysis_result['input_type'] = 'url'
+      end
       
       # 外部サービス連携（実行者情報を追加）
       executor_info = { user_id: user_id, user_email: user_email }
