@@ -116,6 +116,44 @@ RSpec.describe SlackMessageBuilder do
     end
   end
 
+  describe '#build_action_text' do
+    it 'アクション項目に優先度絵文字を含む' do
+      action = {
+        'task' => 'レポート作成',
+        'assignee' => '山田太郎',
+        'priority' => 'high',
+        'deadline_formatted' => '2025/01/20'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('🔴 レポート作成 - 山田太郎（2025/01/20）')
+    end
+
+    it 'medium優先度のアクション項目に黄色絵文字を含む' do
+      action = {
+        'task' => 'テスト実行',
+        'assignee' => '佐藤花子',
+        'priority' => 'medium',
+        'deadline_formatted' => '期日未定'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('🟡 テスト実行 - 佐藤花子（期日未定）')
+    end
+
+    it '優先度がnilの場合はlow優先度として白い絵文字を使用' do
+      action = {
+        'task' => 'ドキュメント更新',
+        'assignee' => '未定',
+        'priority' => nil,
+        'deadline_formatted' => '期日未定'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('⚪ ドキュメント更新 - 未定（期日未定）')
+    end
+  end
+
   describe '#build_notion_button' do
     let(:notion_url) { 'https://notion.so/test-page-123' }
 

@@ -146,4 +146,46 @@ RSpec.describe NotionPageBuilder do
       ])
     end
   end
+
+  describe '#create_action_item' do
+    it 'アクション項目に優先度絵文字を含む' do
+      action = {
+        'task' => 'レポート作成',
+        'assignee' => '山田太郎',
+        'priority' => 'high',
+        'deadline_formatted' => '2025/01/20'
+      }
+
+      result = builder.send(:create_action_item, action)
+      expected_content = '🔴 レポート作成 - 山田太郎 (2025/01/20)'
+      
+      expect(result['bulleted_list_item']['rich_text'][0]['text']['content']).to eq(expected_content)
+    end
+
+    it 'medium優先度のアクション項目に黄色絵文字を含む' do
+      action = {
+        'task' => 'テスト実行',
+        'assignee' => '佐藤花子',
+        'priority' => 'medium'
+      }
+
+      result = builder.send(:create_action_item, action)
+      expected_content = '🟡 テスト実行 - 佐藤花子'
+      
+      expect(result['bulleted_list_item']['rich_text'][0]['text']['content']).to eq(expected_content)
+    end
+
+    it '優先度がnilの場合はlow優先度として白い絵文字を使用' do
+      action = {
+        'task' => 'ドキュメント更新',
+        'assignee' => '未定',
+        'priority' => nil
+      }
+
+      result = builder.send(:create_action_item, action)
+      expected_content = '⚪ ドキュメント更新 - 未定'
+      
+      expect(result['bulleted_list_item']['rich_text'][0]['text']['content']).to eq(expected_content)
+    end
+  end
 end
