@@ -45,7 +45,7 @@ build-lambda: ## Lambda関数をビルド　（内部使用）
 
 test: ## テストを実行
 	@echo "🧪 Lambda関数のテストを実行中..."
-	@docker compose run --rm --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
+	@docker compose run --rm --user $(shell id -u):$(shell id -g) --entrypoint="" ruby-lambda-builder sh -c "cd /var/task && bundle config unset without && bundle install --quiet && bundle exec rspec spec/ --format documentation"
 	@echo "✅ テストが完了しました"
 
 # 本番環境用Terraform初期化
