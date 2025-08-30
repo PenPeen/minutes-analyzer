@@ -5,10 +5,11 @@ require 'json'
 # Google Drive APIクライアント
 # IAMでサービスアカウントに権限を付与
 class GoogleDriveClient
-  def initialize(credentials_json, logger)
+  def initialize(credentials_json, logger, slack_notification_service = nil)
     @logger = logger
     @credentials_json = credentials_json
     @drive_service = nil
+    @slack_notification_service = slack_notification_service
   end
 
   def get_file_content(file_id)
@@ -40,19 +41,24 @@ class GoogleDriveClient
     rescue Google::Apis::ClientError => e
       if e.status_code == 404
         @logger.error("File not found: #{file_id}")
+        notify_error("File not found: #{file_id}", file_id: file_id)
         raise "File not found: #{file_id}"
       elsif e.status_code == 403
         @logger.error("Access denied to file: #{file_id}")
+        notify_error("Access denied to file: #{file_id}", file_id: file_id)
         raise "Access denied to file: #{file_id}"
       else
         @logger.error("Google Drive API client error: #{e.message} (status: #{e.status_code})")
+        notify_error("Google Drive API client error: #{e.message} (status: #{e.status_code})", file_id: file_id)
         raise "Failed to fetch file from Google Drive: #{e.message}"
       end
     rescue Google::Apis::AuthorizationError => e
       @logger.error("Google Drive API error: #{e.message}")
+      notify_error("Google Drive API authorization error: #{e.message}", file_id: file_id)
       raise "Failed to fetch file from Google Drive: #{e.message}"
     rescue Google::Apis::Error => e
       @logger.error("Google Drive API error: #{e.message}")
+      notify_error("Google Drive API error: #{e.message}", file_id: file_id)
       raise "Failed to fetch file from Google Drive: #{e.message}"
     rescue StandardError => e
       @logger.error("Error fetching file: #{e.message}")
@@ -61,6 +67,14 @@ class GoogleDriveClient
   end
 
   private
+
+  def notify_error(error_message, context = {})
+    return unless @slack_notification_service
+    
+    @slack_notification_service.send_error_notification(error_message, context)
+  rescue => e
+    @logger.error("Failed to send Slack error notification: #{e.message}")
+  end
 
   def initialize_drive_service
     @logger.info("Initializing Google Drive service")

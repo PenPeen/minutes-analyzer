@@ -117,7 +117,12 @@ class SlackInteractionHandler
       
       # チャンネルに分析開始メッセージを送信
       if channel_id
-        display_filename = file_info[:file_name]
+        # URL入力の場合はURLを表示、ファイル選択の場合はファイル名を表示
+        if file_info[:input_type] == 'url' && file_info[:source_url]
+          display_target = "<#{file_info[:source_url]}|#{file_info[:file_name]}>"
+        else
+          display_target = file_info[:file_name]
+        end
         
         # 通知メッセージのブロックを作成
         blocks = [
@@ -137,7 +142,7 @@ class SlackInteractionHandler
               },
               {
                 type: 'mrkdwn',
-                text: "*対象ファイル:*\n#{display_filename}"
+                text: "*対象ファイル:*\n#{display_target}"
               }
             ]
           },
@@ -159,10 +164,16 @@ class SlackInteractionHandler
         )
       else
         # チャンネルIDが設定されていない場合は、エフェメラルメッセージをユーザーに送信
+        display_text = if file_info[:input_type] == 'url' && file_info[:source_url]
+                        "📊 <#{file_info[:source_url]}|#{file_info[:file_name]}> の分析を開始しました..."
+                       else
+                        "📊 `#{file_info[:file_name]}` の分析を開始しました..."
+                       end
+        
         @slack_client.post_ephemeral(
           user_id,
           user_id,
-          "📊 `#{file_info[:file_name]}` の分析を開始しました..."
+          display_text
         )
       end
 

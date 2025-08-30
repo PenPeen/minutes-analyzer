@@ -80,17 +80,22 @@ class GoogleDriveClient
       )
     rescue Google::Apis::ClientError => e
       if e.status_code == 404
+        notify_slack_error("File not found: #{file_id}", user_id: @slack_user_id)
         raise FileNotFoundError, "File not found: #{file_id}"
       elsif e.status_code == 403
+        notify_slack_error("Access denied to file: #{file_id}", user_id: @slack_user_id)
         raise AccessDeniedError, "Access denied to file: #{file_id}"
       else
         @logger.error("Failed to get file info: #{e.message}")
+        notify_slack_error("Failed to get file info: #{e.message}", user_id: @slack_user_id)
         raise StandardError, "Failed to get file info: #{e.message}"
       end
     rescue Google::Apis::AuthorizationError => e
+      notify_slack_error("Authorization error: #{e.message}", user_id: @slack_user_id)
       raise AccessDeniedError, "Authorization error: #{e.message}"
     rescue Google::Apis::Error => e
       @logger.error("Failed to get file info: #{e.message}")
+      notify_slack_error("Failed to get file info: #{e.message}", user_id: @slack_user_id)
       return nil
     end
   end
@@ -121,6 +126,58 @@ class GoogleDriveClient
   end
 
   private
+
+  # Slack にエラー通知を送信
+  def notify_slack_error(error_message, user_id: nil)
+    @logger.info("notify_slack_error called: #{error_message}")
+    @logger.info("SLACK_CHANNEL_ID: #{ENV['SLACK_CHANNEL_ID']}")
+    @logger.info("SLACK_BOT_TOKEN present: #{!ENV['SLACK_BOT_TOKEN'].nil?}")
+    
+    return unless ENV['SLACK_CHANNEL_ID'] && ENV['SLACK_BOT_TOKEN']
+
+    begin
+      require_relative 'slack_api_client'
+      slack_client = SlackApiClient.new
+
+      error_blocks = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: "🚨 *Drive API エラーが発生しました*"
+          }
+        },
+        {
+          type: 'section',
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: "*エラー内容:*\n```#{error_message}```"
+            },
+            {
+              type: 'mrkdwn',
+              text: "*発生時刻:*\n#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}"
+            }
+          ]
+        }
+      ]
+
+      if user_id
+        error_blocks[1][:fields] << {
+          type: 'mrkdwn',
+          text: "*ユーザー:*\n<@#{user_id}>"
+        }
+      end
+
+      slack_client.post_message(
+        ENV['SLACK_CHANNEL_ID'],
+        "Drive API エラーが発生しました",
+        error_blocks
+      )
+    rescue => slack_error
+      @logger.error("Failed to send Slack error notification: #{slack_error.message}")
+    end
+  end
 
   # 認証設定
   def setup_authorization
@@ -223,23 +280,29 @@ class GoogleDriveClient
     query = "name contains 'Meet Recordings' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     @logger.info("Searching for folders with query: #{query}")
 
-    response = @drive_service.list_files(
-      q: query,
-      page_size: 50,  # Meet Recordingsフォルダは複数存在する可能性がある
-      fields: 'files(id,name)',
-      supports_all_drives: true,
-      include_items_from_all_drives: true
-    )
+    begin
+      response = @drive_service.list_files(
+        q: query,
+        page_size: 50,  # Meet Recordingsフォルダは複数存在する可能性がある
+        fields: 'files(id,name)',
+        supports_all_drives: true,
+        include_items_from_all_drives: true
+      )
 
-    folders = (response.files || []).map do |folder|
-      {
-        id: folder.id,
-        name: folder.name
-      }
+      folders = (response.files || []).map do |folder|
+        {
+          id: folder.id,
+          name: folder.name
+        }
+      end
+
+      @logger.info("Found #{folders.size} meeting folders: #{folders.map { |f| f[:name] }.join(', ')}")
+      folders
+    rescue Google::Apis::Error => e
+      @logger.error("Failed to find Meet Recordings folders: #{e.message}")
+      notify_slack_error("Failed to find Meet Recordings folders: #{e.message}", user_id: @slack_user_id)
+      []
     end
-
-    @logger.info("Found #{folders.size} meeting folders: #{folders.map { |f| f[:name] }.join(', ')}")
-    folders
   end
 
 

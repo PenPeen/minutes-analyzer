@@ -31,6 +31,7 @@ with open('.env.production', 'r') as f:
 secrets = {
     'SLACK_SIGNING_SECRET': env_vars.get('SLACK_SIGNING_SECRET', ''),
     'SLACK_BOT_TOKEN': env_vars.get('SLACK_BOT_TOKEN', ''),
+    'SLACK_CHANNEL_ID': env_vars.get('SLACK_CHANNEL_ID', ''),
     'GOOGLE_CLIENT_ID': env_vars.get('GOOGLE_CLIENT_ID', ''),
     'GOOGLE_CLIENT_SECRET': env_vars.get('GOOGLE_CLIENT_SECRET', ''),
     'PROCESS_LAMBDA_ARN': env_vars.get('PROCESS_LAMBDA_ARN', '')

@@ -106,8 +106,22 @@ class LambdaHandler
   
   def fetch_file_content(file_id, secrets)
     google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
-    drive_client = GoogleDriveClient.new(google_credentials, @logger)
+    slack_notification_service = create_slack_notification_service(secrets)
+    drive_client = GoogleDriveClient.new(google_credentials, @logger, slack_notification_service)
     drive_client.get_file_content(file_id)
+  end
+
+  def create_slack_notification_service(secrets)
+    bot_token = secrets['SLACK_BOT_TOKEN']
+    channel_id = secrets['SLACK_CHANNEL_ID']
+    
+    return nil unless bot_token && channel_id
+    
+    require_relative 'slack_notification_service'
+    SlackNotificationService.new(bot_token, channel_id, @logger)
+  rescue => e
+    @logger.warn("Failed to create Slack notification service: #{e.message}")
+    nil
   end
   
   def analyze_with_gemini(input_text, secrets)
