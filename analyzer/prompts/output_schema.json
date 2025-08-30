@@ -100,7 +100,8 @@
         "comment": {
           "type": "string",
           "minLength": 100,
-          "maxLength": 150
+          "maxLength": 150,
+          "description": "会議全体の活気、参加者の協力的姿勢、意見交換の活発さ、議論の特徴などを含む雰囲気の詳細分析"
         }
       },
       "required": ["overall_tone", "comment"]
