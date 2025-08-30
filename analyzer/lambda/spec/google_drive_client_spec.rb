@@ -59,7 +59,7 @@ RSpec.describe GoogleDriveClient do
 
       it 'returns the file content' do
         result = client.get_file_content(file_id)
-        expect(result).to eq(file_content)
+        expect(result).to eq([file_content, 'test_meeting.txt'])
       end
 
       it 'logs file information' do
@@ -120,7 +120,7 @@ RSpec.describe GoogleDriveClient do
         expect(logger).to receive(:warn).with(/Export failed, trying direct download/)
         
         result = client.get_file_content(file_id)
-        expect(result).to eq(file_content)
+        expect(result).to eq([file_content, 'test_meeting.unknown'])
       end
     end
 

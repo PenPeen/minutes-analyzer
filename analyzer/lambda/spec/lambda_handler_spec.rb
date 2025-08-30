@@ -238,8 +238,8 @@ RSpec.describe LambdaHandler do
 
       before do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
-        allow(GoogleDriveClient).to receive(:new).with(google_credentials, logger).and_return(google_drive_client)
-        allow(google_drive_client).to receive(:get_file_content).with(file_id).and_return(file_content)
+        allow(GoogleDriveClient).to receive(:new).with(google_credentials, logger, anything).and_return(google_drive_client)
+        allow(google_drive_client).to receive(:get_file_content).with(file_id).and_return([file_content, file_name])
         allow(s3_client).to receive(:get_verification_prompt).and_return('Verification prompt template')
         
         # 1回目の呼び出し（標準分析）

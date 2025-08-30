@@ -120,18 +120,6 @@ class GoogleOAuthClient
     !tokens.nil? && !tokens[:access_token].nil?
   end
 
-  # 有効なトークンを取得（テストの互換性のために追加）
-  def get_valid_tokens(slack_user_id)
-    tokens = get_tokens(slack_user_id)
-    return nil unless tokens
-
-    # シンボルキーを文字列キーに変換してテストの期待値に合わせる
-    {
-      'access_token' => tokens[:access_token],
-      'refresh_token' => tokens[:refresh_token],
-      'expires_at' => tokens[:expires_at]
-    }
-  end
 
   # トークンをDynamoDBから削除（ログアウト）
   def delete_tokens(slack_user_id)

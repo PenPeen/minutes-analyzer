@@ -113,7 +113,8 @@ class GoogleDriveClient
     end
   end
 
-  # クエリのエスケープ（public for testing）
+  private
+
   def escape_query(query)
     return '' if query.nil? || query.empty?
 
@@ -132,7 +133,7 @@ class GoogleDriveClient
     @logger.info("notify_slack_error called: #{error_message}")
     @logger.info("SLACK_CHANNEL_ID: #{ENV['SLACK_CHANNEL_ID']}")
     @logger.info("SLACK_BOT_TOKEN present: #{!ENV['SLACK_BOT_TOKEN'].nil?}")
-    
+
     return unless ENV['SLACK_CHANNEL_ID'] && ENV['SLACK_BOT_TOKEN']
 
     begin
