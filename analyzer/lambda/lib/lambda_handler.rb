@@ -5,6 +5,7 @@ require_relative 'request_validator'
 require_relative 'integration_service'
 require_relative 'response_builder'
 require_relative 's3_client'
+require_relative 'error_notification_service'
 require 'logger'
 require 'json'
 
@@ -19,11 +20,18 @@ class LambdaHandler
     @validator = RequestValidator.new(@logger)
     @integration_service = IntegrationService.new(@logger)
     @s3_client = s3_client || S3Client.new(@logger, @environment)
+    @error_notification_service = nil # 遅延初期化
   end
 
   def handle(event:, context:)
     request_id = extract_request_id(context)
     @logger.info("Lambda function started. Request ID: #{request_id}")
+    
+    # 変数を初期化
+    file_id = nil
+    file_name = nil
+    user_id = nil
+    user_email = nil
 
     begin
       # リクエスト検証と解析
@@ -43,6 +51,9 @@ class LambdaHandler
       # シークレット取得と検証
       secrets = @secrets_manager.get_secrets
       validate_secrets(secrets)
+      
+      # エラー通知サービスを初期化（Slack設定がある場合のみ）
+      initialize_error_notification_service(secrets)
       
       # Google Driveからファイル取得
       input_text, actual_file_name = fetch_file_content(file_id, secrets)
@@ -67,10 +78,14 @@ class LambdaHandler
       ResponseBuilder.success_response(analysis_result, integration_results, {})
       
     rescue RequestValidator::ValidationError => e
+      # バリデーションエラーの場合はSlack通知を送信
+      notify_error(e, request_id: request_id, file_id: file_id, file_name: file_name, user_id: user_id, user_email: user_email)
       ResponseBuilder.error_response(400, e.message)
     rescue StandardError => e
+      # 予期しないエラーの場合はSlack通知を送信
       @logger.error("An unexpected error occurred: #{e.message}")
       @logger.error(e.backtrace.join("\n")) if e.backtrace
+      notify_error(e, request_id: request_id, file_id: file_id, file_name: file_name, user_id: user_id, user_email: user_email)
       ResponseBuilder.error_response(500, e.message)
     ensure
       @logger.info("Lambda function finished. Request ID: #{request_id}")
@@ -160,6 +175,43 @@ class LambdaHandler
     rescue StandardError => e
       @logger.error("Failed to build verification prompt: #{e.message}")
       raise "Unable to build verification prompt: #{e.message}"
+    end
+  end
+
+  # エラー通知サービスの初期化
+  def initialize_error_notification_service(secrets)
+    return if @error_notification_service # 既に初期化済み
+    
+    slack_notification_service = create_slack_notification_service(secrets)
+    if slack_notification_service
+      @error_notification_service = ErrorNotificationService.new(slack_notification_service, @logger)
+      @logger.info("Error notification service initialized")
+    else
+      @logger.warn("Error notification service not initialized due to missing Slack configuration")
+    end
+  end
+
+  # エラー通知の送信
+  def notify_error(error, **context)
+    return unless @error_notification_service
+    
+    begin
+      user_info = {
+        user_id: context[:user_id],
+        user_email: context[:user_email]
+      }
+      
+      error_context = {
+        request_id: context[:request_id],
+        file_id: context[:file_id],
+        file_name: context[:file_name]
+      }.compact # nil値を除去
+      
+      @error_notification_service.notify_error(error, context: error_context, user_info: user_info)
+      @logger.info("Error notification sent via Slack")
+    rescue StandardError => notification_error
+      @logger.error("Failed to send error notification: #{notification_error.message}")
+      # 通知の失敗は元のエラー処理を止めない
     end
   end
 end

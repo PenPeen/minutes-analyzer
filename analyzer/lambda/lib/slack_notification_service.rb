@@ -87,6 +87,26 @@ class SlackNotificationService
     end
   end
 
+  # 統一的なSlackメッセージ送信メソッド
+  def send_slack_message(message_payload)
+    unless @bot_token && !@bot_token.empty? && @channel_id && !@channel_id.empty?
+      @logger.warn("Slack configuration missing, cannot send message")
+      return { success: false, error: 'Slack configuration missing' }
+    end
+
+    @api_client.post_message(@channel_id, message_payload)
+  end
+
+  # スレッド返信の送信
+  def send_thread_reply(thread_ts, message_payload)
+    unless @bot_token && !@bot_token.empty? && @channel_id && !@channel_id.empty?
+      @logger.warn("Slack configuration missing, cannot send thread reply")
+      return { success: false, error: 'Slack configuration missing' }
+    end
+
+    @api_client.post_thread_reply(@channel_id, thread_ts, message_payload)
+  end
+
   private
 
   def should_send_thread_reply?(analysis_result)

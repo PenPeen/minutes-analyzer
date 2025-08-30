@@ -309,5 +309,90 @@ RSpec.describe LambdaHandler do
         expect(JSON.parse(result[:body])['error']).to include("Request must include 'file_id' field")
       end
     end
+
+    context 'エラー通知機能のテスト' do
+      let(:slack_service) { instance_double(SlackNotificationService) }
+      let(:error_notification_service) { instance_double(ErrorNotificationService) }
+
+      before do
+        allow(SlackNotificationService).to receive(:new).and_return(slack_service)
+        allow(ErrorNotificationService).to receive(:new).with(slack_service, logger).and_return(error_notification_service)
+        allow(error_notification_service).to receive(:notify_error)
+      end
+
+      context 'ValidationErrorが発生した場合' do
+        let(:event) { { 'body' => 'invalid json' } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_BOT_TOKEN' => 'xoxb-test', 'SLACK_CHANNEL_ID' => 'C123' } }
+
+        before do
+          allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
+        end
+
+        it 'エラー通知を送信する' do
+          handler.handle(event: event, context: context)
+
+          expect(error_notification_service).to have_received(:notify_error) do |error, options|
+            expect(error).to be_a(RequestValidator::ValidationError)
+            expect(options[:context][:request_id]).to eq('test-request-id')
+          end
+        end
+      end
+
+      context 'StandardErrorが発生した場合' do
+        let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id', 'file_name' => 'test.txt' }) } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}', 'SLACK_BOT_TOKEN' => 'xoxb-test', 'SLACK_CHANNEL_ID' => 'C123' } }
+
+        before do
+          allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
+          allow(GoogleDriveClient).to receive(:new).and_raise(StandardError.new('Unexpected error'))
+        end
+
+        it 'エラー通知を送信する' do
+          handler.handle(event: event, context: context)
+
+          expect(error_notification_service).to have_received(:notify_error) do |error, options|
+            expect(error.message).to eq('Unexpected error')
+            expect(options[:context][:request_id]).to eq('test-request-id')
+            expect(options[:context][:file_id]).to eq('test-file-id')
+            expect(options[:context][:file_name]).to eq('test.txt')
+          end
+        end
+      end
+
+      context 'Slack設定がない場合' do
+        let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id' }) } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
+
+        before do
+          allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
+          allow(GoogleDriveClient).to receive(:new).and_raise(StandardError.new('Test error'))
+        end
+
+        it 'エラー通知を試行しない' do
+          handler.handle(event: event, context: context)
+
+          expect(SlackNotificationService).not_to have_received(:new)
+          expect(ErrorNotificationService).not_to have_received(:new)
+        end
+      end
+
+      context 'エラー通知サービス自体がエラーの場合' do
+        let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id' }) } }
+        let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}', 'SLACK_BOT_TOKEN' => 'xoxb-test', 'SLACK_CHANNEL_ID' => 'C123' } }
+
+        before do
+          allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
+          allow(GoogleDriveClient).to receive(:new).and_raise(StandardError.new('Test error'))
+          allow(error_notification_service).to receive(:notify_error).and_raise(StandardError.new('Notification failed'))
+        end
+
+        it '元のエラー処理は継続する' do
+          result = handler.handle(event: event, context: context)
+
+          expect(result[:statusCode]).to eq(500)
+          expect(logger).to have_received(:error).with('Failed to send error notification: Notification failed')
+        end
+      end
+    end
   end
 end
