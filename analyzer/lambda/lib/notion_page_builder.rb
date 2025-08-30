@@ -19,12 +19,12 @@ class NotionPageBuilder
   
   def build_properties(analysis_result)
     analysis_result ||= {}
-    meeting_summary = analysis_result['meeting_summary'] || {}
+    meeting_summary = analysis_result[:meeting_summary] || {}
     
     # 日付を取得（なければ現在日付を使用）
-    date_str = meeting_summary['date'] || Time.now.strftime('%Y-%m-%d')
+    date_str = meeting_summary[:date] || Time.now.strftime('%Y-%m-%d')
     # タイトルを取得
-    title = meeting_summary['title'] || 'Untitled Meeting'
+    title = meeting_summary[:title] || 'Untitled Meeting'
     # 日付付きタイトルを生成
     title_with_date = "#{date_str} #{title}"
     
@@ -38,14 +38,14 @@ class NotionPageBuilder
           }
         ]
       },
-      '日付' => build_date_property(meeting_summary['date']),
-      '参加者' => build_participants_property(meeting_summary['participants']),
+      '日付' => build_date_property(meeting_summary[:date]),
+      '参加者' => build_participants_property(meeting_summary[:participants]),
       'スコア' => build_health_score_property(analysis_result)
     }
     
     # Google Docs URLプロパティを動的に追加
-    if analysis_result['file_metadata'] && analysis_result['file_metadata'][:web_view_link]
-      properties['Google Docs URL'] = build_url_property(analysis_result['file_metadata'][:web_view_link])
+    if analysis_result[:file_metadata] && analysis_result[:file_metadata][:web_view_link]
+      properties['Google Docs URL'] = build_url_property(analysis_result[:file_metadata][:web_view_link])
     end
     
     properties
@@ -76,7 +76,7 @@ class NotionPageBuilder
     blocks = []
     
     # タスクの背景・文脈情報セクション
-    if action['task_context'] && !action['task_context'].empty?
+    if action[:task_context] && !action[:task_context].empty?
       blocks << {
         'object' => 'block',
         'type' => 'heading_3',
@@ -88,13 +88,13 @@ class NotionPageBuilder
         'object' => 'block',
         'type' => 'paragraph',
         'paragraph' => {
-          'rich_text' => [{ 'type' => 'text', 'text' => { 'content' => action['task_context'] } }]
+          'rich_text' => [{ 'type' => 'text', 'text' => { 'content' => action[:task_context] } }]
         }
       }
     end
     
     # 実行手順セクション
-    if action['suggested_steps'] && action['suggested_steps'].is_a?(Array) && !action['suggested_steps'].empty?
+    if action[:suggested_steps] && action[:suggested_steps].is_a?(Array) && !action[:suggested_steps].empty?
       blocks << {
         'object' => 'block',
         'type' => 'heading_3',
@@ -103,7 +103,7 @@ class NotionPageBuilder
         }
       }
       
-      action['suggested_steps'].each_with_index do |step, index|
+      action[:suggested_steps].each_with_index do |step, index|
         blocks << {
           'object' => 'block',
           'type' => 'numbered_list_item',
@@ -124,25 +124,25 @@ class NotionPageBuilder
     }
     
     # 優先度
-    priority_emoji = get_priority_emoji(action['priority'])
+    priority_emoji = get_priority_emoji(action[:priority])
     blocks << {
       'object' => 'block',
       'type' => 'paragraph',
       'paragraph' => {
         'rich_text' => [
-          { 'type' => 'text', 'text' => { 'content' => "優先度: #{priority_emoji} #{action['priority'] || 'low'}" } }
+          { 'type' => 'text', 'text' => { 'content' => "優先度: #{priority_emoji} #{action[:priority] || 'low'}" } }
         ]
       }
     }
     
     # 期限
-    if action['deadline_formatted']
+    if action[:deadline_formatted]
       blocks << {
         'object' => 'block',
         'type' => 'paragraph',
         'paragraph' => {
           'rich_text' => [
-            { 'type' => 'text', 'text' => { 'content' => "期限: #{action['deadline_formatted']}" } }
+            { 'type' => 'text', 'text' => { 'content' => "期限: #{action[:deadline_formatted]}" } }
           ]
         }
       }
@@ -186,8 +186,8 @@ class NotionPageBuilder
   end
   
   def build_health_score_property(analysis_result)
-    health_assessment = analysis_result['health_assessment'] || {}
-    score = health_assessment['overall_score'] || 0
+    health_assessment = analysis_result[:health_assessment] || {}
+    score = health_assessment[:overall_score] || 0
     { 'number' => score }
   end
   
@@ -197,17 +197,17 @@ class NotionPageBuilder
   end
   
   def build_summary_section(analysis_result)
-    meeting_summary = analysis_result['meeting_summary'] || {}
+    meeting_summary = analysis_result[:meeting_summary] || {}
     
     [
       create_heading('📝 会議概要'),
-      create_paragraph("日時: #{meeting_summary['date'] || 'N/A'}"),
-      create_paragraph("参加者: #{format_participants(meeting_summary['participants'])}")
+      create_paragraph("日時: #{meeting_summary[:date] || 'N/A'}"),
+      create_paragraph("参加者: #{format_participants(meeting_summary[:participants])}")
     ]
   end
   
   def build_decisions_section(analysis_result)
-    decisions = analysis_result['decisions'] || []
+    decisions = analysis_result[:decisions] || []
     return [] if decisions.empty?
     
     blocks = [create_heading('📌 決定事項')]
@@ -215,14 +215,14 @@ class NotionPageBuilder
     # 優先度順にソート
     sorted_decisions = sort_decisions(decisions)
     sorted_decisions.each do |decision|
-      blocks << create_bulleted_item(decision['content'])
+      blocks << create_bulleted_item(decision[:content])
     end
     
     blocks
   end
   
   def build_actions_section(analysis_result)
-    actions = analysis_result['actions'] || []
+    actions = analysis_result[:actions] || []
     return [] if actions.empty?
     
     blocks = [create_heading('✅ アクション項目')]
@@ -230,7 +230,7 @@ class NotionPageBuilder
     # タスクデータベースが設定されている場合はリンクを表示
     if has_task_database?
       total = actions.size
-      high = actions.count { |a| a['priority'].to_s.downcase == 'high' }
+      high = actions.count { |a| a[:priority].to_s.downcase == 'high' }
       
       # タスクデータベースへのリンクを生成
       compact_task_db_id = @task_database_id.to_s.gsub('-', '')
@@ -265,16 +265,16 @@ class NotionPageBuilder
   
   
   def build_atmosphere_section(analysis_result)
-    atmosphere = analysis_result['atmosphere'] || {}
-    return [] unless atmosphere['overall_tone']
+    atmosphere = analysis_result[:atmosphere] || {}
+    return [] unless atmosphere[:overall_tone]
     
-    tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
+    tone_japanese = get_tone_japanese(atmosphere[:overall_tone])
     
     blocks = [create_heading('🌡️ 会議の雰囲気')]
     blocks << create_paragraph(tone_japanese)
     
     # Geminiが生成したコメントを表示
-    comment = atmosphere['comment']
+    comment = atmosphere[:comment]
     if comment && !comment.empty?
       blocks << create_paragraph(comment)
     end
@@ -283,13 +283,13 @@ class NotionPageBuilder
   end
   
   def build_improvements_section(analysis_result)
-    suggestions = analysis_result['improvement_suggestions'] || []
+    suggestions = analysis_result[:improvement_suggestions] || []
     return [] if suggestions.empty?
     
     blocks = [create_heading('💡 改善提案')]
     
     suggestions.first(MAX_SUGGESTION_DISPLAY).each do |suggestion|
-      blocks << create_bulleted_item("#{suggestion['suggestion']} (#{suggestion['category']})")
+      blocks << create_bulleted_item("#{suggestion[:suggestion]} (#{suggestion[:category]})")
     end
     
     blocks
@@ -304,8 +304,8 @@ class NotionPageBuilder
     actions.sort_by do |action|
       priority_order = { 'high' => 0, 'medium' => 1, 'low' => 2 }
       [
-        priority_order[action['priority']] || 3,
-        action['deadline'] || 'zzzz'
+        priority_order[action[:priority]] || 3,
+        action[:deadline] || 'zzzz'
       ]
     end
   end
@@ -313,7 +313,7 @@ class NotionPageBuilder
   def sort_decisions(decisions)
     priority_order = { 'high' => 0, 'medium' => 1, 'low' => 2 }
     decisions.sort_by do |decision|
-      priority_order[decision['priority']] || 3
+      priority_order[decision[:priority]] || 3
     end
   end
 
@@ -326,15 +326,15 @@ class NotionPageBuilder
   end
   
   def create_action_item(action)
-    priority_emoji = get_priority_emoji(action['priority'])
-    assignee = if action['assignee_email']
-                "#{action['assignee']} (#{action['assignee_email']})"
+    priority_emoji = get_priority_emoji(action[:priority])
+    assignee = if action[:assignee_email]
+                "#{action[:assignee]} (#{action[:assignee_email]})"
               else
-                action['assignee'] || '未定'
+                action[:assignee] || '未定'
               end
     
-    content = "#{priority_emoji} #{action['task']} - #{assignee}"
-    content += " (#{action['deadline_formatted']})" if action['deadline_formatted']
+    content = "#{priority_emoji} #{action[:task]} - #{assignee}"
+    content += " (#{action[:deadline_formatted]})" if action[:deadline_formatted]
     
     create_bulleted_item(content)
   end

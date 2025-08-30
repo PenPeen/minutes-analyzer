@@ -9,21 +9,21 @@ RSpec.describe IntegrationService do
   let(:service) { described_class.new(logger) }
   let(:analysis_result) do
     {
-      'meeting_summary' => {
-        'title' => 'Test Meeting',
-        'date' => '2025-01-15',
-        'participants' => ['User A', 'User B']
+      meeting_summary: {
+        title: 'Test Meeting',
+        date: '2025-01-15',
+        participants: ['User A', 'User B']
       },
-      'decisions' => [
-        { 'content' => 'Decision 1', 'category' => 'policy' }
+      decisions: [
+        { content: 'Decision 1', category: 'policy' }
       ],
-      'actions' => [
+      actions: [
         {
-          'task' => 'Task 1',
-          'assignee' => 'User A',
-          'priority' => 'high',
-          'deadline' => '2025-01-20',
-          'deadline_formatted' => '2025/01/20'
+          task: 'Task 1',
+          assignee: 'User A',
+          priority: 'high',
+          deadline: '2025-01-20',
+          deadline_formatted: '2025/01/20'
         }
       ]
     }

@@ -337,7 +337,7 @@ RSpec.describe RequestValidator do
         array_json = JSON.generate({
           'file_id' => 'test-id',
           'tags' => ['tag1', 'tag2', 'tag3'],
-          'participants' => [
+          participants: [
             { 'name' => 'User1', 'email' => 'user1@example.com' },
             { 'name' => 'User2', 'email' => 'user2@example.com' }
           ]

@@ -7,24 +7,24 @@ RSpec.describe SlackMessageBuilder do
   let(:builder) { described_class.new(logger) }
   let(:analysis_result) do
     {
-      'meeting_summary' => {
-        'title' => 'テスト会議',
-        'date' => '2025-01-15',
-        'participants' => ['山田太郎', '佐藤花子']
+      meeting_summary: {
+        title: 'テスト会議',
+        date: '2025-01-15',
+        participants: ['山田太郎', '佐藤花子']
       },
-      'decisions' => [
-        { 'content' => 'プロジェクト予算を決定', 'category' => 'policy', 'priority' => 'high' }
+      decisions: [
+        { content: 'プロジェクト予算を決定', category: 'policy', priority: 'high' }
       ],
-      'actions' => [
+      actions: [
         {
-          'task' => 'レポート作成',
-          'assignee' => '山田太郎',
-          'priority' => 'high',
-          'deadline' => '2025-01-20',
-          'deadline_formatted' => '2025/01/20'
+          task: 'レポート作成',
+          assignee: '山田太郎',
+          priority: 'high',
+          deadline: '2025-01-20',
+          deadline_formatted: '2025/01/20'
         }
       ],
-      'executor_info' => {
+      executor_info: {
         'user_id' => 'U123456789'
       }
     }
@@ -76,7 +76,7 @@ RSpec.describe SlackMessageBuilder do
 
     context 'actionsが空の場合' do
       let(:analysis_result_without_actions) do
-        analysis_result.dup.tap { |ar| ar['actions'] = [] }
+        analysis_result.dup.tap { |ar| ar[:actions] = [] }
       end
 
       it 'アクションセクションを含まずにメッセージを構築する' do
@@ -97,17 +97,17 @@ RSpec.describe SlackMessageBuilder do
   describe '#sort_decisions' do
     let(:unsorted_decisions) do
       [
-        { 'content' => 'Low priority decision', 'priority' => 'low' },
-        { 'content' => 'High priority decision', 'priority' => 'high' },
-        { 'content' => 'Medium priority decision', 'priority' => 'medium' },
-        { 'content' => 'No priority decision', 'priority' => nil }
+        { content: 'Low priority decision', priority: 'low' },
+        { content: 'High priority decision', priority: 'high' },
+        { content: 'Medium priority decision', priority: 'medium' },
+        { content: 'No priority decision', priority: nil }
       ]
     end
 
     it '優先度順（high → medium → low → nil）で決定事項をソートする' do
       sorted = builder.send(:sort_decisions, unsorted_decisions)
 
-      expect(sorted.map { |d| d['content'] }).to eq([
+      expect(sorted.map { |d| d[:content] }).to eq([
         'High priority decision',
         'Medium priority decision',
         'Low priority decision',
@@ -119,10 +119,10 @@ RSpec.describe SlackMessageBuilder do
   describe '#build_action_text' do
     it 'アクション項目に優先度絵文字を含む' do
       action = {
-        'task' => 'レポート作成',
-        'assignee' => '山田太郎',
-        'priority' => 'high',
-        'deadline_formatted' => '2025/01/20'
+        task: 'レポート作成',
+        assignee: '山田太郎',
+        priority: 'high',
+        deadline_formatted: '2025/01/20'
       }
 
       result = builder.send(:build_action_text, action)
@@ -131,10 +131,10 @@ RSpec.describe SlackMessageBuilder do
 
     it 'medium優先度のアクション項目に黄色絵文字を含む' do
       action = {
-        'task' => 'テスト実行',
-        'assignee' => '佐藤花子',
-        'priority' => 'medium',
-        'deadline_formatted' => '期日未定'
+        task: 'テスト実行',
+        assignee: '佐藤花子',
+        priority: 'medium',
+        deadline_formatted: '期日未定'
       }
 
       result = builder.send(:build_action_text, action)
@@ -143,10 +143,10 @@ RSpec.describe SlackMessageBuilder do
 
     it '優先度がnilの場合はlow優先度として白い絵文字を使用' do
       action = {
-        'task' => 'ドキュメント更新',
-        'assignee' => '未定',
-        'priority' => nil,
-        'deadline_formatted' => '期日未定'
+        task: 'ドキュメント更新',
+        assignee: '未定',
+        priority: nil,
+        deadline_formatted: '期日未定'
       }
 
       result = builder.send(:build_action_text, action)

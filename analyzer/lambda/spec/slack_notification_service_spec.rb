@@ -13,12 +13,12 @@ RSpec.describe SlackNotificationService do
   let(:service) { described_class.new(bot_token, channel_id, logger) }
   let(:analysis_result) do
     {
-      'meeting_summary' => {
-        'title' => 'テスト会議',
-        'date' => '2025-01-15'
+      meeting_summary: {
+        title: 'テスト会議',
+        date: '2025-01-15'
       },
-      'decisions' => [],
-      'actions' => []
+      decisions: [],
+      actions: []
     }
   end
   let(:main_message) do
@@ -113,9 +113,9 @@ RSpec.describe SlackNotificationService do
     context 'スレッド返信が必要な場合' do
       let(:analysis_result_with_suggestions) do
         analysis_result.merge({
-          'atmosphere' => { 'overall_tone' => 'positive' },
-          'improvement_suggestions' => [
-            { 'suggestion' => '改善提案1' }
+          atmosphere: { overall_tone: 'positive' },
+          improvement_suggestions: [
+            { suggestion: '改善提案1' }
           ]
         })
       end
