@@ -280,29 +280,6 @@ RSpec.describe GeminiClient do
     end
   end
 
-  describe '#summarize' do
-    it 'provides backward compatibility for legacy interface' do
-      allow(mock_response).to receive(:is_a?).with(Net::HTTPSuccess).and_return(true)
-      allow(mock_response).to receive(:code).and_return('200')
-      allow(mock_response).to receive(:body).and_return(
-        {
-          candidates: [
-            {
-              content: {
-                parts: [
-                  { text: { 'meeting_summary' => {} }.to_json }
-                ]
-              }
-            }
-          ]
-        }.to_json
-      )
-
-      result = gemini_client.summarize(test_text)
-      expect(result).to be_a(Hash)
-      expect(result).to have_key('meeting_summary')
-    end
-  end
 
   describe 'constants' do
     it 'has correct API URL' do

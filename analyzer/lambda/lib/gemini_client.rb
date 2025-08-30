@@ -31,10 +31,6 @@ class GeminiClient
     handle_response(response)
   end
 
-  def summarize(text)
-    # Legacy method for backward compatibility
-    analyze_meeting(text)
-  end
 
   private
 
