@@ -10,8 +10,7 @@ RSpec.describe LambdaHandler do
   let(:google_drive_client) { instance_double(GoogleDriveClient) }
   let(:s3_client) { instance_double(S3Client) }
   let(:context) { double(aws_request_id: 'test-request-id') }
-  let(:meeting_processor) { instance_double(MeetingTranscriptProcessor) }
-  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client, meeting_processor: meeting_processor, s3_client: s3_client) }
+  let(:handler) { described_class.new(logger: logger, secrets_manager: secrets_manager, gemini_client: gemini_client, s3_client: s3_client) }
 
   before do
     allow(logger).to receive(:level=)
@@ -190,27 +189,21 @@ RSpec.describe LambdaHandler do
       end
       
       before do
-        ENV['GOOGLE_CALENDAR_ENABLED'] = 'true'
-        ENV['USER_MAPPING_ENABLED'] = 'true'
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
         allow(GoogleDriveClient).to receive(:new).and_return(google_drive_client)
         allow(google_drive_client).to receive(:get_file_content).and_return('meeting content')
         allow(gemini_client).to receive(:analyze_meeting).and_return({
           'actions' => [{ 'task' => 'Test task', 'assignee' => 'User' }]
         })
-        allow(meeting_processor).to receive(:process_transcript).and_return(mapping_result)
-        allow(meeting_processor).to receive(:get_statistics).and_return({})
         allow(s3_client).to receive(:get_verification_prompt).and_return("Test verification prompt template")
       end
       
-      after do
-        ENV.delete('GOOGLE_CALENDAR_ENABLED')
-        ENV.delete('USER_MAPPING_ENABLED')
-      end
       
-      it 'ユーザーマッピングを実行する' do
+      it '議事録処理を実行する' do
         handler.handle(event: event, context: context)
-        expect(meeting_processor).to have_received(:process_transcript).with(file_id)
+        # ユーザーマッピング機能が削除されたため、基本処理のみ確認
+        expect(google_drive_client).to have_received(:get_file_content).with(file_id)
+        expect(gemini_client).to have_received(:analyze_meeting).twice
       end
     end
     

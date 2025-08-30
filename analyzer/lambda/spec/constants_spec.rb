@@ -11,7 +11,6 @@ RSpec.describe Constants do
       expect(Constants::Status).to be_a(Module)
       expect(Constants::Environment).to be_a(Module)
       expect(Constants::Validation).to be_a(Module)
-      expect(Constants::UserMapping).to be_a(Module)
     end
   end
 
@@ -187,25 +186,6 @@ RSpec.describe Constants do
     end
   end
 
-  describe 'Constants::UserMapping' do
-    context 'ユーザーマッピング設定の検証' do
-      it '適切なタイムアウトと制限値が設定されている' do
-        expect(Constants::UserMapping::MAPPING_TIMEOUT).to eq(60)
-        expect(Constants::UserMapping::MAX_THREADS).to eq(10)
-        expect(Constants::UserMapping::API_TIMEOUT).to eq(30)
-      end
-
-      it 'タイムアウト値は正の整数' do
-        expect(Constants::UserMapping::MAPPING_TIMEOUT).to be_a(Integer).and be > 0
-        expect(Constants::UserMapping::MAX_THREADS).to be_a(Integer).and be > 0
-        expect(Constants::UserMapping::API_TIMEOUT).to be_a(Integer).and be > 0
-      end
-
-      it 'APIタイムアウトがマッピングタイムアウトより小さい' do
-        expect(Constants::UserMapping::API_TIMEOUT).to be < Constants::UserMapping::MAPPING_TIMEOUT
-      end
-    end
-  end
 
   describe '境界値テスト' do
     context 'タイムアウト値の境界値検証' do
@@ -214,10 +194,6 @@ RSpec.describe Constants do
         expect(Constants::Api::HTTP_OPEN_TIMEOUT).to be_between(1, 30)
       end
 
-      it 'ユーザーマッピングタイムアウトが実用的な範囲内' do
-        expect(Constants::UserMapping::MAPPING_TIMEOUT).to be_between(30, 300)
-        expect(Constants::UserMapping::API_TIMEOUT).to be_between(10, 60)
-      end
     end
 
     context '表示制限の境界値検証' do

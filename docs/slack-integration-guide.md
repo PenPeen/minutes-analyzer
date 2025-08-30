@@ -36,11 +36,6 @@ SLACK_CHANNEL_ID=C1234567890  # 投稿先チャンネルのID
 - `chat:write` - メッセージ送信
 - `chat:write.public` - パブリックチャンネルへの投稿
 - `commands` - スラッシュコマンド
-- `users:read.email` - ユーザーメールアドレス取得（Google Drive連携用）
-
-### オプションスコープ（将来拡張用）
-- `users.profile:read` - ユーザープロフィール情報
-- `users:read` - ワークスペースユーザー一覧
 
 ## 投稿先チャンネルの設定
 
@@ -105,7 +100,7 @@ SLACK_CHANNEL_ID=C1234567890  # 投稿先チャンネルのID
 {
   "error": "missing_scope",
   "needed": "chat:write",
-  "provided": "users:read,users:read.email"
+  "provided": "commands"
 }
 ```
 

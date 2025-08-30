@@ -226,7 +226,7 @@ class SlackMessageBuilder
   def build_action_text(action)
     priority_emoji = Constants::Priority::EMOJIS[action['priority']] || Constants::Priority::EMOJIS['low']
 
-    assignee = action['slack_mention'] || action['assignee'] || '未定'
+    assignee = action['assignee'] || '未定'
     deadline = action['deadline_formatted'] || '期日未定'
 
     "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
