@@ -1,6 +1,6 @@
 require 'spec_helper'
 require_relative '../lib/lambda_handler'
-require_relative '../lib/slack_client'
+require_relative '../lib/slack_notification_service'
 require_relative '../lib/google_drive_client'
 
 RSpec.describe LambdaHandler do
@@ -68,12 +68,12 @@ RSpec.describe LambdaHandler do
       end
 
       context 'Slack Bot Tokenが設定されている場合' do
-        let(:slack_client) { instance_double(SlackClient) }
+        let(:slack_client) { instance_double(SlackNotificationService) }
         let(:slack_result) { { success: true, response_code: '200' } }
         let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_BOT_TOKEN' => 'xoxb-test-token', 'SLACK_CHANNEL_ID' => 'C1234567890', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
-          allow(SlackClient).to receive(:new).and_return(slack_client)
+          allow(SlackNotificationService).to receive(:new).and_return(slack_client)
           allow(slack_client).to receive(:send_notification).and_return(slack_result)
         end
 
@@ -97,12 +97,12 @@ RSpec.describe LambdaHandler do
       end
 
       context 'Slack通知が失敗した場合' do
-        let(:slack_client) { instance_double(SlackClient) }
+        let(:slack_client) { instance_double(SlackNotificationService) }
         let(:slack_result) { { success: false, response_code: '404', error: 'channel_not_found' } }
         let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'SLACK_BOT_TOKEN' => 'xoxb-test-token', 'SLACK_CHANNEL_ID' => 'C1234567890', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
 
         before do
-          allow(SlackClient).to receive(:new).and_return(slack_client)
+          allow(SlackNotificationService).to receive(:new).and_return(slack_client)
           allow(slack_client).to receive(:send_notification).and_return(slack_result)
         end
 
