@@ -69,7 +69,7 @@ RSpec.describe IntegrationService do
 
         expect(notion_service).to have_received(:create_meeting_page).with(analysis_result)
         expect(slack_service).to have_received(:send_notification).with(
-          analysis_result.merge('slack_mentions' => nil, 'executor_info' => executor_info),
+          analysis_result.merge(slack_mentions: nil, executor_info: executor_info),
           'https://notion.so/page123'
         )
         expect(result).to eq({
@@ -93,7 +93,7 @@ RSpec.describe IntegrationService do
 
         expect(notion_service).to have_received(:create_meeting_page).with(analysis_result)
         expect(slack_service).to have_received(:send_notification).with(
-          analysis_result.merge('slack_mentions' => nil, 'executor_info' => executor_info),
+          analysis_result.merge(slack_mentions: nil, executor_info: executor_info),
           nil
         )
         expect(result).to eq({
@@ -134,7 +134,7 @@ RSpec.describe IntegrationService do
 
         expect(NotionIntegrationService).not_to have_received(:new)
         expect(slack_service).to have_received(:send_notification).with(
-          analysis_result.merge('slack_mentions' => nil, 'executor_info' => executor_info),
+          analysis_result.merge(slack_mentions: nil, executor_info: executor_info),
           nil
         )
         expect(result[:notion]).to be_nil

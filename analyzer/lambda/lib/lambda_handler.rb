@@ -53,15 +53,15 @@ class LambdaHandler
       analysis_result = analyze_with_gemini(input_text, secrets)
       
       # オリジナルファイル名を追加（タイトル整形用）
-      analysis_result['original_file_name'] = file_metadata[:name] || file_name
+      analysis_result[:original_file_name] = file_metadata[:name] || file_name
       
       # ファイルメタデータを追加（Notion連携用）
-      analysis_result['file_metadata'] = file_metadata
+      analysis_result[:file_metadata] = file_metadata
       
       # URL入力の場合は追加の情報を含める
       if input_type == 'url' && google_doc_url
-        analysis_result['source_url'] = google_doc_url
-        analysis_result['input_type'] = 'url'
+        analysis_result[:source_url] = google_doc_url
+        analysis_result[:input_type] = :url
       end
       
       # 外部サービス連携（実行者情報を追加）
