@@ -99,6 +99,63 @@ RSpec.describe NotionPageBuilder do
         expect(properties['タイトル']['title'][0]['text']['content']).to eq('2025-01-20 Untitled Meeting')
       end
     end
+
+    context 'when file_metadata with web_view_link is provided' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'date' => '2025-01-15',
+            'title' => '新機能リリース進捗確認MTG'
+          },
+          'file_metadata' => {
+            web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
+          }
+        }
+      end
+
+      it 'includes Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties['Google Docs URL']['url']).to eq('https://docs.google.com/document/d/1234567890abcdef/edit')
+      end
+    end
+
+    context 'when file_metadata is present but web_view_link is nil' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'date' => '2025-01-15',
+            'title' => '新機能リリース進捗確認MTG'
+          },
+          'file_metadata' => {
+            web_view_link: nil
+          }
+        }
+      end
+
+      it 'does not include Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties.key?('Google Docs URL')).to be false
+      end
+    end
+
+    context 'when file_metadata is not present' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'date' => '2025-01-15',
+            'title' => '新機能リリース進捗確認MTG'
+          }
+        }
+      end
+
+      it 'does not include Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties.key?('Google Docs URL')).to be false
+      end
+    end
   end
 
   describe '#build_meeting_page' do

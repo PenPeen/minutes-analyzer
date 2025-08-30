@@ -19,13 +19,13 @@ class GoogleDriveClient
       # Initialize the Drive service if not already done
       initialize_drive_service unless @drive_service
       
-      # Get file metadata first
+      # Get file metadata first (including webViewLink)
       @file = @drive_service.get_file(
         file_id,
-        fields: 'id, name, size, mimeType'
+        fields: 'id, name, size, mimeType, webViewLink'
       )
       
-      @logger.info("File info - Name: #{@file.name}, Size: #{@file.size}, Type: #{@file.mime_type}")
+      @logger.info("File info - Name: #{@file.name}, Size: #{@file.size}, Type: #{@file.mime_type}, URL: #{@file.web_view_link}")
       
       # Check if file is too large (e.g., > 100MB)
       if @file.size && @file.size > 100_000_000
@@ -36,7 +36,18 @@ class GoogleDriveClient
       content = download_file_content(@file)
       
       @logger.info("Successfully downloaded file content: #{content.length} characters")
-      [content, @file.name]
+      
+      # Return content with metadata
+      {
+        content: content,
+        metadata: {
+          id: @file.id,
+          name: @file.name,
+          size: @file.size,
+          mime_type: @file.mime_type,
+          web_view_link: @file.web_view_link
+        }
+      }
       
     rescue Google::Apis::ClientError => e
       if e.status_code == 404

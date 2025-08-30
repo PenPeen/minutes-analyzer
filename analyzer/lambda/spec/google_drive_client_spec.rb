@@ -28,7 +28,8 @@ RSpec.describe GoogleDriveClient do
         id: file_id,
         name: 'test_meeting.txt',
         size: 1024,
-        mime_type: 'text/plain'
+        mime_type: 'text/plain',
+        web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
       )
     end
 
@@ -44,7 +45,7 @@ RSpec.describe GoogleDriveClient do
       before do
         # Mock get_file with different parameter combinations
         allow(mock_drive_service).to receive(:get_file) do |file_id_arg, options|
-          if options[:fields] == 'id, name, size, mimeType'
+          if options[:fields] == 'id, name, size, mimeType, webViewLink'
             mock_file
           elsif options.key?(:download_dest)
             options[:download_dest].write(file_content)
@@ -57,14 +58,24 @@ RSpec.describe GoogleDriveClient do
         end
       end
 
-      it 'returns the file content' do
+      it 'returns the file content with metadata' do
         result = client.get_file_content(file_id)
-        expect(result).to eq([file_content, 'test_meeting.txt'])
+        expected_result = {
+          content: file_content,
+          metadata: {
+            id: file_id,
+            name: 'test_meeting.txt',
+            size: 1024,
+            mime_type: 'text/plain',
+            web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
+          }
+        }
+        expect(result).to eq(expected_result)
       end
 
-      it 'logs file information' do
+      it 'logs file information including URL' do
         expect(logger).to receive(:info).with("Fetching file content from Google Drive: #{file_id}")
-        expect(logger).to receive(:info).with(/File info - Name: test_meeting.txt/)
+        expect(logger).to receive(:info).with(/File info - Name: test_meeting.txt.*URL: https:\/\/docs\.google\.com/)
         expect(logger).to receive(:info).with(/Successfully downloaded file content/)
         
         client.get_file_content(file_id)
@@ -77,11 +88,12 @@ RSpec.describe GoogleDriveClient do
           id: file_id,
           name: 'large_file.txt',
           size: 150_000_000,  # 150MB
-          mime_type: 'text/plain'
+          mime_type: 'text/plain',
+          web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
         )
         
         allow(mock_drive_service).to receive(:get_file)
-          .with(file_id, fields: 'id, name, size, mimeType')
+          .with(file_id, fields: 'id, name, size, mimeType, webViewLink')
           .and_return(large_file)
       end
 
@@ -97,14 +109,15 @@ RSpec.describe GoogleDriveClient do
           id: file_id,
           name: 'test_meeting.unknown',
           size: 1000,
-          mime_type: 'application/octet-stream'  # Unknown MIME type to trigger fallback
+          mime_type: 'application/octet-stream',  # Unknown MIME type to trigger fallback
+          web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
         )
       end
 
       before do
         # Mock get_file with different parameter combinations
         allow(mock_drive_service).to receive(:get_file) do |file_id_arg, options|
-          if options[:fields] == 'id, name, size, mimeType'
+          if options[:fields] == 'id, name, size, mimeType, webViewLink'
             unknown_mime_file
           elsif options.key?(:download_dest)
             options[:download_dest].write(file_content)
@@ -116,11 +129,21 @@ RSpec.describe GoogleDriveClient do
           .and_raise(Google::Apis::ClientError.new("Export not supported"))
       end
 
-      it 'falls back to direct download and returns content' do
+      it 'falls back to direct download and returns content with metadata' do
         expect(logger).to receive(:warn).with(/Export failed, trying direct download/)
         
         result = client.get_file_content(file_id)
-        expect(result).to eq([file_content, 'test_meeting.unknown'])
+        expected_result = {
+          content: file_content,
+          metadata: {
+            id: file_id,
+            name: 'test_meeting.unknown',
+            size: 1000,
+            mime_type: 'application/octet-stream',
+            web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
+          }
+        }
+        expect(result).to eq(expected_result)
       end
     end
 
