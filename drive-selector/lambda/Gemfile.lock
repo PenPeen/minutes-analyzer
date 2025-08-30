@@ -36,7 +36,6 @@ GEM
     declarative (0.0.20)
     diff-lcs (1.6.2)
     docile (1.4.1)
-    dotenv (2.8.1)
     faraday (2.13.4)
       faraday-net_http (>= 2.0, < 3.5)
       json
@@ -172,7 +171,6 @@ DEPENDENCIES
   aws-sdk-lambda (~> 1.0)
   aws-sdk-secretsmanager (~> 1.0)
   aws-sdk-sts (~> 1.0)
-  dotenv (~> 2.8)
   google-apis-drive_v3 (~> 0.44)
   googleauth (~> 1.8)
   net-http
