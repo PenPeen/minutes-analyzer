@@ -40,13 +40,18 @@ class LambdaHandler
       validate_secrets(secrets)
       
       # Google Driveからファイル取得
-      input_text = fetch_file_content(file_id, secrets)
+      file_data = fetch_file_content(file_id, secrets)
+      input_text = file_data[:content]
+      file_metadata = file_data[:metadata]
       
       # Gemini APIで分析
       analysis_result = analyze_with_gemini(input_text, secrets)
       
       # オリジナルファイル名を追加（タイトル整形用）
       analysis_result['original_file_name'] = file_name
+      
+      # ファイルメタデータを追加（Google Docs URLを含む）
+      analysis_result['file_metadata'] = file_metadata
       
       # 外部サービス連携（実行者情報を追加）
       executor_info = { user_id: user_id, user_email: user_email }

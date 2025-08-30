@@ -21,10 +21,11 @@ class GoogleDriveClient
       # Get file metadata first
       file = @drive_service.get_file(
         file_id,
-        fields: 'id, name, size, mimeType'
+        fields: 'id, name, size, mimeType, webViewLink'
       )
       
       @logger.info("File info - Name: #{file.name}, Size: #{file.size}, Type: #{file.mime_type}")
+      @logger.info("File URL: #{file.web_view_link}")
       
       # Check if file is too large (e.g., > 100MB)
       if file.size && file.size > 100_000_000
@@ -35,7 +36,18 @@ class GoogleDriveClient
       content = download_file_content(file_id)
       
       @logger.info("Successfully downloaded file content: #{content.length} characters")
-      content
+      
+      # Return both content and metadata
+      {
+        content: content,
+        metadata: {
+          id: file.id,
+          name: file.name,
+          size: file.size,
+          mime_type: file.mime_type,
+          web_view_link: file.web_view_link
+        }
+      }
       
     rescue Google::Apis::Error => e
       @logger.error("Google Drive API error: #{e.message}")

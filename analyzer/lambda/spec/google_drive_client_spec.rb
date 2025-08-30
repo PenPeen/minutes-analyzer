@@ -28,7 +28,8 @@ RSpec.describe GoogleDriveClient do
         id: file_id,
         name: 'test_meeting.txt',
         size: 1024,
-        mime_type: 'text/plain'
+        mime_type: 'text/plain',
+        web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
       )
     end
 
@@ -43,7 +44,7 @@ RSpec.describe GoogleDriveClient do
 
       before do
         allow(mock_drive_service).to receive(:get_file)
-          .with(file_id, fields: 'id, name, size, mimeType')
+          .with(file_id, fields: 'id, name, size, mimeType, webViewLink')
           .and_return(mock_file)
         
         # Mock export_file for text/plain
@@ -52,14 +53,18 @@ RSpec.describe GoogleDriveClient do
         end
       end
 
-      it 'returns the file content' do
+      it 'returns the file content with metadata' do
         result = client.get_file_content(file_id)
-        expect(result).to eq(file_content)
+        expect(result).to be_a(Hash)
+        expect(result[:content]).to eq(file_content)
+        expect(result[:metadata]).to include(:web_view_link)
+        expect(result[:metadata][:web_view_link]).to eq('https://docs.google.com/document/d/1234567890abcdef/edit')
       end
 
       it 'logs file information' do
         expect(logger).to receive(:info).with("Fetching file content from Google Drive: #{file_id}")
         expect(logger).to receive(:info).with(/File info - Name: test_meeting.txt/)
+        expect(logger).to receive(:info).with(/File URL:/)
         expect(logger).to receive(:info).with(/Successfully downloaded file content/)
         
         client.get_file_content(file_id)
@@ -90,7 +95,7 @@ RSpec.describe GoogleDriveClient do
 
       before do
         allow(mock_drive_service).to receive(:get_file)
-          .with(file_id, fields: 'id, name, size, mimeType')
+          .with(file_id, fields: 'id, name, size, mimeType, webViewLink')
           .and_return(mock_file)
         
         # Mock export_file to fail
@@ -111,7 +116,7 @@ RSpec.describe GoogleDriveClient do
         expect(logger).to receive(:warn).with(/Export failed, trying direct download/)
         
         result = client.get_file_content(file_id)
-        expect(result).to eq(file_content)
+        expect(result[:content]).to eq(file_content)
       end
     end
 

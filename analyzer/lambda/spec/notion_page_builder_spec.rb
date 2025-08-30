@@ -38,6 +38,45 @@ RSpec.describe NotionPageBuilder do
       end
     end
 
+    context 'when file_metadata with webViewLink is present' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'date' => '2025-01-15',
+            'title' => '新機能リリース進捗確認MTG'
+          },
+          'file_metadata' => {
+            web_view_link: 'https://docs.google.com/document/d/1234567890abcdef/edit'
+          }
+        }
+      end
+
+      it 'includes Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties['Google Docs URL']).not_to be_nil
+        expect(properties['Google Docs URL']['url']).to eq('https://docs.google.com/document/d/1234567890abcdef/edit')
+      end
+    end
+
+    context 'when file_metadata is missing or webViewLink is nil' do
+      let(:analysis_result) do
+        {
+          'meeting_summary' => {
+            'date' => '2025-01-15',
+            'title' => '新機能リリース進捗確認MTG'
+          },
+          'file_metadata' => {}
+        }
+      end
+
+      it 'does not include Google Docs URL property' do
+        properties = builder.build_properties(analysis_result)
+        
+        expect(properties['Google Docs URL']).to be_nil
+      end
+    end
+
     context 'when meeting_summary has no date' do
       let(:analysis_result) do
         {

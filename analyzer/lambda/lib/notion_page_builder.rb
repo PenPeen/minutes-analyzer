@@ -28,7 +28,7 @@ class NotionPageBuilder
     # 日付付きタイトルを生成
     title_with_date = "#{date_str} #{title}"
     
-    {
+    properties = {
       'タイトル' => {
         'title' => [
           {
@@ -42,6 +42,15 @@ class NotionPageBuilder
       '参加者' => build_participants_property(meeting_summary['participants']),
       'スコア' => build_health_score_property(analysis_result)
     }
+    
+    # Google Docs URLを追加
+    if analysis_result['file_metadata'] && analysis_result['file_metadata'][:web_view_link]
+      properties['Google Docs URL'] = {
+        'url' => analysis_result['file_metadata'][:web_view_link]
+      }
+    end
+    
+    properties
   end
   
   def build_content(analysis_result)
