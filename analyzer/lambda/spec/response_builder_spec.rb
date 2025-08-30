@@ -115,16 +115,16 @@ RSpec.describe ResponseBuilder do
   describe '.success_response' do
     let(:analysis_result) do
       {
-        'meeting_summary' => {
-          'title' => 'テスト会議',
-          'date' => '2025-01-15',
+        meeting_summary: {
+          title: 'テスト会議',
+          date: '2025-01-15',
           'duration_minutes' => 30
         },
-        'decisions' => [
-          { 'content' => 'テスト決定事項' }
+        decisions: [
+          { content: 'テスト決定事項' }
         ],
-        'actions' => [
-          { 'task' => 'テストタスク', 'assignee' => '担当者' }
+        actions: [
+          { task: 'テストタスク', assignee: '担当者' }
         ]
       }
     end
@@ -140,7 +140,7 @@ RSpec.describe ResponseBuilder do
         
         body = JSON.parse(result[:body])
         expect(body['message']).to eq('Analysis complete.')
-        expect(body['analysis']).to eq(analysis_result)
+        expect(body['analysis']).to eq(ResponseBuilder.send(:deep_stringify_keys, analysis_result))
         expect(body['integrations']['slack']).to eq('not_sent')
         expect(body['integrations']['notion']).to eq('not_created')
       end
@@ -316,26 +316,26 @@ RSpec.describe ResponseBuilder do
     context '複雑な分析結果' do
       let(:complex_analysis) do
         {
-          'meeting_summary' => {
-            'title' => 'プロジェクト進捗確認',
-            'date' => '2025-01-15',
-            'participants' => ['田中太郎', '佐藤花子', 'John Smith'],
+          meeting_summary: {
+            title: 'プロジェクト進捗確認',
+            date: '2025-01-15',
+            participants: ['田中太郎', '佐藤花子', 'John Smith'],
             'duration_minutes' => 45
           },
-          'decisions' => [
-            { 'content' => '価格設定を500円に決定', 'category' => 'pricing' },
-            { 'content' => 'リリース日を2月1日に設定', 'category' => 'schedule' }
+          decisions: [
+            { content: '価格設定を500円に決定', category: 'pricing' },
+            { content: 'リリース日を2月1日に設定', category: 'schedule' }
           ],
-          'actions' => [
+          actions: [
             {
-              'task' => 'セキュリティテストの実施',
-              'assignee' => 'セキュリティチーム',
-              'priority' => 'high',
-              'deadline' => '来週末'
+              task: 'セキュリティテストの実施',
+              assignee: 'セキュリティチーム',
+              priority: 'high',
+              deadline: '来週末'
             }
           ],
-          'health_assessment' => {
-            'overall_score' => 85,
+          health_assessment: {
+            overall_score: 85,
             'contradictions' => [],
             'unresolved_issues' => ['予算の最終確認']
           }
@@ -370,10 +370,10 @@ RSpec.describe ResponseBuilder do
     context '大量のデータ' do
       it '大きな分析結果が正しく処理される' do
         large_analysis = {
-          'actions' => (1..100).map do |i|
+          actions: (1..100).map do |i|
             {
-              'task' => "タスク #{i}",
-              'assignee' => "担当者#{i}",
+              task: "タスク #{i}",
+              assignee: "担当者#{i}",
               'description' => 'x' * 500
             }
           end

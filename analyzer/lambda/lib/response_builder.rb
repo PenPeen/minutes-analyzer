@@ -37,7 +37,7 @@ class ResponseBuilder
     
     response_body = {
       message: "Analysis complete.",
-      analysis: analysis_result,
+      analysis: deep_stringify_keys(analysis_result),
       integrations: {
         slack: slack_integration_status(slack_result),
         notion: notion_integration_status(notion_result)
@@ -59,5 +59,16 @@ class ResponseBuilder
   def self.notion_integration_status(result)
     return 'not_created' if result.nil?
     result[:success] ? 'created' : 'not_created'
+  end
+  
+  def self.deep_stringify_keys(obj)
+    case obj
+    when Hash
+      obj.transform_keys(&:to_s).transform_values { |v| deep_stringify_keys(v) }
+    when Array
+      obj.map { |v| deep_stringify_keys(v) }
+    else
+      obj
+    end
   end
 end

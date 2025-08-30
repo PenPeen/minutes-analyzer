@@ -42,7 +42,7 @@ class SlackMessageBuilder
   private
 
   def build_mention_message(analysis_result)
-    executor_info = analysis_result['executor_info']
+    executor_info = analysis_result[:executor_info]
     return nil unless executor_info && executor_info[:user_id]
 
     {
@@ -55,14 +55,14 @@ class SlackMessageBuilder
   end
 
   def create_fallback_text(analysis_result)
-    meeting_summary = analysis_result['meeting_summary'] || {}
-    title = meeting_summary['title'] || 'Meeting'
+    meeting_summary = analysis_result[:meeting_summary] || {}
+    title = meeting_summary[:title] || 'Meeting'
     "📝 #{title}の議事録レビューが完了しました！"
   end
 
   def build_header(analysis_result)
-    meeting_summary = analysis_result['meeting_summary'] || {}
-    original_title = meeting_summary['title'] || 'Meeting'
+    meeting_summary = analysis_result[:meeting_summary] || {}
+    original_title = meeting_summary[:title] || 'Meeting'
 
     # タイトル整形処理を追加
     formatted_title = format_meeting_title(original_title, analysis_result)
@@ -78,17 +78,17 @@ class SlackMessageBuilder
   end
 
   def build_summary_section(analysis_result)
-    meeting_summary = analysis_result['meeting_summary'] || {}
+    meeting_summary = analysis_result[:meeting_summary] || {}
 
     fields = [
       {
         type: "mrkdwn",
-        text: "*:calendar: 日時:*\n#{meeting_summary['date'] || 'N/A'}"
+        text: "*:calendar: 日時:*\n#{meeting_summary[:date] || 'N/A'}"
       }
     ]
 
     # 参加者を制限して表示
-    participants_text = build_participants_text(meeting_summary['participants'])
+    participants_text = build_participants_text(meeting_summary[:participants])
     if participants_text
       fields << {
         type: "mrkdwn",
@@ -104,14 +104,14 @@ class SlackMessageBuilder
   end
 
   def build_decisions_section(analysis_result)
-    decisions = analysis_result['decisions'] || []
+    decisions = analysis_result[:decisions] || []
     return nil if decisions.empty?
 
     sorted_decisions = sort_decisions(decisions)
     text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
 
     sorted_decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
-      text_lines << "#{index + 1}. #{decision['content']}"
+      text_lines << "#{index + 1}. #{decision[:content]}"
     end
 
     if decisions.size > MAX_DECISIONS
@@ -128,7 +128,7 @@ class SlackMessageBuilder
   end
 
   def build_actions_section(analysis_result)
-    actions = analysis_result['actions'] || []
+    actions = analysis_result[:actions] || []
     return nil if actions.empty?
 
     sorted_actions = sort_actions(actions)
@@ -144,7 +144,7 @@ class SlackMessageBuilder
     end
 
     # 期日なしアクションの警告
-    actions_without_deadline = actions.select { |a| a['deadline'].nil? }
+    actions_without_deadline = actions.select { |a| a[:deadline].nil? }
     if actions_without_deadline.any?
       text_lines << ""
       text_lines << "⚠️ *#{actions_without_deadline.size}件のアクションに期日が設定されていません*"
@@ -160,16 +160,16 @@ class SlackMessageBuilder
   end
 
   def build_atmosphere_section(analysis_result)
-    atmosphere = analysis_result['atmosphere'] || {}
-    return nil unless atmosphere['overall_tone']
+    atmosphere = analysis_result[:atmosphere] || {}
+    return nil unless atmosphere[:overall_tone]
 
-    tone_japanese = get_tone_japanese(atmosphere['overall_tone'])
+    tone_japanese = get_tone_japanese(atmosphere[:overall_tone])
 
     text_lines = ["*🌡️ 会議の雰囲気*"]
     text_lines << tone_japanese
 
     # Geminiが生成したコメントを表示
-    comment = atmosphere['comment']
+    comment = atmosphere[:comment]
     if comment && !comment.empty?
       text_lines << ""
       text_lines << comment
@@ -185,13 +185,13 @@ class SlackMessageBuilder
   end
 
   def build_suggestions_section(analysis_result)
-    suggestions = analysis_result['improvement_suggestions'] || []
+    suggestions = analysis_result[:improvement_suggestions] || []
     return nil if suggestions.empty?
 
     text_lines = ["*💡 改善提案*"]
 
     suggestions.each_with_index do |suggestion, index|
-      text_lines << "#{index + 1}. #{suggestion['suggestion']}"
+      text_lines << "#{index + 1}. #{suggestion[:suggestion]}"
     end
 
     {
@@ -218,31 +218,31 @@ class SlackMessageBuilder
   def sort_actions(actions)
     actions.sort_by do |action|
       [
-        Constants::Priority::LEVELS[action['priority']] || 3,
-        action['deadline'] || 'zzzz'
+        Constants::Priority::LEVELS[action[:priority]] || 3,
+        action[:deadline] || 'zzzz'
       ]
     end
   end
 
   def sort_decisions(decisions)
     decisions.sort_by do |decision|
-      Constants::Priority::LEVELS[decision['priority']] || 3
+      Constants::Priority::LEVELS[decision[:priority]] || 3
     end
   end
 
   def build_action_text(action)
-    priority_emoji = Constants::Priority::EMOJIS[action['priority']] || Constants::Priority::EMOJIS['low']
-    assignee = action['assignee'] || '未定'
-    deadline = action['deadline_formatted'] || '期日未定'
+    priority_emoji = Constants::Priority::EMOJIS[action[:priority]] || Constants::Priority::EMOJIS['low']
+    assignee = action[:assignee] || '未定'
+    deadline = action[:deadline_formatted] || '期日未定'
 
-    "#{priority_emoji} #{action['task']} - #{assignee}（#{deadline}）"
+    "#{priority_emoji} #{action[:task]} - #{assignee}（#{deadline}）"
   end
 
   # 議事録タイトルを整形するメソッド
   def format_meeting_title(original_title, analysis_result)
     # オリジナルファイル名が利用可能な場合はそれを使用
-    if analysis_result['original_file_name']
-      file_name = analysis_result['original_file_name']
+    if analysis_result[:original_file_name]
+      file_name = analysis_result[:original_file_name]
       return looks_like_filename?(file_name) ? shorten_filename_title(file_name) : file_name
     end
 

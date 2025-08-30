@@ -25,19 +25,24 @@ RSpec.describe LambdaHandler do
     context '正常なケース' do
       let(:event) { { 'body' => JSON.generate({ 'file_id' => 'test-file-id', 'file_name' => 'test.txt' }) } }
       let(:secrets) { { 'GEMINI_API_KEY' => 'test-api-key', 'GOOGLE_SERVICE_ACCOUNT_JSON' => '{"type":"service_account"}' } }
-      let(:file_content) { 'meeting transcript' }
+      let(:file_content) { 
+        {
+          content: 'meeting transcript',
+          metadata: { name: 'test.txt', id: 'test-file-id', web_view_link: 'https://docs.google.com/document/d/test-file-id/edit' }
+        }
+      }
       let(:summary) { 
         {
-          'meeting_summary' => {
-            'title' => 'テスト会議',
-            'date' => '2025-01-15',
-            'duration_minutes' => 30
+          meeting_summary: {
+            title: 'テスト会議',
+            date: '2025-01-15',
+            duration_minutes: 30
           },
-          'decisions' => [
-            { 'content' => 'テスト決定事項' }
+          decisions: [
+            { content: 'テスト決定事項' }
           ],
-          'actions' => [
-            { 'task' => 'テストタスク', 'assignee' => '担当者' }
+          actions: [
+            { task: 'テストタスク', assignee: '担当者' }
           ]
         }
       }
@@ -54,8 +59,12 @@ RSpec.describe LambdaHandler do
         it '成功レスポンスを返す（Slack通知なし）' do
           result = handler.handle(event: event, context: context)
 
+          expected_analysis = summary.dup
+          expected_analysis[:file_metadata] = { id: 'test-file-id', name: 'test.txt', web_view_link: 'https://docs.google.com/document/d/test-file-id/edit' }
+          expected_analysis[:original_file_name] = 'test.txt'
+
           expect(result[:statusCode]).to eq(200)
-          expect(JSON.parse(result[:body])['analysis']).to eq(summary)
+          expect(JSON.parse(result[:body])['analysis']).to eq(JSON.parse(expected_analysis.to_json))
           expect(JSON.parse(result[:body])['message']).to eq('Analysis complete.')
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('not_sent')
           expect(JSON.parse(result[:body])['integrations']['notion']).to eq('not_created')
@@ -80,17 +89,38 @@ RSpec.describe LambdaHandler do
         it '成功レスポンスを返す（Slack通知あり）' do
           result = handler.handle(event: event, context: context)
 
+          expected_analysis = summary.dup
+          expected_analysis[:file_metadata] = { id: 'test-file-id', name: 'test.txt', web_view_link: 'https://docs.google.com/document/d/test-file-id/edit' }
+          expected_analysis[:original_file_name] = 'test.txt'
+
           expect(result[:statusCode]).to eq(200)
-          expect(JSON.parse(result[:body])['analysis']).to eq(summary)
+          expect(JSON.parse(result[:body])['analysis']).to eq(JSON.parse(expected_analysis.to_json))
           expect(JSON.parse(result[:body])['integrations']['slack']).to eq('sent')
           expect(JSON.parse(result[:body])['slack_notification']).to eq(JSON.parse(slack_result.to_json))
         end
 
         it 'Slack通知を送信' do
-          expected_summary = summary.dup
-          expected_summary['executor_info'] = { user_id: nil, user_email: nil }
-          expected_summary['original_file_name'] = 'test.txt'
-          expected_summary['slack_mentions'] = nil
+          expected_summary = {
+            meeting_summary: {
+              title: 'テスト会議',
+              date: '2025-01-15',
+              duration_minutes: 30
+            },
+            decisions: [
+              { content: 'テスト決定事項' }
+            ],
+            actions: [
+              { task: 'テストタスク', assignee: '担当者' }
+            ],
+            file_metadata: {
+              id: 'test-file-id',
+              name: 'test.txt',
+              web_view_link: 'https://docs.google.com/document/d/test-file-id/edit'
+            },
+            original_file_name: 'test.txt',
+            executor_info: { user_id: nil, user_email: nil },
+            slack_mentions: nil
+          }
           expect(slack_client).to receive(:send_notification).with(expected_summary, nil)
           handler.handle(event: event, context: context)
         end
@@ -191,9 +221,12 @@ RSpec.describe LambdaHandler do
       before do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
         allow(GoogleDriveClient).to receive(:new).and_return(google_drive_client)
-        allow(google_drive_client).to receive(:get_file_content).and_return('meeting content')
+        allow(google_drive_client).to receive(:get_file_content).and_return({
+          content: 'meeting content',
+          metadata: { name: 'test.txt', id: 'test-file-id', web_view_link: 'https://docs.google.com/document/d/test-file-id/edit' }
+        })
         allow(gemini_client).to receive(:analyze_meeting).and_return({
-          'actions' => [{ 'task' => 'Test task', 'assignee' => 'User' }]
+          actions: [{ task: 'Test task', assignee: 'User' }]
         })
         allow(s3_client).to receive(:get_verification_prompt).and_return("Test verification prompt template")
       end
@@ -222,16 +255,16 @@ RSpec.describe LambdaHandler do
       let(:google_drive_client) { instance_double('GoogleDriveClient') }
       let(:summary) { 
         {
-          'meeting_summary' => {
-            'title' => 'テスト会議',
-            'date' => '2025-01-15',
-            'duration_minutes' => 30
+          meeting_summary: {
+            title: 'テスト会議',
+            date: '2025-01-15',
+            duration_minutes: 30
           },
-          'decisions' => [
-            { 'content' => 'テスト決定事項' }
+          decisions: [
+            { content: 'テスト決定事項' }
           ],
-          'actions' => [
-            { 'task' => 'テストタスク', 'assignee' => '担当者' }
+          actions: [
+            { task: 'テストタスク', assignee: '担当者' }
           ]
         }
       }
@@ -239,7 +272,10 @@ RSpec.describe LambdaHandler do
       before do
         allow(secrets_manager).to receive(:get_secrets).and_return(secrets)
         allow(GoogleDriveClient).to receive(:new).with(google_credentials, logger, anything).and_return(google_drive_client)
-        allow(google_drive_client).to receive(:get_file_content).with(file_id).and_return([file_content, file_name])
+        allow(google_drive_client).to receive(:get_file_content).with(file_id).and_return({
+          content: file_content,
+          metadata: { name: file_name, id: file_id, web_view_link: 'https://docs.google.com/document/d/test-file-id/edit' }
+        })
         allow(s3_client).to receive(:get_verification_prompt).and_return('Verification prompt template')
         
         # 1回目の呼び出し（標準分析）

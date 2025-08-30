@@ -41,7 +41,7 @@ class IntegrationService
     
     # 実行者情報を追加
     if executor_info
-      result_with_mentions['executor_info'] = executor_info
+      result_with_mentions[:executor_info] = executor_info
     end
     
     slack_service.send_notification(result_with_mentions, notion_url)
@@ -84,7 +84,7 @@ class IntegrationService
   def enrich_with_slack_mentions(analysis_result, user_mappings)
     result_with_mentions = analysis_result.dup
     slack_mentions = user_mappings.dig(:user_mappings, :slack_mentions)
-    result_with_mentions['slack_mentions'] = slack_mentions
+    result_with_mentions[:slack_mentions] = slack_mentions
     result_with_mentions
   end
   

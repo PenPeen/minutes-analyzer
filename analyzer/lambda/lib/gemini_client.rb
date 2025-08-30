@@ -77,7 +77,7 @@ class GeminiClient
 
     # Parse the JSON response from Gemini
     begin
-      analysis_result = JSON.parse(content)
+      analysis_result = JSON.parse(content, symbolize_names: true)
       @logger.info("Successfully parsed structured response from Gemini")
       analysis_result
     rescue JSON::ParserError => e

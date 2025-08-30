@@ -13,52 +13,52 @@ RSpec.describe NotionIntegrationService do
   describe '#create_meeting_page' do
     let(:analysis_result) do
       {
-        'meeting_summary' => {
-          'title' => '週次定例会議',
-          'date' => '2025-08-04',
+        meeting_summary: {
+          title: '週次定例会議',
+          date: '2025-08-04',
           'duration_minutes' => 30,
-          'participants' => ['田中', '佐藤', '鈴木']
+          participants: ['田中', '佐藤', '鈴木']
         },
-        'decisions' => [
+        decisions: [
           {
-            'content' => '新機能のリリース日を来月15日に決定',
-            'category' => 'schedule'
+            content: '新機能のリリース日を来月15日に決定',
+            category: 'schedule'
           },
           {
-            'content' => '予算を20%増額することを承認',
-            'category' => 'policy'
+            content: '予算を20%増額することを承認',
+            category: 'policy'
           }
         ],
-        'actions' => [
+        actions: [
           {
-            'task' => '仕様書の作成',
-            'assignee' => '田中',
-            'priority' => 'high',
-            'deadline' => '2024-02-01',
-            'deadline_formatted' => '2024/02/01',
-            'suggested_steps' => ['要件整理', 'ドラフト作成', 'レビュー'],
+            task: '仕様書の作成',
+            assignee: '田中',
+            priority: 'high',
+            deadline: '2024-02-01',
+            deadline_formatted: '2024/02/01',
+            suggested_steps: ['要件整理', 'ドラフト作成', 'レビュー'],
             'timestamp' => '00:20:00',
-            'task_context' => '新機能リリースに向けた設計文書の準備'
+            task_context: '新機能リリースに向けた設計文書の準備'
           },
           {
-            'task' => 'デザイン案の提出',
-            'assignee' => '佐藤',
-            'priority' => 'medium',
-            'deadline' => nil,
-            'deadline_formatted' => '期日未定',
-            'suggested_steps' => ['コンセプト作成', 'プロトタイプ作成'],
+            task: 'デザイン案の提出',
+            assignee: '佐藤',
+            priority: 'medium',
+            deadline: nil,
+            deadline_formatted: '期日未定',
+            suggested_steps: ['コンセプト作成', 'プロトタイプ作成'],
             'timestamp' => '00:25:00',
-            'task_context' => 'UIリニューアルのためのデザイン案作成'
+            task_context: 'UIリニューアルのためのデザイン案作成'
           }
         ],
-        'health_assessment' => {
-          'overall_score' => 85,
+        health_assessment: {
+          overall_score: 85,
           'contradictions' => [],
           'unresolved_issues' => ['リソース不足の懸念あり'],
           'undefined_items' => []
         },
-        'participation_analysis' => {
-          'balance_score' => 80,
+        participation_analysis: {
+          balance_score: 80,
           'speaker_stats' => [
             { 'name' => '田中', 'speaking_count' => 10, 'speaking_ratio' => '40%' },
             { 'name' => '佐藤', 'speaking_count' => 8, 'speaking_ratio' => '35%' },
@@ -66,14 +66,14 @@ RSpec.describe NotionIntegrationService do
           ],
           'silent_participants' => []
         },
-        'atmosphere' => {
-          'overall_tone' => 'positive',
-          'comment' => 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
+        atmosphere: {
+          overall_tone: 'positive',
+          comment: 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
         },
-        'improvement_suggestions' => [
+        improvement_suggestions: [
           {
-            'category' => 'time_management',
-            'suggestion' => '議題の事前共有により時間短縮可能',
+            category: 'time_management',
+            suggestion: '議題の事前共有により時間短縮可能',
             'expected_impact' => '会議時間の20%削減'
           }
         ]
@@ -100,7 +100,7 @@ RSpec.describe NotionIntegrationService do
           )
 
         # Mock task creation
-        analysis_result['actions'].each do |action|
+        analysis_result[:actions].each do |action|
           stub_request(:post, "https://api.notion.com/v1/pages")
             .with(
               headers: {
@@ -173,22 +173,22 @@ RSpec.describe NotionIntegrationService do
   describe '#build_task_content' do
     let(:action_with_context) do
       {
-        'task' => 'タスク名',
-        'assignee' => '担当者',
-        'priority' => 'high',
-        'deadline_formatted' => '2024/02/01',
-        'timestamp' => '00:10:00',
-        'task_context' => 'これはタスクの背景情報です',
-        'suggested_steps' => ['ステップ1', 'ステップ2', 'ステップ3']
+        task: 'タスク名',
+        assignee: '担当者',
+        priority: 'high',
+        deadline_formatted: '2024/02/01',
+        timestamp: '00:10:00',
+        task_context: 'これはタスクの背景情報です',
+        suggested_steps: ['ステップ1', 'ステップ2', 'ステップ3']
       }
     end
 
     let(:action_without_context) do
       {
-        'task' => 'タスク名',
-        'assignee' => '担当者',
-        'priority' => 'medium',
-        'deadline_formatted' => '期日未定'
+        task: 'タスク名',
+        assignee: '担当者',
+        priority: 'medium',
+        deadline_formatted: '期日未定'
       }
     end
 
@@ -233,26 +233,26 @@ RSpec.describe NotionIntegrationService do
   describe 'page content structure' do
     let(:analysis_result) do
       {
-        'meeting_summary' => {
-          'title' => 'テスト会議',
-          'date' => '2025-08-04'
+        meeting_summary: {
+          title: 'テスト会議',
+          date: '2025-08-04'
         },
-        'decisions' => [
-          { 'content' => '決定事項1', 'timestamp' => '00:05:00' }
+        decisions: [
+          { content: '決定事項1', 'timestamp' => '00:05:00' }
         ],
-        'actions' => [
-          { 'task' => 'タスク1', 'assignee' => '担当者' }
+        actions: [
+          { task: 'タスク1', assignee: '担当者' }
         ],
-        'health_assessment' => {
-          'overall_score' => 90,
+        health_assessment: {
+          overall_score: 90,
           'unresolved_issues' => ['警告1']
         },
-        'atmosphere' => {
-          'overall_tone' => 'positive',
-          'comment' => 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
+        atmosphere: {
+          overall_tone: 'positive',
+          comment: 'チーム全体が積極的に議論に参加し、特にリリース計画について建設的な意見交換が行われていました。参加者からの前向きなフィードバックが多く、プロジェクトへの高いモチベーションが感じられる雰囲気でした。'
         },
-        'improvement_suggestions' => [
-          { 'category' => 'facilitation', 'suggestion' => 'アドバイス', 'expected_impact' => '改善' }
+        improvement_suggestions: [
+          { category: 'facilitation', suggestion: 'アドバイス', 'expected_impact' => '改善' }
         ]
       }
     end

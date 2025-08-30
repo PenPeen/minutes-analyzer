@@ -90,15 +90,15 @@ class SlackNotificationService
   private
 
   def should_send_thread_reply?(analysis_result)
-    atmosphere = analysis_result['atmosphere']
-    suggestions = analysis_result['improvement_suggestions']
-    (atmosphere && atmosphere['overall_tone']) || (suggestions && suggestions.any?)
+    atmosphere = analysis_result[:atmosphere]
+    suggestions = analysis_result[:improvement_suggestions]
+    (atmosphere && atmosphere[:overall_tone]) || (suggestions && suggestions.any?)
   end
   
 
   def create_fallback_text(analysis_result)
-    meeting_summary = analysis_result['meeting_summary'] || {}
-    "📝 #{meeting_summary['title'] || 'Meeting'}の議事録レビューが完了しました！"
+    meeting_summary = analysis_result[:meeting_summary] || {}
+    "📝 #{meeting_summary[:title] || 'Meeting'}の議事録レビューが完了しました！"
   end
 
 end
