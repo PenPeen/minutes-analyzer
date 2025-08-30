@@ -2,7 +2,6 @@ require_relative 'secrets_manager'
 require_relative 'gemini_client'
 require_relative 'google_drive_client'
 require_relative 'request_validator'
-require_relative 'environment_config'
 require_relative 'integration_service'
 require_relative 'response_builder'
 require_relative 's3_client'
@@ -16,8 +15,7 @@ class LambdaHandler
     @secrets_manager = secrets_manager || SecretsManager.new(@logger)
     @gemini_client = gemini_client
     
-    @config = EnvironmentConfig.new(@logger)
-    @environment = @config.environment
+    @environment = ENV.fetch('ENVIRONMENT', 'local')
     @validator = RequestValidator.new(@logger)
     @integration_service = IntegrationService.new(@logger)
     @s3_client = s3_client || S3Client.new(@logger, @environment)
