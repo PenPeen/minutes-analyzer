@@ -20,23 +20,23 @@ class GoogleDriveClient
       initialize_drive_service unless @drive_service
       
       # Get file metadata first
-      file = @drive_service.get_file(
+      @file = @drive_service.get_file(
         file_id,
         fields: 'id, name, size, mimeType'
       )
       
-      @logger.info("File info - Name: #{file.name}, Size: #{file.size}, Type: #{file.mime_type}")
+      @logger.info("File info - Name: #{@file.name}, Size: #{@file.size}, Type: #{@file.mime_type}")
       
       # Check if file is too large (e.g., > 100MB)
-      if file.size && file.size > 100_000_000
-        raise "File too large: #{file.size} bytes (max 100MB)"
+      if @file.size && @file.size > 100_000_000
+        raise "File too large: #{@file.size} bytes (max 100MB)"
       end
       
       # Download file content using the file object we already have
-      content = download_file_content(file)
+      content = download_file_content(@file)
       
       @logger.info("Successfully downloaded file content: #{content.length} characters")
-      content
+      [content, @file.name]
       
     rescue Google::Apis::ClientError => e
       if e.status_code == 404
@@ -65,6 +65,7 @@ class GoogleDriveClient
       raise
     end
   end
+
 
   private
 

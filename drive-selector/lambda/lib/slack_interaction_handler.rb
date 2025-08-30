@@ -119,7 +119,7 @@ class SlackInteractionHandler
       if channel_id
         # URL入力の場合はURLを表示、ファイル選択の場合はファイル名を表示
         if file_info[:input_type] == 'url' && file_info[:source_url]
-          display_target = "<#{file_info[:source_url]}|#{file_info[:file_name]}>"
+          display_target = "<#{file_info[:source_url]}|Google Document from URL>"
         else
           display_target = file_info[:file_name]
         end
@@ -165,9 +165,9 @@ class SlackInteractionHandler
       else
         # チャンネルIDが設定されていない場合は、エフェメラルメッセージをユーザーに送信
         display_text = if file_info[:input_type] == 'url' && file_info[:source_url]
-                        "📊 <#{file_info[:source_url]}|#{file_info[:file_name]}> の分析を開始しました..."
+                        "📊 <#{file_info[:source_url]}|Google Document from URL> の分析を開始しました..."
                        else
-                        "📊 `#{file_info[:file_name]}` の分析を開始しました..."
+                        "📊 #{file_info[:file_name]} の分析を開始しました..."
                        end
         
         @slack_client.post_ephemeral(
@@ -249,11 +249,9 @@ class SlackInteractionHandler
       file_id = extract_file_id_from_url(url_input.strip)
       return nil unless file_id
 
-      # ファイル名をURLから取得または生成
-      file_name = get_file_name_from_url(url_input.strip) || 'Google Document'
       return {
         file_id: file_id,
-        file_name: file_name,
+        file_name: nil,
         input_type: 'url',
         source_url: url_input.strip
       }
@@ -381,10 +379,4 @@ class SlackInteractionHandler
     nil
   end
 
-  # URLからファイル名を取得（簡易版）
-  def get_file_name_from_url(url)
-    # 実際のファイル名はGoogleDriveClientで取得する
-    # ここでは仮の名前を返す
-    "Google Document from URL"
-  end
 end
