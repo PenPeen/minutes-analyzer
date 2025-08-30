@@ -49,7 +49,7 @@ class SlackMessageBuilder
       type: "section",
       text: {
         type: "mrkdwn",
-        text: "<@#{executor_info[:user_id]}>\n\n議事録の分析と、Notionへのタスク連携が完了しました。\nタスク内容をご確認の上、期限設定や担当アサインを実施してください！"
+        text: "<@#{executor_info[:user_id]}>\n\n議事録分析完了！Notionにタスクを追加しました。\n期限や担当者の調整をお願いします📋"
       }
     }
   end
@@ -275,13 +275,13 @@ class SlackMessageBuilder
   def get_tone_japanese(tone)
     case tone
     when 'positive'
-      'とても盛り上がっていて良かったですね🥳'
+      '会議全体が活気にあふれ、前向きな意見が多く出ていました🥳'
     when 'negative'
-      '雰囲気があまり良くなかったかも...？🤔'
+      '少し雰囲気が重めで、意見交換が進みにくい場面もあったようです🤔'
     when 'neutral'
-      '落ち着いた雰囲気でした🤣'
+      '落ち着いた雰囲気で、冷静に話が進んでいた印象です🙂'
     else
-      '雰囲気は読み取れませんでした😅'
+      '会議の雰囲気を読み取ることができませんでした😅'
     end
   end
 

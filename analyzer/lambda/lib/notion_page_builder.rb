@@ -354,13 +354,13 @@ class NotionPageBuilder
   def get_tone_japanese(tone)
     case tone
     when 'positive'
-      'とても盛り上がっていて良かったですね🥳'
+      '会議全体が活気にあふれ、前向きな意見が多く出ていました🥳'
     when 'negative'
-      '雰囲気があまり良くなかったかも...？🤔'
+      '少し雰囲気が重めで、意見交換が進みにくい場面もあったようです🤔'
     when 'neutral'
-      '落ち着いた雰囲気でした🤣'
+      '落ち着いた雰囲気で、冷静に話が進んでいた印象です🙂'
     else
-      '雰囲気は読み取れませんでした😅'
+      '会議の雰囲気を読み取ることができませんでした😅'
     end
   end
 end
