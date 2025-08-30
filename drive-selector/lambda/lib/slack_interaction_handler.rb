@@ -117,7 +117,12 @@ class SlackInteractionHandler
       
       # チャンネルに分析開始メッセージを送信
       if channel_id
-        display_filename = file_info[:file_name]
+        # URL入力の場合はURLを表示、ファイル選択の場合はファイル名を表示
+        if file_info[:input_type] == 'url' && file_info[:source_url]
+          display_target = "<#{file_info[:source_url]}|Google Document from URL>"
+        else
+          display_target = file_info[:file_name]
+        end
         
         # 通知メッセージのブロックを作成
         blocks = [
@@ -137,7 +142,7 @@ class SlackInteractionHandler
               },
               {
                 type: 'mrkdwn',
-                text: "*対象ファイル:*\n#{display_filename}"
+                text: "*対象ファイル:*\n#{display_target}"
               }
             ]
           },
@@ -159,22 +164,36 @@ class SlackInteractionHandler
         )
       else
         # チャンネルIDが設定されていない場合は、エフェメラルメッセージをユーザーに送信
+        display_text = if file_info[:input_type] == 'url' && file_info[:source_url]
+                        "📊 <#{file_info[:source_url]}|Google Document from URL> の分析を開始しました..."
+                       else
+                        "📊 #{file_info[:file_name]} の分析を開始しました..."
+                       end
+        
         @slack_client.post_ephemeral(
           user_id,
           user_id,
-          "📊 `#{file_info[:file_name]}` の分析を開始しました..."
+          display_text
         )
       end
 
       # Lambda関数を呼び出し
-      result = @lambda_invoker.invoke_analysis_lambda({
+      lambda_payload = {
         file_id: file_info[:file_id],
         file_name: file_info[:file_name],
         user_id: user_id,
         user_email: @slack_client.get_user_email(user_id),
         save_to_notion: save_to_notion,
-        slack_channel_id: channel_id
-      })
+        slack_channel_id: channel_id,
+        input_type: file_info[:input_type] || 'select'
+      }
+
+      # URL入力の場合は追加情報を含める
+      if file_info[:input_type] == 'url'
+        lambda_payload[:source_url] = file_info[:source_url]
+      end
+
+      result = @lambda_invoker.invoke_analysis_lambda(lambda_payload)
       
       puts "Lambda invocation result: #{result.inspect}"
       
@@ -224,15 +243,31 @@ class SlackInteractionHandler
   def extract_selected_file(values)
     return nil unless values
 
+    # URL入力がある場合を優先
+    url_input = values.dig('url_input_block', 'url_input', 'value')
+    if url_input && !url_input.strip.empty?
+      file_id = extract_file_id_from_url(url_input.strip)
+      return nil unless file_id
+
+      return {
+        file_id: file_id,
+        file_name: nil,
+        input_type: 'url',
+        source_url: url_input.strip
+      }
+    end
+
+    # ファイル選択がある場合
     file_select_data = values.dig('file_select_block', 'file_select', 'selected_option')
     return nil unless file_select_data
 
-
     {
       file_id: file_select_data['value'],
-      file_name: file_select_data.dig('text', 'text')
+      file_name: file_select_data.dig('text', 'text'),
+      input_type: 'select'
     }
-  rescue
+  rescue => e
+    puts "Error extracting selected file: #{e.message}"
     nil
   end
 
@@ -324,4 +359,24 @@ class SlackInteractionHandler
       body: JSON.generate(body_content)
     }
   end
+
+  # Google DocsのURLからファイルIDを抽出
+  def extract_file_id_from_url(url)
+    return nil if url.nil? || url.strip.empty?
+    
+    patterns = [
+      %r{docs\.google\.com/document/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/file/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/open\?id=([a-zA-Z0-9-_]+)}
+    ]
+    
+    cleaned_url = url.strip
+    patterns.each do |pattern|
+      match = cleaned_url.match(pattern)
+      return match[1] if match && !match[1].empty?
+    end
+    
+    nil
+  end
+
 end

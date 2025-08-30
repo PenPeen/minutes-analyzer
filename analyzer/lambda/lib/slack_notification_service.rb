@@ -46,6 +46,47 @@ class SlackNotificationService
     end
   end
 
+  def send_error_notification(error_message, context = {})
+    unless @bot_token && !@bot_token.empty? && @channel_id && !@channel_id.empty?
+      @logger.warn("Slack configuration missing, skipping error notification")
+      return { success: false, error: 'Slack configuration missing' }
+    end
+
+    begin
+      error_text = "🚨 *エラーが発生しました*\n\n"
+      error_text += "```#{error_message}```\n"
+      error_text += "*発生時刻:* #{Time.now.strftime('%Y-%m-%d %H:%M:%S')}\n"
+      
+      if context[:user_id]
+        error_text += "*ユーザー:* <@#{context[:user_id]}>\n"
+      end
+      
+      if context[:file_id]
+        error_text += "*ファイルID:* #{context[:file_id]}\n"
+      end
+
+      error_blocks = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: error_text.strip
+          }
+        }
+      ]
+      
+      message_payload = {
+        text: "エラーが発生しました",
+        blocks: error_blocks
+      }
+      
+      @api_client.post_message(@channel_id, message_payload)
+    rescue => e
+      @logger.error("Failed to send error notification: #{e.message}")
+      { success: false, error: e.message }
+    end
+  end
+
   private
 
   def should_send_thread_reply?(analysis_result)

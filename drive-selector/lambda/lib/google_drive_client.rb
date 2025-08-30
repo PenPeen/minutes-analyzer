@@ -3,14 +3,31 @@
 require 'google/apis/drive_v3'
 require 'googleauth'
 require_relative 'google_oauth_client'
+require 'logger'
 
 class GoogleDriveClient
+  # カスタムエラークラス
+  class AccessDeniedError < StandardError; end
+  class FileNotFoundError < StandardError; end
+
   DRIVE_SERVICE = Google::Apis::DriveV3::DriveService
   SCOPE = Google::Apis::DriveV3::AUTH_DRIVE_METADATA_READONLY
 
-  def initialize(slack_user_id)
-    @slack_user_id = slack_user_id
-    @oauth_client = GoogleOAuthClient.new
+  def initialize(user_identifier)
+    @logger = Logger.new(STDOUT)
+
+    if user_identifier.is_a?(String) && user_identifier.start_with?('ya29.')
+      # OAuth2アクセストークンとして扱う（新しい用途）
+      @access_token = user_identifier
+      @slack_user_id = nil
+      @oauth_client = nil
+    else
+      # 既存の用途（Slack User IDとして扱う）
+      @slack_user_id = user_identifier
+      @access_token = nil
+      @oauth_client = GoogleOAuthClient.new
+    end
+
     @drive_service = DRIVE_SERVICE.new
     setup_authorization
   end
@@ -33,7 +50,7 @@ class GoogleDriveClient
 
       format_search_results(response.files || [])
     rescue Google::Apis::AuthorizationError => e
-      puts "Authorization error: #{e.message}"
+      @logger.error("Authorization error: #{e.message}")
 
       # retry_on_auth_errorフラグで再試行を制御（ローカル変数として管理）
       if retry_on_auth_error
@@ -46,7 +63,7 @@ class GoogleDriveClient
         []
       end
     rescue Google::Apis::Error => e
-      puts "Drive API error: #{e.message}"
+      @logger.error("Drive API error: #{e.message}")
       []
     end
   end
@@ -61,18 +78,43 @@ class GoogleDriveClient
         fields: 'id,name,mimeType,modifiedTime,size,owners,webViewLink,parents',
         supports_all_drives: true
       )
+    rescue Google::Apis::ClientError => e
+      if e.status_code == 404
+        notify_slack_error("File not found: #{file_id}", user_id: @slack_user_id)
+        raise FileNotFoundError, "File not found: #{file_id}"
+      elsif e.status_code == 403
+        notify_slack_error("Access denied to file: #{file_id}", user_id: @slack_user_id)
+        raise AccessDeniedError, "Access denied to file: #{file_id}"
+      else
+        @logger.error("Failed to get file info: #{e.message}")
+        notify_slack_error("Failed to get file info: #{e.message}", user_id: @slack_user_id)
+        raise StandardError, "Failed to get file info: #{e.message}"
+      end
+    rescue Google::Apis::AuthorizationError => e
+      notify_slack_error("Authorization error: #{e.message}", user_id: @slack_user_id)
+      raise AccessDeniedError, "Authorization error: #{e.message}"
     rescue Google::Apis::Error => e
-      puts "Failed to get file info: #{e.message}"
-      nil
+      @logger.error("Failed to get file info: #{e.message}")
+      notify_slack_error("Failed to get file info: #{e.message}", user_id: @slack_user_id)
+      return nil
     end
   end
 
   # ユーザーが認証済みか確認
   def authorized?
-    @oauth_client.authenticated?(@slack_user_id)
+    if @access_token
+      # アクセストークンベースの場合は常にtrue（トークンが提供されている前提）
+      true
+    elsif @oauth_client && @slack_user_id
+      # Slack User IDベースの場合は従来通り
+      @oauth_client.authenticated?(@slack_user_id)
+    else
+      false
+    end
   end
 
-  # クエリのエスケープ（public for testing）
+  private
+
   def escape_query(query)
     return '' if query.nil? || query.empty?
 
@@ -86,13 +128,69 @@ class GoogleDriveClient
 
   private
 
+  # Slack にエラー通知を送信
+  def notify_slack_error(error_message, user_id: nil)
+    @logger.info("notify_slack_error called: #{error_message}")
+    @logger.info("SLACK_CHANNEL_ID: #{ENV['SLACK_CHANNEL_ID']}")
+    @logger.info("SLACK_BOT_TOKEN present: #{!ENV['SLACK_BOT_TOKEN'].nil?}")
+
+    return unless ENV['SLACK_CHANNEL_ID'] && ENV['SLACK_BOT_TOKEN']
+
+    begin
+      require_relative 'slack_api_client'
+      slack_client = SlackApiClient.new
+
+      error_blocks = [
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: "🚨 *Drive API エラーが発生しました*"
+          }
+        },
+        {
+          type: 'section',
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: "*エラー内容:*\n```#{error_message}```"
+            },
+            {
+              type: 'mrkdwn',
+              text: "*発生時刻:*\n#{Time.now.strftime('%Y-%m-%d %H:%M:%S')}"
+            }
+          ]
+        }
+      ]
+
+      if user_id
+        error_blocks[1][:fields] << {
+          type: 'mrkdwn',
+          text: "*ユーザー:*\n<@#{user_id}>"
+        }
+      end
+
+      slack_client.post_message(
+        ENV['SLACK_CHANNEL_ID'],
+        "Drive API エラーが発生しました",
+        error_blocks
+      )
+    rescue => slack_error
+      @logger.error("Failed to send Slack error notification: #{slack_error.message}")
+    end
+  end
+
   # 認証設定
   def setup_authorization
-    tokens = @oauth_client.get_tokens(@slack_user_id)
-    return unless tokens
-
-    # Google Auth用のAuthorizerを設定
-    @drive_service.authorization = create_authorization(tokens[:access_token])
+    if @access_token
+      # アクセストークンベースの認証
+      @drive_service.authorization = create_authorization(@access_token)
+    elsif @oauth_client && @slack_user_id
+      # Slack User IDベースの認証（従来通り）
+      tokens = @oauth_client.get_tokens(@slack_user_id)
+      return unless tokens
+      @drive_service.authorization = create_authorization(tokens[:access_token])
+    end
   end
 
   # 認証オブジェクトを作成
@@ -122,7 +220,7 @@ class GoogleDriveClient
         @oauth_client.save_tokens(@slack_user_id, new_tokens)
         setup_authorization
       else
-        puts "Failed to refresh tokens for user #{@slack_user_id}"
+        @logger.error("Failed to refresh tokens for user #{@slack_user_id}")
       end
     end
   end
@@ -131,9 +229,9 @@ class GoogleDriveClient
   def build_search_query(query)
     # Meet Recordingsフォルダを取得
     meet_folders = find_meet_recordings_folders
-    
+
     if meet_folders.empty?
-      puts "No Meet Recordings folders found"
+      @logger.warn("No Meet Recordings folders found")
       return "1=0"  # 結果なしを意図的に作る無効なクエリ
     end
 
@@ -157,9 +255,9 @@ class GoogleDriveClient
     # ユーザーの検索クエリを追加
     if query && !query.empty?
       escaped_query = escape_query(query)
-      puts "Original query: '#{query}' -> Escaped: '#{escaped_query}'"
+      @logger.info("Original query: '#{query}' -> Escaped: '#{escaped_query}'")
       search_conditions = ["name contains '#{escaped_query}'"]
-      
+
       # 大文字小文字の違いに対応
       if escaped_query != escaped_query.downcase
         search_conditions << "name contains '#{escaped_query.downcase}'"
@@ -167,39 +265,45 @@ class GoogleDriveClient
       if escaped_query != escaped_query.upcase
         search_conditions << "name contains '#{escaped_query.upcase}'"
       end
-      
+
       query_condition = "(#{search_conditions.join(' or ')})"
-      puts "Query condition: #{query_condition}"
+      @logger.info("Query condition: #{query_condition}")
       conditions << query_condition
     end
 
     final_query = conditions.join(" and ")
-    puts "Final search query: #{final_query}"
+    @logger.info("Final search query: #{final_query}")
     final_query
   end
 
   # Meet Recordingsフォルダを検索
   def find_meet_recordings_folders
     query = "name contains 'Meet Recordings' and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
-    puts "Searching for folders with query: #{query}"
-    
-    response = @drive_service.list_files(
-      q: query,
-      page_size: 50,  # Meet Recordingsフォルダは複数存在する可能性がある
-      fields: 'files(id,name)',
-      supports_all_drives: true,
-      include_items_from_all_drives: true
-    )
+    @logger.info("Searching for folders with query: #{query}")
 
-    folders = (response.files || []).map do |folder|
-      {
-        id: folder.id,
-        name: folder.name
-      }
+    begin
+      response = @drive_service.list_files(
+        q: query,
+        page_size: 50,  # Meet Recordingsフォルダは複数存在する可能性がある
+        fields: 'files(id,name)',
+        supports_all_drives: true,
+        include_items_from_all_drives: true
+      )
+
+      folders = (response.files || []).map do |folder|
+        {
+          id: folder.id,
+          name: folder.name
+        }
+      end
+
+      @logger.info("Found #{folders.size} meeting folders: #{folders.map { |f| f[:name] }.join(', ')}")
+      folders
+    rescue Google::Apis::Error => e
+      @logger.error("Failed to find Meet Recordings folders: #{e.message}")
+      notify_slack_error("Failed to find Meet Recordings folders: #{e.message}", user_id: @slack_user_id)
+      []
     end
-    
-    puts "Found #{folders.size} meeting folders: #{folders.map { |f| f[:name] }.join(', ')}"
-    folders
   end
 
 
@@ -229,7 +333,7 @@ class GoogleDriveClient
       secrets = JSON.parse(response.secret_string)
       secrets[key]
     rescue => e
-      puts "Failed to fetch secret #{key}: #{e.message}"
+      @logger.error("Failed to fetch secret #{key}: #{e.message}")
       nil
     end
   end

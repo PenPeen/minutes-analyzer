@@ -32,7 +32,12 @@ class LambdaHandler
       file_name = parsed_body['file_name'] || 'Unknown'
       user_id = parsed_body['slack_user_id']
       user_email = parsed_body['slack_user_email']
+      input_type = parsed_body['input_type']
+      google_doc_url = parsed_body['google_doc_url']
+      
       @logger.info("Received file_id: #{file_id}, file_name: #{file_name}")
+      @logger.info("Input type: #{input_type}")
+      @logger.info("Google Doc URL: #{google_doc_url}") if google_doc_url
       @logger.info("Executor user_id: #{user_id}, user_email: #{user_email}") if user_id
       
       # シークレット取得と検証
@@ -43,12 +48,19 @@ class LambdaHandler
       file_data = fetch_file_content(file_id, secrets)
       input_text = file_data[:content]
       file_metadata = file_data[:metadata]
+      actual_file_name = file_metadata[:name]
       
       # Gemini APIで分析
       analysis_result = analyze_with_gemini(input_text, secrets)
       
       # オリジナルファイル名を追加（タイトル整形用）
-      analysis_result['original_file_name'] = file_name
+      analysis_result['original_file_name'] = actual_file_name || file_name
+      
+      # URL入力の場合は追加の情報を含める
+      if input_type == 'url' && google_doc_url
+        analysis_result['source_url'] = google_doc_url
+        analysis_result['input_type'] = 'url'
+      end
       
       # ファイルメタデータを追加（Google Docs URLを含む）
       analysis_result['file_metadata'] = file_metadata
@@ -100,8 +112,22 @@ class LambdaHandler
   
   def fetch_file_content(file_id, secrets)
     google_credentials = secrets['GOOGLE_SERVICE_ACCOUNT_JSON']
-    drive_client = GoogleDriveClient.new(google_credentials, @logger)
-    drive_client.get_file_content(file_id)
+    slack_notification_service = create_slack_notification_service(secrets)
+    drive_client = GoogleDriveClient.new(google_credentials, @logger, slack_notification_service)
+    drive_client.get_file_content(file_id)  # ハッシュ形式でcontentとmetadataを返す
+  end
+
+  def create_slack_notification_service(secrets)
+    bot_token = secrets['SLACK_BOT_TOKEN']
+    channel_id = secrets['SLACK_CHANNEL_ID']
+    
+    return nil unless bot_token && channel_id
+    
+    require_relative 'slack_notification_service'
+    SlackNotificationService.new(bot_token, channel_id, @logger)
+  rescue => e
+    @logger.warn("Failed to create Slack notification service: #{e.message}")
+    nil
   end
   
   def analyze_with_gemini(input_text, secrets)

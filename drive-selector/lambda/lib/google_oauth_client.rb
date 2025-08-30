@@ -120,6 +120,7 @@ class GoogleOAuthClient
     !tokens.nil? && !tokens[:access_token].nil?
   end
 
+
   # トークンをDynamoDBから削除（ログアウト）
   def delete_tokens(slack_user_id)
     @token_store.delete_tokens(slack_user_id)

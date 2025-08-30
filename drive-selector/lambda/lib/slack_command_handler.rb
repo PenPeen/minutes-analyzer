@@ -1,14 +1,18 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'uri'
 require_relative 'google_oauth_client'
+require_relative 'google_drive_client'
 require_relative 'slack_api_client'
 require_relative 'slack_modal_builder'
+require_relative 'lambda_invoker'
 
 class SlackCommandHandler
   def initialize
     @oauth_client = GoogleOAuthClient.new
     @slack_client = SlackApiClient.new
+    @lambda_invoker = LambdaInvoker.new
   end
 
   # Slackコマンドを処理
@@ -22,6 +26,7 @@ class SlackCommandHandler
     user_id = params['user_id']
     team_id = params['team_id']
     trigger_id = params['trigger_id']
+    text = params['text']
 
     puts "Command: #{command} from user: #{user_id}"
 
@@ -81,6 +86,31 @@ class SlackCommandHandler
     thread.join(1)
 
     response
+  end
+
+
+  # Google DocsのURLからファイルIDを抽出
+  def extract_file_id_from_url(url)
+    return nil if url.nil? || url.strip.empty?
+    
+    # Google Docs URL patterns:
+    # https://docs.google.com/document/d/FILE_ID/edit
+    # https://docs.google.com/document/d/FILE_ID/
+    # https://docs.google.com/document/d/FILE_ID
+    
+    patterns = [
+      %r{docs\.google\.com/document/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/file/d/([a-zA-Z0-9-_]+)},
+      %r{drive\.google\.com/open\?id=([a-zA-Z0-9-_]+)}
+    ]
+    
+    cleaned_url = url.strip
+    patterns.each do |pattern|
+      match = cleaned_url.match(pattern)
+      return match[1] if match && !match[1].empty?
+    end
+    
+    nil
   end
 
   # 認証が必要な場合のレスポンス

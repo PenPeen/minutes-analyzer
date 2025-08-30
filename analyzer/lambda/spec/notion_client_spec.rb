@@ -1,14 +1,14 @@
 require 'spec_helper'
-require_relative '../lib/notion_client'
+require_relative '../lib/notion_integration_service'
 require 'webmock/rspec'
 require 'logger'
 
-RSpec.describe NotionClient do
+RSpec.describe NotionIntegrationService do
   let(:api_key) { 'test-notion-api-key' }
   let(:database_id) { 'test-database-id' }
   let(:task_database_id) { 'test-task-database-id' }
   let(:logger) { Logger.new(nil) }
-  let(:client) { NotionClient.new(api_key, database_id, task_database_id, logger) }
+  let(:client) { NotionIntegrationService.new(api_key, database_id, task_database_id, logger) }
 
   describe '#create_meeting_page' do
     let(:analysis_result) do

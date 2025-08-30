@@ -88,6 +88,7 @@ RSpec.describe SlackCommandHandler do
       end
     end
 
+
     context 'when command is unknown' do
       let(:unknown_command_params) { command_params.merge('command' => '/unknown-command') }
 
@@ -216,6 +217,55 @@ RSpec.describe SlackCommandHandler do
         params = command_params.merge('user_id' => '')
         result = handler.send(:validate_required_params, params)
         expect(result).to be false
+      end
+    end
+
+    describe '#extract_file_id_from_url' do
+      it 'extracts file ID from standard Google Docs URL' do
+        url = 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit'
+        result = handler.send(:extract_file_id_from_url, url)
+        expect(result).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+      end
+
+      it 'extracts file ID from Google Docs URL without /edit' do
+        url = 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/'
+        result = handler.send(:extract_file_id_from_url, url)
+        expect(result).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+      end
+
+      it 'extracts file ID from Google Drive file URL' do
+        url = 'https://drive.google.com/file/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/view'
+        result = handler.send(:extract_file_id_from_url, url)
+        expect(result).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+      end
+
+      it 'extracts file ID from Google Drive open URL' do
+        url = 'https://drive.google.com/open?id=1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
+        result = handler.send(:extract_file_id_from_url, url)
+        expect(result).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+      end
+
+      it 'returns nil for invalid URLs' do
+        invalid_urls = [
+          'https://example.com/document',
+          'https://docs.google.com/spreadsheets/d/123/edit',
+          'not-a-url',
+          '',
+          nil,
+          '   ',  # 空白文字のみ
+          'https://docs.google.com/document/d//edit'  # 空のファイルID
+        ]
+
+        invalid_urls.each do |url|
+          result = handler.send(:extract_file_id_from_url, url)
+          expect(result).to be_nil, "Expected nil for URL: #{url.inspect}"
+        end
+      end
+
+      it 'handles URLs with additional parameters' do
+        url = 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit?usp=sharing'
+        result = handler.send(:extract_file_id_from_url, url)
+        expect(result).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
       end
     end
   end

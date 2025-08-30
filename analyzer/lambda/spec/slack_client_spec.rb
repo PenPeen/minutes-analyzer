@@ -1,13 +1,13 @@
 require 'spec_helper'
-require_relative '../lib/slack_client'
+require_relative '../lib/slack_notification_service'
 require 'webmock/rspec'
 require 'logger'
 
-RSpec.describe SlackClient do
+RSpec.describe SlackNotificationService do
   let(:bot_token) { 'xoxb-test-token-12345' }
   let(:channel_id) { 'C1234567890' }
   let(:logger) { instance_double(Logger) }
-  let(:slack_client) { SlackClient.new(bot_token, channel_id, logger) }
+  let(:slack_client) { SlackNotificationService.new(bot_token, channel_id, logger) }
   let(:api_endpoint) { "https://slack.com/api/chat.postMessage" }
 
   before do
