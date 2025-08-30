@@ -13,7 +13,7 @@ RSpec.describe SlackMessageBuilder do
         'participants' => ['山田太郎', '佐藤花子']
       },
       'decisions' => [
-        { 'content' => 'プロジェクト予算を決定', 'category' => 'policy' }
+        { 'content' => 'プロジェクト予算を決定', 'category' => 'policy', 'priority' => 'high' }
       ],
       'actions' => [
         {
@@ -91,6 +91,66 @@ RSpec.describe SlackMessageBuilder do
         end
         expect(action_sections).to be_empty
       end
+    end
+  end
+
+  describe '#sort_decisions' do
+    let(:unsorted_decisions) do
+      [
+        { 'content' => 'Low priority decision', 'priority' => 'low' },
+        { 'content' => 'High priority decision', 'priority' => 'high' },
+        { 'content' => 'Medium priority decision', 'priority' => 'medium' },
+        { 'content' => 'No priority decision', 'priority' => nil }
+      ]
+    end
+
+    it '優先度順（high → medium → low → nil）で決定事項をソートする' do
+      sorted = builder.send(:sort_decisions, unsorted_decisions)
+
+      expect(sorted.map { |d| d['content'] }).to eq([
+        'High priority decision',
+        'Medium priority decision',
+        'Low priority decision',
+        'No priority decision'
+      ])
+    end
+  end
+
+  describe '#build_action_text' do
+    it 'アクション項目に優先度絵文字を含む' do
+      action = {
+        'task' => 'レポート作成',
+        'assignee' => '山田太郎',
+        'priority' => 'high',
+        'deadline_formatted' => '2025/01/20'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('🔴 レポート作成 - 山田太郎（2025/01/20）')
+    end
+
+    it 'medium優先度のアクション項目に黄色絵文字を含む' do
+      action = {
+        'task' => 'テスト実行',
+        'assignee' => '佐藤花子',
+        'priority' => 'medium',
+        'deadline_formatted' => '期日未定'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('🟡 テスト実行 - 佐藤花子（期日未定）')
+    end
+
+    it '優先度がnilの場合はlow優先度として白い絵文字を使用' do
+      action = {
+        'task' => 'ドキュメント更新',
+        'assignee' => '未定',
+        'priority' => nil,
+        'deadline_formatted' => '期日未定'
+      }
+
+      result = builder.send(:build_action_text, action)
+      expect(result).to eq('⚪ ドキュメント更新 - 未定（期日未定）')
     end
   end
 
