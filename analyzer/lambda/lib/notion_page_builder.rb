@@ -117,12 +117,7 @@ class NotionPageBuilder
     }
     
     # 優先度
-    priority_emoji = case action['priority']
-                    when 'high' then '🔴'
-                    when 'medium' then '🟡'
-                    else '⚪'
-                    end
-    
+    priority_emoji = get_priority_emoji(action['priority'])
     blocks << {
       'object' => 'block',
       'type' => 'paragraph',
@@ -205,7 +200,9 @@ class NotionPageBuilder
     
     blocks = [create_heading('📌 決定事項')]
     
-    decisions.each do |decision|
+    # 優先度順にソート
+    sorted_decisions = sort_decisions(decisions)
+    sorted_decisions.each do |decision|
       blocks << create_bulleted_item(decision['content'])
     end
     
@@ -300,14 +297,24 @@ class NotionPageBuilder
       ]
     end
   end
+
+  def sort_decisions(decisions)
+    priority_order = { 'high' => 0, 'medium' => 1, 'low' => 2 }
+    decisions.sort_by do |decision|
+      priority_order[decision['priority']] || 3
+    end
+  end
+
+  def get_priority_emoji(priority)
+    case priority&.downcase
+    when 'high' then '🔴'
+    when 'medium' then '🟡'
+    else '⚪'
+    end
+  end
   
   def create_action_item(action)
-    priority_emoji = case action['priority']
-                    when 'high' then '🔴'
-                    when 'medium' then '🟡'
-                    else '⚪'
-                    end
-    
+    priority_emoji = get_priority_emoji(action['priority'])
     assignee = if action['assignee_email']
                 "#{action['assignee']} (#{action['assignee_email']})"
               else

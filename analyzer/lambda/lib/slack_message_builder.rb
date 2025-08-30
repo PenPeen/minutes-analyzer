@@ -107,9 +107,10 @@ class SlackMessageBuilder
     decisions = analysis_result['decisions'] || []
     return nil if decisions.empty?
 
+    sorted_decisions = sort_decisions(decisions)
     text_lines = ["*:dart: 決定事項 (#{decisions.size}件)*"]
 
-    decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
+    sorted_decisions.first(MAX_DECISIONS).each_with_index do |decision, index|
       text_lines << "#{index + 1}. #{decision['content']}"
     end
 
@@ -223,9 +224,14 @@ class SlackMessageBuilder
     end
   end
 
+  def sort_decisions(decisions)
+    decisions.sort_by do |decision|
+      Constants::Priority::LEVELS[decision['priority']] || 3
+    end
+  end
+
   def build_action_text(action)
     priority_emoji = Constants::Priority::EMOJIS[action['priority']] || Constants::Priority::EMOJIS['low']
-
     assignee = action['assignee'] || '未定'
     deadline = action['deadline_formatted'] || '期日未定'
 
