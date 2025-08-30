@@ -122,6 +122,7 @@ resource "aws_lambda_function" "minutes_analyzer" {
       GOOGLE_CALENDAR_ENABLED     = var.google_calendar_enabled
       USER_MAPPING_ENABLED        = var.user_mapping_enabled
       CACHE_TTL                   = var.cache_ttl
+      SLACK_CHANNEL_ID            = var.slack_channel_id
     }
   }
 

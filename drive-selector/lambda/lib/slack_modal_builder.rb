@@ -28,7 +28,7 @@ class SlackModalBuilder
           type: 'section',
           text: {
             type: 'mrkdwn',
-            text: 'Google Driveから議事録ファイルを選択してください。検索ボックスにファイル名の一部を入力すると、候補が表示されます。'
+            text: 'Google Driveから議事録ファイルを選択するか、Google DocsのURLを直接入力してください。'
           }
         },
         {
@@ -55,7 +55,30 @@ class SlackModalBuilder
           hint: {
             type: 'plain_text',
             text: 'Meet Recordingsフォルダから最新順で表示されます'
-          }
+          },
+          optional: true
+        },
+        {
+          type: 'input',
+          block_id: 'url_input_block',
+          element: {
+            type: 'plain_text_input',
+            action_id: 'url_input',
+            placeholder: {
+              type: 'plain_text',
+              text: 'https://docs.google.com/document/d/FILE_ID/edit'
+            }
+          },
+          label: {
+            type: 'plain_text',
+            text: 'または、Google DocsのURLを入力 🔗',
+            emoji: true
+          },
+          hint: {
+            type: 'plain_text',
+            text: 'Google DocsやDriveの直接URLを貼り付けてください'
+          },
+          optional: true
         },
         {
           type: 'section',

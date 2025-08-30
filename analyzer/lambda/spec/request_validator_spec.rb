@@ -66,6 +66,29 @@ RSpec.describe RequestValidator do
         expect(result['timestamp']).to eq('2025-01-15T10:00:00Z')
       end
     end
+
+    context 'URL形式のリクエスト' do
+      let(:url_body) do
+        JSON.generate({
+          'input_type' => 'url',
+          'file_id' => '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms',
+          'file_name' => 'Meeting Document',
+          'google_doc_url' => 'https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit',
+          'slack_user_id' => 'U1234567890'
+        })
+      end
+      let(:url_event) { { 'body' => url_body } }
+
+      it '正常に処理される' do
+        result = validator.validate_and_parse(url_event)
+        
+        expect(result['input_type']).to eq('url')
+        expect(result['file_id']).to eq('1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms')
+        expect(result['file_name']).to eq('Meeting Document')
+        expect(result['google_doc_url']).to eq('https://docs.google.com/document/d/1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms/edit')
+        expect(result['slack_user_id']).to eq('U1234567890')
+      end
+    end
   end
 
   describe 'エラーケースの詳細テスト' do
@@ -205,6 +228,52 @@ RSpec.describe RequestValidator do
         expect {
           validator.validate_and_parse(event)
         }.to raise_error(RequestValidator::ValidationError, "Request must include 'file_id' field")
+      end
+    end
+
+    context 'URL形式リクエストのバリデーションエラー' do
+      it 'URL形式でgoogle_doc_urlが欠落している場合にValidationErrorが発生' do
+        missing_url_body = JSON.generate({
+          'input_type' => 'url',
+          'file_id' => 'test-file-id'
+        })
+        event = { 'body' => missing_url_body }
+        
+        expect(logger).to receive(:error).with("google_doc_url is missing for URL request")
+        
+        expect {
+          validator.validate_and_parse(event)
+        }.to raise_error(RequestValidator::ValidationError, "URL requests must include 'google_doc_url' field")
+      end
+
+      it 'URL形式でgoogle_doc_urlが空文字列の場合にValidationErrorが発生' do
+        empty_url_body = JSON.generate({
+          'input_type' => 'url',
+          'file_id' => 'test-file-id',
+          'google_doc_url' => ''
+        })
+        event = { 'body' => empty_url_body }
+        
+        expect(logger).to receive(:error).with("google_doc_url is missing for URL request")
+        
+        expect {
+          validator.validate_and_parse(event)
+        }.to raise_error(RequestValidator::ValidationError, "URL requests must include 'google_doc_url' field")
+      end
+
+      it 'URL形式でgoogle_doc_urlがnullの場合にValidationErrorが発生' do
+        null_url_body = JSON.generate({
+          'input_type' => 'url',
+          'file_id' => 'test-file-id',
+          'google_doc_url' => nil
+        })
+        event = { 'body' => null_url_body }
+        
+        expect(logger).to receive(:error).with("google_doc_url is missing for URL request")
+        
+        expect {
+          validator.validate_and_parse(event)
+        }.to raise_error(RequestValidator::ValidationError, "URL requests must include 'google_doc_url' field")
       end
     end
   end
