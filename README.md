@@ -63,21 +63,21 @@ make setup
 
 詳細な設定手順は[環境変数設定](#-環境変数)セクションを参照してください。
 
-### 開発環境の起動
+### 開発・テストの実行
 
 #### analyzer（議事録分析エンジン）
 ```bash
 cd analyzer
-make start        # 環境起動・ビルド・ローカル自動デプロイ
-make stop         # 環境停止
+make setup        # 初期セットアップ
+make build-lambda # Lambda関数ビルド
 make test         # テスト実行
 ```
 
 #### drive-selector（SlackBot）
 ```bash
 cd drive-selector
-make start        # 環境起動・デプロイ
-make stop         # 環境停止
+make setup        # 初期セットアップ  
+make build-production # Lambda関数ビルド
 make test         # テスト実行
 ```
 
@@ -100,7 +100,7 @@ make deploy-production
 ```bash
 make help           # 利用可能なコマンドを表示
 make setup          # 初期セットアップ
-make start          # 開発環境起動・デプロイ
+make build-lambda   # Lambda関数ビルド
 make test           # テスト実行
 make clean          # 環境クリーンアップ
 make deploy-production  # 本番デプロイ
@@ -112,7 +112,7 @@ make deploy-production  # 本番デプロイ
 ```bash
 make help           # 利用可能なコマンドを表示
 make setup          # 初期セットアップ
-make start          # 開発環境起動・デプロイ
+make build-production # Lambda関数ビルド
 make test           # テスト実行
 make clean          # 環境クリーンアップ
 make deploy-production  # 本番デプロイ

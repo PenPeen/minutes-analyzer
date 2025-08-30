@@ -47,6 +47,11 @@ OAuthトークンはDynamoDBで永続化・暗号化されています：
 ## デプロイ
 
 ```bash
+make deploy-production
+```
+
+### 手動デプロイ
+```bash
 cd infrastructure/environments/production
 terraform init
 terraform apply -var-file=terraform.tfvars
