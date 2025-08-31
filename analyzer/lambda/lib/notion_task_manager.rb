@@ -62,7 +62,7 @@ class NotionTaskManager
         'title' => [
           {
             'text' => {
-              'content' => action['task'] || 'Untitled Task'
+              'content' => action['task'] || action[:task] || 'Untitled Task'
             }
           }
         ]
@@ -70,19 +70,27 @@ class NotionTaskManager
       'ステータス' => {
         'select' => { 'name' => '未着手' }
       },
-      '優先度' => build_priority_property(action['priority'])
+      '優先度' => build_priority_property(action['priority'] || action[:priority])
     }
 
     # 担当者設定
-    if action['notion_user_id']
+    assignee = action['assignee'] || action[:assignee]
+    if assignee && !assignee.empty?
       properties['担当者'] = {
-        'people' => [{ 'id' => action['notion_user_id'] }]
+        'rich_text' => [
+          {
+            'text' => {
+              'content' => assignee
+            }
+          }
+        ]
       }
     end
 
     # 期限設定
-    if action['deadline']
-      properties['期限'] = build_deadline_property(action['deadline'])
+    deadline = action['deadline'] || action[:deadline]
+    if deadline
+      properties['期限'] = build_deadline_property(deadline)
     end
 
     # 親ページへのリレーション
