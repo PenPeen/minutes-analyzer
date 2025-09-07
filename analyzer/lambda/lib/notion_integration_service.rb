@@ -27,7 +27,7 @@ class NotionIntegrationService
 
     # ページビルダーを使用してページを構築
     page_data = @page_builder.build_meeting_page(analysis_result, @database_id)
-    
+
     # APIクライアントを使用してページを作成
     response = @api_client.create_page(page_data)
 
@@ -432,7 +432,7 @@ class NotionIntegrationService
         rich_text: [
           {
             type: "text",
-            text: { content: "📝 背景・文脈" }
+            text: { content: "📌 背景" }
           }
         ]
       }
