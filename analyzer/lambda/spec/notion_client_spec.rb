@@ -194,37 +194,37 @@ RSpec.describe NotionIntegrationService do
 
     it 'includes task context when present' do
       content = client.send(:build_task_content, action_with_context)
-      
-      context_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📝 背景・文脈' }
+
+      context_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📌 背景' }
       expect(context_section).not_to be_nil
-      
+
       context_text = content.find { |c| c[:type] == 'paragraph' && c[:paragraph][:rich_text][0][:text][:content] == 'これはタスクの背景情報です' }
       expect(context_text).not_to be_nil
     end
 
     it 'includes task steps when present' do
       content = client.send(:build_task_content, action_with_context)
-      
+
       steps_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📋 実行手順' }
       expect(steps_section).not_to be_nil
-      
+
       numbered_items = content.select { |c| c[:type] == 'numbered_list_item' }
       expect(numbered_items.size).to eq(3)
     end
 
     it 'always includes task details section' do
       content = client.send(:build_task_content, action_without_context)
-      
+
       details_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == 'ℹ️ タスク情報' }
       expect(details_section).not_to be_nil
     end
 
     it 'handles missing optional fields gracefully' do
-      content = client.send(:build_task_content, action_without_context)
-      
-      context_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📝 背景・文脈' }
+            content = client.send(:build_task_content, action_without_context)
+
+      context_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📌 背景' }
       expect(context_section).to be_nil
-      
+
       steps_section = content.find { |c| c[:type] == 'heading_2' && c[:heading_2][:rich_text][0][:text][:content] == '📋 実行手順' }
       expect(steps_section).to be_nil
     end
