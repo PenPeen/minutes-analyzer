@@ -109,15 +109,6 @@ class SlackModalBuilder
               }
             ]
           }
-        },
-        {
-          type: 'context',
-          elements: [
-            {
-              type: 'mrkdwn',
-              text: '💡 ヒント: Meet Recordingsフォルダのファイルのみが対象です。保存日時の新しい順で表示されます'
-            }
-          ]
         }
       ]
     }
