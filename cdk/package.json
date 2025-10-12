@@ -1,0 +1,26 @@
+{
+  "name": "minutes-analyzer-cdk",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc -w",
+    "cdk": "cdk",
+    "deploy:analyzer": "cdk deploy AnalyzerStack",
+    "deploy:drive-selector": "cdk deploy DriveSelectorStack",
+    "deploy:all": "cdk deploy --all",
+    "destroy:analyzer": "cdk destroy AnalyzerStack",
+    "destroy:drive-selector": "cdk destroy DriveSelectorStack"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "aws-cdk": "^2.120.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.120.0",
+    "constructs": "^10.3.0",
+    "dotenv": "^16.3.1",
+    "source-map-support": "^0.5.21"
+  }
+}
